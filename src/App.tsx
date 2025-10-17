@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { User, Sparkles, Zap, Upload, Wand2, Rocket, Eye, Target } from 'lucide-react';
-import { useAuth } from './hooks/useAuth';
+// import { useAuth } from './hooks/useAuth';
 import JourneyBuilder from './components/JourneyBuilder/JourneyBuilder';
 import MethodologyBuilder from './components/Methodology/MethodologyBuilder';
 import Header from './components/Layout/Header';
@@ -48,7 +48,8 @@ import { useTrainingProgress } from './hooks/useTrainingProgress';
 import { Company, TrainingJourney, TrainingModule, Rep } from './types';
 
 function App() {
-  const { user, signOut } = useAuth();
+  // const { user, signOut } = useAuth();
+  const user = { name: 'User', email: 'user@example.com' }; // Mock user - no auth required
   const [activeTab, setActiveTab] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userRole, setUserRole] = useState<'trainee' | 'trainer' | 'admin'>('trainee');

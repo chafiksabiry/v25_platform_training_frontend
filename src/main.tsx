@@ -1,16 +1,14 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
-import AuthProvider from './components/Auth/AuthProvider.tsx';
+// import AuthProvider from './components/Auth/AuthProvider.tsx';
 import ErrorBoundary from './components/ErrorBoundary/ErrorBoundary.tsx';
 import './index.css';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary>
-      <AuthProvider>
-        <App />
-      </AuthProvider>
+      <App />
     </ErrorBoundary>
   </StrictMode>
 );
