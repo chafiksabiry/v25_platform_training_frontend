@@ -15,7 +15,7 @@ class ApiClientClass {
   private token: string | null = null;
 
   constructor() {
-    this.baseURL = import.meta.env.VITE_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://38.242.208.242:5010';
+    this.baseURL = import.meta.env.VITE_API_URL || process.env.NEXT_PUBLIC_API_URL || 'https://api-training.harx.ai';
   }
 
   setToken(token: string) {

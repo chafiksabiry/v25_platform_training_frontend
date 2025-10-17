@@ -101,7 +101,7 @@ export class AIService {
    */
   static async generateAudio(text: string): Promise<Blob> {
     const token = ApiClient.getToken();
-    const apiUrl = import.meta.env.VITE_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://38.242.208.242:5010';
+    const apiUrl = import.meta.env.VITE_API_URL || process.env.NEXT_PUBLIC_API_URL || 'https://api-training.harx.ai';
     
     const response = await fetch(`${apiUrl}/api/ai/generate-audio`, {
       method: 'POST',

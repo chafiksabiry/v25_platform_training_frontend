@@ -27,7 +27,7 @@ export function SocketProvider({ children }: SocketProviderProps) {
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
-    const apiUrl = (import.meta as any).env?.VITE_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://38.242.208.242:5010';
+    const apiUrl = (import.meta as any).env?.VITE_API_URL || process.env.NEXT_PUBLIC_API_URL || 'https://api-training.harx.ai';
     const socketInstance = io(apiUrl, {
       transports: ['websocket'],
     });

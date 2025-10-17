@@ -12,8 +12,9 @@ export default defineConfig({
     port: 5190,
     proxy: {
       '/api': {
-        target: 'http://38.242.208.242:5010',
+        target: 'https://api-training.harx.ai',
         changeOrigin: true,
+        secure: false,
       },
     },
   },
