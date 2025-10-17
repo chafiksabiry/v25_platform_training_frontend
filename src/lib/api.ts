@@ -15,7 +15,7 @@ class ApiClientClass {
   private token: string | null = null;
 
   constructor() {
-    this.baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+    this.baseURL = import.meta.env.VITE_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://38.242.208.242:5010';
   }
 
   setToken(token: string) {

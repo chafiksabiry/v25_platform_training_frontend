@@ -7,4 +7,18 @@ export default defineConfig({
   optimizeDeps: {
     exclude: ['lucide-react'],
   },
+  server: {
+    host: '0.0.0.0',
+    port: 5190,
+    proxy: {
+      '/api': {
+        target: 'http://38.242.208.242:5010',
+        changeOrigin: true,
+      },
+    },
+  },
+  preview: {
+    host: '0.0.0.0',
+    port: 5190,
+  },
 });

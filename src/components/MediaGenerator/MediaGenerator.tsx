@@ -72,7 +72,7 @@ export default function MediaGenerator({ content, onGenerate }: MediaGeneratorPr
     setActiveGenerator(mediaType);
 
     // Simulate AI generation process
-    await new Promise(resolve => setTimeout(resolve, 3000));
+    await new Promise(resolve => setTimeout(resolve, 5190));
 
     const mockGeneratedContent = {
       video: {

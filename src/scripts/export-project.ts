@@ -145,10 +145,10 @@ echo "⏳ Waiting for services to start..."
 sleep 30
 
 # Check health
-curl -f http://localhost:3000/api/health || exit 1
+curl -f http://localhost:5190/api/health || exit 1
 
 echo "✅ Deployment complete!"
-echo "🌐 Application available at: http://localhost:3000"
+echo "🌐 Application available at: http://localhost:5190"
 `;
 
     const setupScript = `#!/bin/bash

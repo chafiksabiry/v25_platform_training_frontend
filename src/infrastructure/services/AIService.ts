@@ -101,7 +101,7 @@ export class AIService {
    */
   static async generateAudio(text: string): Promise<Blob> {
     const token = ApiClient.getToken();
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+    const apiUrl = import.meta.env.VITE_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://38.242.208.242:5010';
     
     const response = await fetch(`${apiUrl}/api/ai/generate-audio`, {
       method: 'POST',

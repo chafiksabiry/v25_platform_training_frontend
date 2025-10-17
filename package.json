@@ -4,10 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "dev": "vite",
+    "build": "vite build",
     "lint": "eslint .",
-    "preview": "next start",
+    "preview": "vite preview --port 5190 --host 0.0.0.0",
     "export:full": "ts-node src/scripts/export-project.ts full",
     "export:source": "ts-node src/scripts/export-project.ts source",
     "export:production": "ts-node src/scripts/export-project.ts production"

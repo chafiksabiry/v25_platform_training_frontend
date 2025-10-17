@@ -170,7 +170,7 @@ export default function DocumentTransformer({ onComplete }: DocumentTransformerP
       setTransformations(prev => [...prev, transformation]);
       
       // Simulate transformation process
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      await new Promise(resolve => setTimeout(resolve, 5190));
       
       setTransformations(prev => prev.map(t => 
         t.id === transformation.id 

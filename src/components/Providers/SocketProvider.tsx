@@ -27,7 +27,8 @@ export function SocketProvider({ children }: SocketProviderProps) {
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
-    const socketInstance = io(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080', {
+    const apiUrl = (import.meta as any).env?.VITE_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://38.242.208.242:5010';
+    const socketInstance = io(apiUrl, {
       transports: ['websocket'],
     });
 

@@ -112,7 +112,7 @@ services:
   app:
     build: .
     ports:
-      - "3000:3000"
+      - "5190:5190"
     environment:
       - MONGODB_URI=mongodb://mongodb:27017/training_platform
     depends_on:
@@ -138,7 +138,7 @@ COPY package*.json ./
 RUN npm ci --only=production
 COPY . .
 RUN npm run build
-EXPOSE 3000
+EXPOSE 5190
 CMD ["npm", "start"]
     `.trim();
   }

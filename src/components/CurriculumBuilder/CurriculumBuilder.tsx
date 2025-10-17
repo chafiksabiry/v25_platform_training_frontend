@@ -166,7 +166,7 @@ export default function CurriculumBuilder({ curriculum, onSave, onPublish }: Cur
     setIsProcessing(true);
     
     // Simulate AI curriculum generation
-    await new Promise(resolve => setTimeout(resolve, 3000));
+    await new Promise(resolve => setTimeout(resolve, 5190));
     
     const newEnhancement: AIEnhancement = {
       id: Date.now().toString(),
