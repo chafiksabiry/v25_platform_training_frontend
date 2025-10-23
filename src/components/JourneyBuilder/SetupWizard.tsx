@@ -1,9 +1,12 @@
-import React, { useState } from 'react';
-import { Building2, Users, Target, ArrowRight, CheckCircle, Sparkles, Zap, Video, FileText } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Building2, Users, Target, ArrowRight, CheckCircle, Sparkles, Zap, Video, FileText, Loader2, Briefcase } from 'lucide-react';
 import { Company, TrainingJourney } from '../../types/core';
+import { Industry, GigFromApi } from '../../types';
 import { TrainingMethodology } from '../../types/methodology';
 import MethodologySelector from './MethodologySelector';
 import MethodologyBuilder from '../Methodology/MethodologyBuilder';
+import { OnboardingService } from '../../infrastructure/services/OnboardingService';
+import GigSelector from '../Dashboard/GigSelector';
 
 interface SetupWizardProps {
   onComplete: (company: Company, journey: TrainingJourney, methodology?: TrainingMethodology) => void;
@@ -16,13 +19,40 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
   const [selectedMethodology, setSelectedMethodology] = useState<TrainingMethodology | null>(null);
   const [showMethodologySelector, setShowMethodologySelector] = useState(false);
   const [showMethodologyBuilder, setShowMethodologyBuilder] = useState(false);
+  
+  // Industries and Gigs state
+  const [industries, setIndustries] = useState<Industry[]>([]);
+  const [loadingIndustries, setLoadingIndustries] = useState(true);
+  const [selectedGig, setSelectedGig] = useState<GigFromApi | null>(null);
+  const [showGigSelector, setShowGigSelector] = useState(false);
+
+  // Default company ID for gig selection
+  const DEFAULT_COMPANY_ID = '68cab073cfa9381f0ed56393';
+
+  useEffect(() => {
+    const fetchIndustries = async () => {
+      try {
+        setLoadingIndustries(true);
+        const response = await OnboardingService.fetchIndustries();
+        if (response.success && response.data) {
+          setIndustries(response.data.filter(ind => ind.isActive));
+        }
+      } catch (error) {
+        console.error('Error fetching industries:', error);
+      } finally {
+        setLoadingIndustries(false);
+      }
+    };
+
+    fetchIndustries();
+  }, []);
 
   const steps = [
     { 
       id: 1, 
-      title: 'Company Setup', 
+      title: 'Company & Gig Setup', 
       icon: Building2, 
-      description: 'Tell us about your organization',
+      description: 'Tell us about your organization and role',
       features: ['Industry-specific templates', 'Smart defaults', 'Compliance settings']
     },
     { 
@@ -135,6 +165,10 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
     }
   };
 
+  const handleGigSelect = (gig: GigFromApi) => {
+    setSelectedGig(gig);
+  };
+
   const handleMethodologySelect = (methodology: TrainingMethodology) => {
     setSelectedMethodology(methodology);
     setShowMethodologySelector(false);
@@ -198,7 +232,7 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
               ))}
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Company Name *
@@ -216,26 +250,25 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Industry *
                 </label>
-                <select
-                  value={company.industry || ''}
-                  onChange={(e) => setCompany({ ...company, industry: e.target.value })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg"
-                >
-                  <option value="">Select your industry</option>
-                  <option value="health-insurance">Health Insurance Brokerage</option>
-                  <option value="auto-insurance">Auto Insurance</option>
-                  <option value="property-insurance">Property Insurance</option>
-                  <option value="life-insurance">Life Insurance</option>
-                  <option value="financial-services">Financial Services</option>
-                  <option value="healthcare">Healthcare Services</option>
-                  <option value="technology">Technology</option>
-                  <option value="finance">Finance</option>
-                  <option value="retail">Retail</option>
-                  <option value="manufacturing">Manufacturing</option>
-                  <option value="education">Education</option>
-                  <option value="consulting">Consulting</option>
-                  <option value="other">Other</option>
-                </select>
+                {loadingIndustries ? (
+                  <div className="w-full px-4 py-3 border border-gray-300 rounded-lg flex items-center justify-center">
+                    <Loader2 className="h-5 w-5 text-blue-500 animate-spin mr-2" />
+                    <span className="text-gray-600">Loading industries...</span>
+                  </div>
+                ) : (
+                  <select
+                    value={company.industry || ''}
+                    onChange={(e) => setCompany({ ...company, industry: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg"
+                  >
+                    <option value="">Select your industry</option>
+                    {industries.map((industry) => (
+                      <option key={industry._id} value={industry.name}>
+                        {industry.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
 
               <div>
@@ -264,6 +297,19 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
                     </button>
                   ))}
                 </div>
+              </div>
+
+              {/* Gig Selection */}
+              <div className="pt-6 border-t border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                  <Briefcase className="h-5 w-5 mr-2 text-blue-600" />
+                  Select Your Gig *
+                </h3>
+                <GigSelector
+                  companyId={DEFAULT_COMPANY_ID}
+                  onGigSelect={handleGigSelect}
+                  selectedGigId={selectedGig?._id}
+                />
               </div>
             </div>
           </div>
@@ -462,13 +508,21 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
             <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-8">
               <h4 className="text-xl font-semibold text-green-900 mb-4">360° Methodology Applied Successfully</h4>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                 <div>
                   <h5 className="font-semibold text-green-900 mb-2">Company Setup</h5>
                   <div className="space-y-1 text-sm text-green-700">
                     <div>• {company.name}</div>
                     <div>• {company.industry}</div>
                     <div>• {company.size} company</div>
+                  </div>
+                </div>
+                <div>
+                  <h5 className="font-semibold text-green-900 mb-2">Selected Gig</h5>
+                  <div className="space-y-1 text-sm text-green-700">
+                    <div>• {selectedGig?.title || 'No gig selected'}</div>
+                    <div>• {selectedGig?.category || ''}</div>
+                    <div>• {selectedGig?.seniority.level || ''}</div>
                   </div>
                 </div>
                 <div>
@@ -516,7 +570,7 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
   const isStepValid = () => {
     switch (currentStep) {
       case 1:
-        return company.name && company.industry && company.size;
+        return company.name && company.industry && company.size && selectedGig !== null;
       case 2:
         return journey.name && journey.estimatedDuration;
       case 3:

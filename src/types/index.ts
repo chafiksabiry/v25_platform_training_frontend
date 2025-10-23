@@ -29,6 +29,79 @@ export interface Gig {
   aiRecommendedPath: string[];
 }
 
+// API response types for Industries and Gigs
+export interface Industry {
+  _id: string;
+  name: string;
+  description: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  __v: number;
+}
+
+export interface IndustryApiResponse {
+  success: boolean;
+  data: Industry[];
+  pagination: any | null;
+  message: string;
+}
+
+export interface GigFromApi {
+  _id: string;
+  title: string;
+  description: string;
+  category: string;
+  status: string;
+  companyId: string;
+  userId: string;
+  seniority: {
+    level: string;
+    yearsExperience: string;
+  };
+  skills: {
+    professional: any[];
+    technical: any[];
+    soft: any[];
+    languages: any[];
+  };
+  availability: {
+    minimumHours: {
+      daily: number;
+      weekly: number;
+      monthly: number;
+    };
+    schedule: any[];
+    time_zone: any;
+    flexibility: string[];
+  };
+  commission: {
+    minimumVolume: any;
+    transactionCommission: any;
+    base: string;
+    baseAmount: string;
+    bonus: string;
+    bonusAmount: string;
+    currency: {
+      code: string;
+      name: string;
+      symbol: string;
+    };
+    structure?: string;
+    additionalDetails: string;
+  };
+  industries: Industry[];
+  activities: any[];
+  destination_zone: any;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface GigApiResponse {
+  message: string;
+  data: GigFromApi[];
+}
+
 export interface OnboardingStep {
   id: string;
   title: string;

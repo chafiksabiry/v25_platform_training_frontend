@@ -56,6 +56,13 @@ export default function CurriculumDesigner({ uploads, methodology, onComplete, o
               suggestedModules: analyzedUploads.flatMap(u => u.aiAnalysis?.suggestedModules || [])
             };
         
+        console.log('📊 Combined Analysis:', {
+          uploads: analyzedUploads.length,
+          suggestedModules: combinedAnalysis.suggestedModules,
+          keyTopics: combinedAnalysis.keyTopics,
+          learningObjectives: combinedAnalysis.learningObjectives
+        });
+        
         const industry = methodology?.name || 'General';
         
         setEnhancementProgress({ 'generating': 30 });
@@ -63,21 +70,63 @@ export default function CurriculumDesigner({ uploads, methodology, onComplete, o
         // ✅ APPEL API RÉEL pour générer le curriculum avec l'analyse combinée
         const curriculum = await AIService.generateCurriculum(combinedAnalysis, industry);
         
+        console.log('📚 Curriculum API Response:', {
+          modulesCount: curriculum.modules.length,
+          suggestedCount: combinedAnalysis.suggestedModules.length,
+          modules: curriculum.modules
+        });
+        
         setEnhancementProgress({ 'transforming': 60 });
         
+        // S'assurer qu'on a au moins le nombre de modules suggérés
+        let modulesToUse = curriculum.modules;
+        const targetModuleCount = Math.max(combinedAnalysis.suggestedModules.length, 6); // Au moins 6 modules
+        
+        if (curriculum.modules.length < targetModuleCount) {
+          console.warn(`⚠️ API returned ${curriculum.modules.length} modules, but ${targetModuleCount} were expected. Generating missing modules...`);
+          
+          // Si on a des suggestions, les utiliser
+          const availableSuggestions = combinedAnalysis.suggestedModules;
+          const missingCount = targetModuleCount - curriculum.modules.length;
+          
+          const missingModules = [];
+          for (let i = 0; i < missingCount; i++) {
+            const moduleIndex = curriculum.modules.length + i;
+            const suggestedTitle = availableSuggestions[moduleIndex] || `Advanced Module ${moduleIndex + 1}`;
+            
+            missingModules.push({
+              title: suggestedTitle,
+              description: `Comprehensive training module covering ${suggestedTitle.toLowerCase()} concepts and practical applications`,
+              duration: 60,
+              difficulty: 'intermediate' as const,
+              contentItems: 7,
+              assessments: 3,
+              enhancedElements: ['AI-Generated Video', 'Visual Infographic', 'Interactive Scenario', 'Knowledge Check'],
+              learningObjectives: combinedAnalysis.learningObjectives.length > 0 
+                ? combinedAnalysis.learningObjectives.slice(0, 4)
+                : [`Master ${suggestedTitle} fundamentals`, `Apply ${suggestedTitle} in practice`, 'Complete hands-on exercises']
+            });
+          }
+          
+          modulesToUse = [...curriculum.modules, ...missingModules];
+          console.log('✅ Generated missing modules:', missingModules.length, 'Total modules:', modulesToUse.length);
+        }
+        
         // Transformer le curriculum GPT-4 en modules TrainingModule
-        const generatedModules: TrainingModule[] = curriculum.modules.map((aiModule, index) => ({
+        const generatedModules: TrainingModule[] = modulesToUse.map((aiModule, index) => ({
           id: `ai-module-${index + 1}`,
           title: aiModule.title,
           description: aiModule.description,
           content: generateModuleContentFromAI(aiModule),
           duration: aiModule.duration,
           difficulty: aiModule.difficulty,
-          prerequisites: analysis.prerequisites,
+          prerequisites: combinedAnalysis.prerequisites,
           learningObjectives: aiModule.learningObjectives,
-          topics: analysis.keyTopics || [],
+          topics: combinedAnalysis.keyTopics || [],
           assessments: generateEnhancedAssessments(aiModule.learningObjectives)
         }));
+        
+        console.log('✅ Final modules generated:', generatedModules.length);
         
         setEnhancementProgress({ 'finalizing': 90 });
         

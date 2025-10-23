@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Video, Play, Clock, FileText, Eye, Sparkles, Download } from 'lucide-react';
+import { Video, Play, Clock, FileText, Eye, Sparkles, Download, Palette } from 'lucide-react';
 import { VideoScript } from '../../infrastructure/services/AIService';
+import CanvasVideoGenerator from './CanvasVideoGenerator';
+import { VideoScene } from '../../infrastructure/services/CanvasVideoService';
 
 interface VideoScriptViewerProps {
   moduleTitle: string;
@@ -18,6 +20,7 @@ export default function VideoScriptViewer({
   const [script, setScript] = useState<VideoScript | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [expandedScene, setExpandedScene] = useState<number | null>(0);
+  const [showCanvasGenerator, setShowCanvasGenerator] = useState(false);
 
   useEffect(() => {
     // Auto-generate script on mount
@@ -78,6 +81,18 @@ export default function VideoScriptViewer({
     URL.revokeObjectURL(url);
   };
 
+  const convertScriptToCanvasScenes = (): VideoScene[] => {
+    if (!script) return [];
+    
+    return script.scenes.map(scene => ({
+      title: scene.title,
+      narration: scene.narration,
+      visual: scene.visual,
+      duration: 30, // 30 secondes par scène
+      onScreenText: scene.onScreenText
+    }));
+  };
+
   if (isGenerating) {
     return (
       <div className="bg-gradient-to-br from-purple-50 to-blue-50 rounded-xl p-8 border-2 border-purple-200">
@@ -115,6 +130,28 @@ export default function VideoScriptViewer({
             Générer un script
           </button>
         </div>
+      </div>
+    );
+  }
+
+  // Afficher le générateur Canvas si activé
+  if (showCanvasGenerator) {
+    return (
+      <div className="space-y-4">
+        <button
+          onClick={() => setShowCanvasGenerator(false)}
+          className="text-purple-600 hover:text-purple-700 font-medium flex items-center space-x-2"
+        >
+          <Eye className="w-4 h-4" />
+          <span>← Retour au script</span>
+        </button>
+        <CanvasVideoGenerator
+          scenes={convertScriptToCanvasScenes()}
+          title={script.title}
+          onVideoGenerated={(blob) => {
+            console.log('Vidéo générée:', blob);
+          }}
+        />
       </div>
     );
   }
@@ -225,16 +262,29 @@ export default function VideoScriptViewer({
 
       {/* Footer */}
       <div className="bg-gradient-to-r from-purple-50 to-blue-50 p-4 border-t-2 border-purple-100">
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-gray-600">
-            💡 Ce script peut être utilisé pour créer une vraie vidéo avec Synthesia, HeyGen, ou manuellement
-          </p>
-          <button
-            onClick={generateScript}
-            className="px-4 py-2 text-sm bg-white border-2 border-purple-600 text-purple-600 rounded-lg hover:bg-purple-600 hover:text-white transition-colors"
-          >
-            Régénérer
-          </button>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-gray-600">
+              💡 Ce script peut être utilisé pour créer une vraie vidéo avec Synthesia, HeyGen, ou manuellement
+            </p>
+            <button
+              onClick={generateScript}
+              className="px-4 py-2 text-sm bg-white border-2 border-purple-600 text-purple-600 rounded-lg hover:bg-purple-600 hover:text-white transition-colors"
+            >
+              Régénérer
+            </button>
+          </div>
+          
+          {/* Canvas Generator Button */}
+          <div className="flex items-center justify-center">
+            <button
+              onClick={() => setShowCanvasGenerator(true)}
+              className="w-full py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all font-semibold flex items-center justify-center space-x-2 shadow-lg"
+            >
+              <Palette className="w-5 h-5" />
+              <span>🎨 Générer la vidéo avec Canvas (Gratuit)</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
