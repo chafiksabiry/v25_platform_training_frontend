@@ -171,5 +171,29 @@ export class AIService {
 
     return response.data as VideoScript;
   }
+
+  /**
+   * Exporte un curriculum en PowerPoint (.pptx)
+   * Génère un fichier PowerPoint professionnel avec slides animées
+   */
+  static async exportToPowerPoint(curriculum: Curriculum): Promise<Blob> {
+    const token = ApiClient.getToken();
+    const apiUrl = import.meta.env.VITE_API_URL || process.env.NEXT_PUBLIC_API_URL || 'https://api-training.harx.ai';
+    
+    const response = await fetch(`${apiUrl}/ai/export-powerpoint`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token && { 'Authorization': `Bearer ${token}` })
+      },
+      body: JSON.stringify({ curriculum })
+    });
+
+    if (!response.ok) {
+      throw new Error('PowerPoint export failed');
+    }
+
+    return await response.blob();
+  }
 }
 

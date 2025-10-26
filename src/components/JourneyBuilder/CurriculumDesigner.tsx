@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Brain, BookOpen, CheckSquare, Play, CreditCard as Edit, Trash2, Plus, ArrowRight, Sparkles, Video, Music, BarChart3, Zap, Eye, Wand2 } from 'lucide-react';
+import { Brain, BookOpen, CheckSquare, Play, CreditCard as Edit, Trash2, Plus, ArrowRight, Sparkles, Video, Music, BarChart3, Zap, Eye, Wand2, FileDown } from 'lucide-react';
 import { ContentUpload, TrainingModule, ModuleContent, Assessment, Question } from '../../types/core';
 import { TrainingMethodology } from '../../types/methodology';
 import { AIService } from '../../infrastructure/services/AIService';
@@ -17,6 +17,7 @@ export default function CurriculumDesigner({ uploads, methodology, onComplete, o
   const [selectedModule, setSelectedModule] = useState<TrainingModule | null>(null);
   const [enhancementProgress, setEnhancementProgress] = useState<Record<string, number>>({});
   const [activeTab, setActiveTab] = useState('modules');
+  const [isExportingPPT, setIsExportingPPT] = useState(false);
 
   useEffect(() => {
     generateInitialCurriculum();
@@ -353,6 +354,59 @@ export default function CurriculumDesigner({ uploads, methodology, onComplete, o
     a.click();
     URL.revokeObjectURL(url);
   };
+
+  const exportToPowerPoint = async () => {
+    if (modules.length === 0) {
+      alert('⚠️ Aucun module à exporter. Veuillez générer des modules d\'abord.');
+      return;
+    }
+
+    setIsExportingPPT(true);
+    
+    try {
+      // Préparer le curriculum pour l'API
+      const curriculum = {
+        title: methodology?.name || 'Formation Professionnelle',
+        description: `Formation complète générée avec ${modules.length} modules`,
+        totalDuration: modules.reduce((sum, m) => sum + m.duration, 0),
+        methodology: methodology?.name || '360° Methodology',
+        modules: modules.map(m => ({
+          title: m.title,
+          description: m.description,
+          duration: m.duration,
+          difficulty: m.difficulty,
+          contentItems: m.content.length,
+          assessments: m.assessments.length,
+          enhancedElements: ['Video Introduction', 'Interactive Exercises', 'Knowledge Check'],
+          learningObjectives: m.learningObjectives
+        }))
+      };
+
+      console.log('📊 Exporting to PowerPoint:', curriculum);
+
+      // Appeler l'API pour générer le PPT
+      const blob = await AIService.exportToPowerPoint(curriculum as any);
+
+      // Télécharger le fichier
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Formation_${Date.now()}.pptx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      console.log('✅ PowerPoint exporté avec succès!');
+      alert('✅ PowerPoint généré avec succès! Le téléchargement a commencé.');
+
+    } catch (error) {
+      console.error('❌ Erreur lors de l\'export PowerPoint:', error);
+      alert('❌ Erreur lors de la génération du PowerPoint. Vérifiez que le backend est lancé.');
+    } finally {
+      setIsExportingPPT(false);
+    }
+  };
   const generateEnhancedModuleContent = (upload: ContentUpload): ModuleContent[] => {
     const baseContent: ModuleContent[] = [
       {
@@ -654,22 +708,43 @@ export default function CurriculumDesigner({ uploads, methodology, onComplete, o
               <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-8">
                     title="Edit Module"
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-2xl font-semibold text-gray-900">Enhanced Training Modules</h3>
-                  <button
-                    onClick={addNewModule}
-                    className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg"
-                  >
-                    title="Delete Module"
-                    <Plus className="h-4 w-4" />
-                    <span>Add Module</span>
-                  </button>
-                  <button
-                    onClick={exportCurriculum}
-                    className="flex items-center space-x-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                  >
-                    <Eye className="h-4 w-4" />
-                    <span>Export Curriculum</span>
-                  </button>
+                  <h3 className="text-2xl font-semibold text-gray-900">Enhanced Training Modules ({modules.length} modules)</h3>
+                  <div className="flex items-center space-x-3">
+                    <button
+                      onClick={addNewModule}
+                      className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg"
+                      title="Add Module"
+                    >
+                      <Plus className="h-4 w-4" />
+                      <span>Add Module</span>
+                    </button>
+                    <button
+                      onClick={exportCurriculum}
+                      className="flex items-center space-x-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                      title="Export as JSON"
+                    >
+                      <Eye className="h-4 w-4" />
+                      <span>Export JSON</span>
+                    </button>
+                    <button
+                      onClick={exportToPowerPoint}
+                      disabled={isExportingPPT}
+                      className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-lg hover:from-orange-600 hover:to-red-600 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="Export as PowerPoint"
+                    >
+                      {isExportingPPT ? (
+                        <>
+                          <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
+                          <span>Exporting...</span>
+                        </>
+                      ) : (
+                        <>
+                          <FileDown className="h-4 w-4" />
+                          <span>Export PPT</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
 
                 <div className="space-y-6">
