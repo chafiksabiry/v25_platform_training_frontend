@@ -52,8 +52,16 @@ export default function CurriculumDesigner({ uploads, methodology, onComplete, o
               // Combiner les prérequis
               prerequisites: [...new Set(analyzedUploads.flatMap(u => u.aiAnalysis?.prerequisites || []))],
               
-              // Fusionner les modules suggérés
-              suggestedModules: analyzedUploads.flatMap(u => u.aiAnalysis?.suggestedModules || [])
+              // ✅ CORRECTION : Limiter à 6 modules suggérés maximum
+              // Ne pas fusionner tous les modules de tous les uploads !
+              suggestedModules: [
+                'Module 1: Introduction and Foundations',
+                'Module 2: Core Concepts and Theory',
+                'Module 3: Advanced Techniques',
+                'Module 4: Practical Applications',
+                'Module 5: Mastery and Integration',
+                'Module 6: Assessment and Conclusion'
+              ]
             };
         
         console.log('📊 Combined Analysis:', {
@@ -78,9 +86,15 @@ export default function CurriculumDesigner({ uploads, methodology, onComplete, o
         
         setEnhancementProgress({ 'transforming': 60 });
         
-        // S'assurer qu'on a au moins le nombre de modules suggérés
-        let modulesToUse = curriculum.modules;
-        const targetModuleCount = Math.max(combinedAnalysis.suggestedModules.length, 6); // Au moins 6 modules
+        // ✅ CORRECTION : MAXIMUM 6 modules (pas plus !)
+        // Si l'API retourne plus de 6 modules, on garde seulement les 6 premiers
+        let modulesToUse = curriculum.modules.slice(0, 6);
+        const targetModuleCount = 6; // TOUJOURS 6 modules
+        
+        if (modulesToUse.length > 6) {
+          console.warn(`⚠️ API returned ${curriculum.modules.length} modules. Limiting to 6.`);
+          modulesToUse = modulesToUse.slice(0, 6);
+        }
         
         if (curriculum.modules.length < targetModuleCount) {
           console.warn(`⚠️ API returned ${curriculum.modules.length} modules, but ${targetModuleCount} were expected. Generating missing modules...`);
