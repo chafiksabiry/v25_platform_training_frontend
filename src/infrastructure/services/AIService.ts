@@ -144,8 +144,15 @@ export class AIService {
       industry 
     });
     
-    if (!response.data.success) {
+    // Check if response indicates failure
+    if (response.data.success === false) {
       throw new Error(response.data.error || 'Curriculum generation failed');
+    }
+    
+    // Show a console message if using fallback mode
+    if (response.data.fallbackMode) {
+      console.warn('⚠️ Using fallback curriculum generation (OpenAI quota exceeded or unavailable)');
+      console.info('✅ Fallback curriculum created with', response.data.modules?.length || 0, 'modules');
     }
 
     return response.data as Curriculum;

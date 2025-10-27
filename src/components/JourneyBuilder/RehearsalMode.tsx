@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Play, Pause, RotateCcw, CheckCircle, AlertTriangle, MessageSquare, Star, Eye, Users, Rocket, ArrowLeft, Clock, BarChart3, Zap, Video, BookOpen } from 'lucide-react';
+import { Play, Pause, RotateCcw, CheckCircle, AlertTriangle, MessageSquare, Star, Eye, Users, Rocket, ArrowLeft, ArrowRight, Clock, BarChart3, Zap, Video, BookOpen, Edit3, Save, X as XIcon, Trash2, Plus, Download, FileQuestion } from 'lucide-react';
 import { TrainingJourney, TrainingModule, RehearsalFeedback } from '../../types';
 import { TrainingMethodology } from '../../types/methodology';
 import VideoScriptViewer from '../MediaGenerator/VideoScriptViewer';
+import { PowerPointService, SlideData } from '../../infrastructure/services/PowerPointService';
+import QuizGenerator from '../Assessment/QuizGenerator';
 
 interface RehearsalModeProps {
   journey: TrainingJourney;
@@ -25,9 +27,41 @@ export default function RehearsalMode({ journey, modules, methodology, onComplet
     severity: 'medium' as RehearsalFeedback['severity']
   });
   const [rehearsalTime, setRehearsalTime] = useState(0);
+  const [showPPTViewer, setShowPPTViewer] = useState(false);
+  const [slideImages, setSlideImages] = useState<string[]>([]);
+  const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [slideData, setSlideData] = useState<SlideData[]>([]);
+  const [isGeneratingPPT, setIsGeneratingPPT] = useState(false);
+  const [showQuiz, setShowQuiz] = useState(false);
+  const [activeTab, setActiveTab] = useState<'ppt' | 'quiz'>('ppt');
 
   const currentModule = modules[currentModuleIndex];
   const progress = (completedModules.length / modules.length) * 100;
+
+  // ✅ GÉNÉRATION ET AFFICHAGE AUTOMATIQUE DU PPT AU CHARGEMENT
+  useEffect(() => {
+    const generateInitialPPT = async () => {
+      try {
+        console.log('🎨 Génération automatique des slides PPT au démarrage...');
+        const initialSlideData = generateInitialSlideData();
+        setSlideData(initialSlideData);
+        
+        // Générer les prévisualisations des slides
+        const slides = initialSlideData.map(slide => 
+          PowerPointService.generateSlidePreview(slide)
+        );
+        setSlideImages(slides);
+        setCurrentSlideIndex(0);
+        setShowPPTViewer(true); // ✅ Afficher automatiquement le PPT
+        console.log('✅ PPT prêt et affiché:', slides.length, 'slides');
+      } catch (error) {
+        console.error('❌ Erreur lors de la génération initiale du PPT:', error);
+      }
+    };
+
+    generateInitialPPT();
+  }, []); // Exécuter une seule fois au montage du composant
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -87,6 +121,143 @@ export default function RehearsalMode({ journey, modules, methodology, onComplet
 
   const handleFinishRehearsal = () => {
     onComplete(feedback, overallRating);
+  };
+
+  const handlePlayPPT = () => {
+    // Le PPT est déjà généré, on l'affiche juste
+    if (slideImages.length > 0) {
+      setShowPPTViewer(true);
+      setIsPlaying(true);
+      setIsEditMode(false);
+      console.log('▶️ Affichage du PPT avec', slideImages.length, 'slides');
+    } else {
+      console.warn('⚠️ Aucune slide disponible. Génération...');
+      const initialSlideData = generateInitialSlideData();
+      setSlideData(initialSlideData);
+      const slides = initialSlideData.map(slide => 
+        PowerPointService.generateSlidePreview(slide)
+      );
+      setSlideImages(slides);
+      setCurrentSlideIndex(0);
+      setShowPPTViewer(true);
+      setIsPlaying(true);
+    }
+  };
+
+  const generateInitialSlideData = () => {
+    const colors = ['#EC4899', '#F59E0B', '#10B981', '#06B6D4', '#3B82F6', '#A855F7'];
+    
+    return [
+      {
+        title: 'Training Curriculum',
+        content: journey.name || 'Professional Training',
+        bgColor: '#6366F1',
+        textColor: '#FFFFFF'
+      },
+      {
+        title: 'Overview',
+        content: `Complete training with ${modules.length} modules`,
+        bgColor: '#8B5CF6',
+        textColor: '#FFFFFF'
+      },
+      ...modules.map((module, index) => ({
+        title: module.title,
+        content: `Duration: ${module.duration} min • Level: ${module.difficulty}`,
+        bgColor: colors[index % colors.length],
+        textColor: '#FFFFFF'
+      })),
+      {
+        title: 'Thank You!',
+        content: 'AI-Generated Training',
+        bgColor: '#6366F1',
+        textColor: '#FFFFFF'
+      }
+    ];
+  };
+
+  const updateCurrentSlide = (field: keyof SlideData, value: string) => {
+    const newSlideData = [...slideData];
+    newSlideData[currentSlideIndex] = {
+      ...newSlideData[currentSlideIndex],
+      [field]: value
+    };
+    setSlideData(newSlideData);
+    
+    // Régénérer la prévisualisation de la slide
+    const newSlideImages = [...slideImages];
+    newSlideImages[currentSlideIndex] = PowerPointService.generateSlidePreview(
+      newSlideData[currentSlideIndex]
+    );
+    setSlideImages(newSlideImages);
+  };
+
+  const addNewSlide = () => {
+    const newSlide: SlideData = {
+      title: 'New Slide',
+      content: 'Slide content',
+      bgColor: '#6366F1',
+      textColor: '#FFFFFF'
+    };
+    
+    const newSlideData = [...slideData, newSlide];
+    setSlideData(newSlideData);
+    
+    const newSlideImage = PowerPointService.generateSlidePreview(newSlide);
+    
+    setSlideImages([...slideImages, newSlideImage]);
+    setCurrentSlideIndex(slideImages.length);
+  };
+
+  const downloadPowerPoint = async () => {
+    if (slideData.length === 0) {
+      alert('No slides to export!');
+      return;
+    }
+
+    setIsGeneratingPPT(true);
+    try {
+      console.log('📥 Generating PowerPoint file with pptxgenjs...');
+      const pptBlob = await PowerPointService.generatePowerPoint(
+        slideData,
+        journey.name || 'Professional Training'
+      );
+      
+      PowerPointService.downloadPowerPoint(
+        pptBlob,
+        `${journey.name?.replace(/\s/g, '_') || 'Training'}_${Date.now()}.pptx`
+      );
+      
+      console.log('✅ PowerPoint downloaded successfully!');
+      alert('✅ PowerPoint generated and downloaded successfully!');
+    } catch (error) {
+      console.error('❌ Error generating PowerPoint:', error);
+      alert('❌ Error generating PowerPoint.');
+    } finally {
+      setIsGeneratingPPT(false);
+    }
+  };
+
+  const deleteCurrentSlide = () => {
+    if (slideData.length <= 1) {
+      alert('Cannot delete the last slide!');
+      return;
+    }
+    
+    const newSlideData = slideData.filter((_, index) => index !== currentSlideIndex);
+    const newSlideImages = slideImages.filter((_, index) => index !== currentSlideIndex);
+    
+    setSlideData(newSlideData);
+    setSlideImages(newSlideImages);
+    setCurrentSlideIndex(Math.max(0, currentSlideIndex - 1));
+  };
+
+
+  const goToPreviousSlide = () => {
+    setCurrentSlideIndex(prev => Math.max(0, prev - 1));
+  };
+
+  const goToNextSlide = () => {
+    setCurrentSlideIndex(prev => Math.min(slideImages.length - 1, prev + 1));
   };
 
   const generateRehearsalReport = () => {
@@ -263,36 +434,277 @@ export default function RehearsalMode({ journey, modules, methodology, onComplet
                       <p className="text-gray-600">{currentModule.description}</p>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                        currentModule.difficulty === 'beginner' ? 'bg-green-100 text-green-800' :
-                        currentModule.difficulty === 'intermediate' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-red-100 text-red-800'
+                      <span className={`px-3 py-1 rounded-full text-sm font-bold uppercase ${
+                        currentModule.difficulty === 'beginner' ? 'bg-green-500 text-white' :
+                        currentModule.difficulty === 'intermediate' ? 'bg-yellow-500 text-gray-900' :
+                        currentModule.difficulty === 'advanced' ? 'bg-red-500 text-white' :
+                        'bg-blue-500 text-white'
                       }`}>
-                        {currentModule.difficulty}
+                        {currentModule.difficulty || 'intermediate'}
                       </span>
                     </div>
                   </div>
 
-                  {/* AI-Generated Video Script */}
+                  {/* Tab Navigation */}
                   <div className="mb-6">
-                    <VideoScriptViewer
-                      moduleTitle={currentModule.title}
-                      moduleDescription={currentModule.description}
-                      learningObjectives={currentModule.learningObjectives}
-                    />
+                    <div className="flex gap-2 border-b border-gray-200">
+                      <button
+                        onClick={() => setActiveTab('ppt')}
+                        className={`px-6 py-3 font-medium transition-colors ${
+                          activeTab === 'ppt'
+                            ? 'text-indigo-600 border-b-2 border-indigo-600'
+                            : 'text-gray-600 hover:text-gray-900'
+                        }`}
+                      >
+                        <Download className="h-4 w-4 inline mr-2" />
+                        PowerPoint
+                      </button>
+                      <button
+                        onClick={() => setActiveTab('quiz')}
+                        className={`px-6 py-3 font-medium transition-colors ${
+                          activeTab === 'quiz'
+                            ? 'text-indigo-600 border-b-2 border-indigo-600'
+                            : 'text-gray-600 hover:text-gray-900'
+                        }`}
+                      >
+                        <FileQuestion className="h-4 w-4 inline mr-2" />
+                        Quiz / QCM
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Content based on active tab */}
+                  <div className="mb-6">
+                    {activeTab === 'quiz' ? (
+                      <QuizGenerator
+                        moduleTitle={currentModule.title}
+                        moduleDescription={currentModule.description}
+                        moduleContent={currentModule.content.map(c => c.title).join('. ')}
+                      />
+                    ) : showPPTViewer && slideImages.length > 0 ? (
+                      <div className="bg-gray-100 rounded-xl overflow-hidden">
+                        {/* Éditeur PPT Visuel */}
+                        <div className="bg-white p-4">
+                          {isEditMode ? (
+                            // MODE ÉDITION - Éditeur visuel type PowerPoint
+                            <div 
+                              className="relative aspect-video rounded-lg overflow-hidden border-4 border-orange-400 shadow-2xl"
+                              style={{ 
+                                background: `linear-gradient(135deg, ${slideData[currentSlideIndex]?.bgColor || '#6366F1'} 0%, ${slideData[currentSlideIndex]?.bgColor || '#6366F1'}dd 100%)`
+                              }}
+                            >
+                              {/* Cercles décoratifs */}
+                              <div className="absolute top-10 left-10 w-20 h-20 rounded-full bg-white opacity-10"></div>
+                              <div className="absolute bottom-16 right-10 w-28 h-28 rounded-full bg-white opacity-10"></div>
+                              
+                              {/* Title Text Area - Editable */}
+                              <div className="absolute top-1/3 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-4/5">
+                                <textarea
+                                  value={slideData[currentSlideIndex]?.title || ''}
+                                  onChange={(e) => updateCurrentSlide('title', e.target.value)}
+                                  className="w-full bg-transparent text-white text-center font-bold text-4xl md:text-5xl resize-none outline-none border-2 border-dashed border-white/30 hover:border-white/60 focus:border-white p-4 rounded-lg"
+                                  style={{ 
+                                    minHeight: '80px',
+                                    color: slideData[currentSlideIndex]?.textColor || '#FFFFFF'
+                                  }}
+                                  placeholder="Slide title"
+                                  maxLength={50}
+                                />
+                              </div>
+                              
+                              {/* Content Text Area - Editable */}
+                              <div className="absolute top-2/3 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-4/5">
+                                <textarea
+                                  value={slideData[currentSlideIndex]?.content || ''}
+                                  onChange={(e) => updateCurrentSlide('content', e.target.value)}
+                                  className="w-full bg-transparent text-white text-center text-xl md:text-2xl resize-none outline-none border-2 border-dashed border-white/30 hover:border-white/60 focus:border-white p-4 rounded-lg opacity-90"
+                                  style={{ 
+                                    minHeight: '60px',
+                                    color: slideData[currentSlideIndex]?.textColor || '#FFFFFF'
+                                  }}
+                                  placeholder="Slide content"
+                                  maxLength={80}
+                                />
+                              </div>
+                              
+                              {/* Footer */}
+                              <div className="absolute bottom-4 w-full">
+                                <div className="w-4/5 mx-auto h-0.5 bg-white opacity-30"></div>
+                                <p className="text-center text-white text-xs opacity-60 mt-2">Powered by AI Training Platform</p>
+                              </div>
+                              
+                              {/* Edit Mode Indicator */}
+                              <div className="absolute top-4 right-4 bg-orange-500 text-white px-3 py-1 rounded-full text-sm font-semibold flex items-center">
+                                <Edit3 className="h-3 w-3 mr-1" />
+                                EDIT MODE
+                              </div>
+                            </div>
+                          ) : (
+                            // MODE LECTURE - Affichage normal
+                            <div className="aspect-video bg-gray-900 flex items-center justify-center rounded-lg overflow-hidden shadow-xl">
+                              <img
+                                src={slideImages[currentSlideIndex]}
+                                alt={`Slide ${currentSlideIndex + 1}`}
+                                className="max-w-full max-h-full object-contain"
+                              />
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Edit Toolbar */}
+                        {isEditMode && (
+                          <div className="bg-white border-t border-gray-200 p-4">
+                            <div className="flex flex-wrap items-center justify-center gap-4">
+                              {/* Color Palette */}
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-medium text-gray-700">Color:</span>
+                                <div className="flex gap-1">
+                                  {['#6366F1', '#8B5CF6', '#EC4899', '#F59E0B', '#10B981', '#06B6D4', '#3B82F6', '#A855F7', '#EF4444', '#14B8A6'].map(color => (
+                                    <button
+                                      key={color}
+                                      onClick={() => updateCurrentSlide('bgColor', color)}
+                                      className={`w-8 h-8 rounded-lg border-2 transition-transform hover:scale-110 ${
+                                        slideData[currentSlideIndex]?.bgColor === color 
+                                          ? 'border-gray-900 scale-110' 
+                                          : 'border-gray-300'
+                                      }`}
+                                      style={{ backgroundColor: color }}
+                                      title={color}
+                                    />
+                                  ))}
+                                </div>
+                              </div>
+                              
+                              <div className="h-8 w-px bg-gray-300"></div>
+                              
+                              {/* Actions */}
+                              <button
+                                onClick={deleteCurrentSlide}
+                                className="flex items-center px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-sm font-medium"
+                                title="Delete this slide"
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete
+                              </button>
+                              
+                              <button
+                                onClick={addNewSlide}
+                                className="flex items-center px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm font-medium"
+                                title="Add new slide"
+                              >
+                                <Plus className="h-4 w-4 mr-2" />
+                                New Slide
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Navigation Controls */}
+                        <div className="bg-white p-4 border-t border-gray-200">
+                          <div className="flex flex-wrap justify-between items-center gap-4">
+                            <button
+                              onClick={goToPreviousSlide}
+                              disabled={currentSlideIndex === 0}
+                              className="px-4 py-2 bg-indigo-500 text-white rounded-md hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center transition-colors"
+                            >
+                              <ArrowLeft className="h-4 w-4 mr-1" />
+                              Previous
+                            </button>
+                            
+                            <div className="flex flex-wrap items-center gap-4">
+                              <span className="text-lg font-medium text-gray-700">
+                                Slide {currentSlideIndex + 1} / {slideImages.length}
+                              </span>
+                              
+                              <button
+                                onClick={() => setIsEditMode(!isEditMode)}
+                                className={`flex items-center px-4 py-2 rounded-lg text-sm font-bold transition-all transform hover:scale-105 ${
+                                  isEditMode 
+                                    ? 'bg-green-500 text-white hover:bg-green-600 shadow-lg' 
+                                    : 'bg-orange-500 text-white hover:bg-orange-600 shadow-lg'
+                                }`}
+                              >
+                                {isEditMode ? (
+                                  <>
+                                    <Save className="h-5 w-5 mr-2" />
+                                    Finish Editing
+                                  </>
+                                ) : (
+                                  <>
+                                    <Edit3 className="h-5 w-5 mr-2" />
+                                    Edit PPT
+                                  </>
+                                )}
+                              </button>
+
+                              <button
+                                onClick={downloadPowerPoint}
+                                disabled={isGeneratingPPT}
+                                className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg transition-all transform hover:scale-105 font-bold"
+                                title="Download editable PowerPoint"
+                              >
+                                {isGeneratingPPT ? (
+                                  <>
+                                    <div className="h-5 w-5 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                    Generating...
+                                  </>
+                                ) : (
+                                  <>
+                                    <Download className="h-5 w-5 mr-2" />
+                                    Download PPT
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                            
+                            <button
+                              onClick={goToNextSlide}
+                              disabled={currentSlideIndex === slideImages.length - 1}
+                              className="px-4 py-2 bg-indigo-500 text-white rounded-md hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center transition-colors"
+                            >
+                              Next
+                              <ArrowRight className="h-4 w-4 ml-1" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <VideoScriptViewer
+                        moduleTitle={currentModule.title}
+                        moduleDescription={currentModule.description}
+                        learningObjectives={currentModule.learningObjectives}
+                      />
+                    )}
                   </div>
 
                   {/* Module Controls */}
                   <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center space-x-4">
                       <button
-                        onClick={() => setIsPlaying(!isPlaying)}
+                        onClick={handlePlayPPT}
                         className="flex items-center space-x-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
                       >
-                        {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                        <span>{isPlaying ? 'Pause' : 'Play'}</span>
+                        {isPlaying ? (
+                          <>
+                            <Pause className="h-4 w-4" />
+                            <span>Pause</span>
+                          </>
+                        ) : (
+                          <>
+                            <Play className="h-4 w-4" />
+                            <span>Play PPT</span>
+                          </>
+                        )}
                       </button>
-                      <button className="flex items-center space-x-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
+                      <button 
+                        onClick={() => {
+                          setIsPlaying(false);
+                          setShowPPTViewer(false);
+                          setSlideImages([]);
+                          setCurrentSlideIndex(0);
+                        }}
+                        className="flex items-center space-x-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                      >
                         <RotateCcw className="h-4 w-4" />
                         <span>Restart</span>
                       </button>

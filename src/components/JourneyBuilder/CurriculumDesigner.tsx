@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Brain, BookOpen, CheckSquare, Play, CreditCard as Edit, Trash2, Plus, ArrowRight, Sparkles, Video, Music, BarChart3, Zap, Eye, Wand2, FileDown } from 'lucide-react';
+import { Brain, BookOpen, CheckSquare, Play, Edit, Trash2, Plus, ArrowRight, Sparkles, Video, Music, BarChart3, Zap, Eye, Wand2, FileDown } from 'lucide-react';
 import { ContentUpload, TrainingModule, ModuleContent, Assessment, Question } from '../../types/core';
 import { TrainingMethodology } from '../../types/methodology';
 import { AIService } from '../../infrastructure/services/AIService';
+import PowerPointViewer from '../Export/PowerPointViewer';
 
 interface CurriculumDesignerProps {
   uploads: ContentUpload[];
@@ -14,10 +15,12 @@ interface CurriculumDesignerProps {
 export default function CurriculumDesigner({ uploads, methodology, onComplete, onBack }: CurriculumDesignerProps) {
   const [modules, setModules] = useState<TrainingModule[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [selectedModule, setSelectedModule] = useState<TrainingModule | null>(null);
+  const [editingModuleId, setEditingModuleId] = useState<string | null>(null);
   const [enhancementProgress, setEnhancementProgress] = useState<Record<string, number>>({});
   const [activeTab, setActiveTab] = useState('modules');
   const [isExportingPPT, setIsExportingPPT] = useState(false);
+  const [pptBlob, setPptBlob] = useState<Blob | null>(null);
+  const [showPPTViewer, setShowPPTViewer] = useState(false);
 
   useEffect(() => {
     generateInitialCurriculum();
@@ -333,8 +336,8 @@ export default function CurriculumDesigner({ uploads, methodology, onComplete, o
     }
   };
 
-  const previewModule = (module: TrainingModule) => {
-    setSelectedModule(module);
+  const toggleEditMode = (moduleId: string) => {
+    setEditingModuleId(editingModuleId === moduleId ? null : moduleId);
   };
 
   const exportCurriculum = () => {
@@ -382,23 +385,16 @@ export default function CurriculumDesigner({ uploads, methodology, onComplete, o
         }))
       };
 
-      console.log('📊 Exporting to PowerPoint:', curriculum);
+      console.log('📊 Generating PowerPoint for display:', curriculum);
 
       // Appeler l'API pour générer le PPT
       const blob = await AIService.exportToPowerPoint(curriculum as any);
 
-      // Télécharger le fichier
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `Formation_${Date.now()}.pptx`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      // ✅ AFFICHER LE PPT AU LIEU DE LE TÉLÉCHARGER
+      setPptBlob(blob);
+      setShowPPTViewer(true);
 
-      console.log('✅ PowerPoint exporté avec succès!');
-      alert('✅ PowerPoint généré avec succès! Le téléchargement a commencé.');
+      console.log('✅ PowerPoint généré avec succès et prêt à être affiché!');
 
     } catch (error) {
       console.error('❌ Erreur lors de l\'export PowerPoint:', error);
@@ -557,13 +553,13 @@ export default function CurriculumDesigner({ uploads, methodology, onComplete, o
   const getDifficultyColor = (difficulty: TrainingModule['difficulty']) => {
     switch (difficulty) {
       case 'beginner':
-        return 'bg-green-100 text-green-800';
+        return 'bg-green-500 text-white';
       case 'intermediate':
-        return 'bg-yellow-100 text-yellow-800';
+        return 'bg-yellow-500 text-gray-900';
       case 'advanced':
-        return 'bg-red-100 text-red-800';
+        return 'bg-red-500 text-white';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-blue-500 text-white';
     }
   };
 
@@ -695,18 +691,10 @@ export default function CurriculumDesigner({ uploads, methodology, onComplete, o
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-                  <button
-                    onClick={() => previewModule(module)}
-                    className="p-2 text-gray-400 hover:text-green-500 transition-colors"
-                    title="Preview Module"
-                  >
-                    <Eye className="h-4 w-4" />
-                  </button>
+          <div className="w-full">
             {/* Module List */}
-            <div className="lg:col-span-3">
+            <div className="w-full">
               <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-8">
-                    title="Edit Module"
                 <div className="flex items-center justify-between mb-6">
                   <h3 className="text-2xl font-semibold text-gray-900">Enhanced Training Modules ({modules.length} modules)</h3>
                   <div className="flex items-center space-x-3">
@@ -748,17 +736,30 @@ export default function CurriculumDesigner({ uploads, methodology, onComplete, o
                 </div>
 
                 <div className="space-y-6">
-                  {modules.map((module, index) => (
-                    <div key={module.id} className="border-2 border-gray-200 rounded-xl p-6 hover:border-purple-300 hover:shadow-lg transition-all">
+                  {modules.map((module, index) => {
+                    const isEditing = editingModuleId === module.id;
+                    
+                    return (
+                    <div key={module.id} className={`border-2 rounded-xl p-6 transition-all ${isEditing ? 'border-indigo-500 shadow-xl bg-indigo-50' : 'border-gray-200 hover:border-purple-300 hover:shadow-lg'}`}>
                       <div className="flex items-start justify-between mb-4">
                         <div className="flex-1">
-                          <div className="flex items-center space-x-3 mb-2">
+                          <div className="flex items-center flex-wrap gap-3 mb-2">
                             <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-bold">
                               {index + 1}
                             </div>
+                            {isEditing ? (
+                              <input
+                                type="text"
+                                value={module.title}
+                                onChange={(e) => updateModule(module.id, { title: e.target.value })}
+                                className="flex-1 text-xl font-semibold text-gray-900 px-3 py-2 border-2 border-indigo-400 rounded-lg focus:outline-none focus:border-indigo-600"
+                                placeholder="Module Title"
+                              />
+                            ) : (
                             <h4 className="text-xl font-semibold text-gray-900">{module.title}</h4>
-                            <span className={`px-3 py-1 rounded-full text-xs font-medium ${getDifficultyColor(module.difficulty)}`}>
-                              {module.difficulty}
+                            )}
+                            <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${getDifficultyColor(module.difficulty)}`}>
+                              {module.difficulty || 'intermediate'}
                             </span>
                             {module.id.startsWith('methodology-') && (
                               <span className="px-3 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
@@ -766,7 +767,55 @@ export default function CurriculumDesigner({ uploads, methodology, onComplete, o
                               </span>
                             )}
                           </div>
+                          
+                          {isEditing ? (
+                            <div className="space-y-4 mb-4">
+                              <textarea
+                                value={module.description}
+                                onChange={(e) => updateModule(module.id, { description: e.target.value })}
+                                rows={3}
+                                className="w-full text-gray-600 px-3 py-2 border-2 border-indigo-400 rounded-lg focus:outline-none focus:border-indigo-600"
+                                placeholder="Module Description"
+                              />
+                              
+                              <div className="grid grid-cols-3 gap-4">
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-1">Difficulty</label>
+                                  <select
+                                    value={module.difficulty}
+                                    onChange={(e) => updateModule(module.id, { difficulty: e.target.value as TrainingModule['difficulty'] })}
+                                    className="w-full px-3 py-2 border-2 border-indigo-400 rounded-lg focus:outline-none focus:border-indigo-600"
+                                  >
+                                    <option value="beginner">Beginner</option>
+                                    <option value="intermediate">Intermediate</option>
+                                    <option value="advanced">Advanced</option>
+                                  </select>
+                                </div>
+                                
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-1">Duration (min)</label>
+                                  <input
+                                    type="number"
+                                    value={module.duration}
+                                    onChange={(e) => updateModule(module.id, { duration: parseInt(e.target.value) || 0 })}
+                                    className="w-full px-3 py-2 border-2 border-indigo-400 rounded-lg focus:outline-none focus:border-indigo-600"
+                                  />
+                                </div>
+                                
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-1">Order</label>
+                                  <input
+                                    type="number"
+                                    value={module.order}
+                                    onChange={(e) => updateModule(module.id, { order: parseInt(e.target.value) || 0 })}
+                                    className="w-full px-3 py-2 border-2 border-indigo-400 rounded-lg focus:outline-none focus:border-indigo-600"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
                           <p className="text-gray-600 mb-4">{module.description}</p>
+                          )}
                           
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                             <div className="text-center p-3 bg-blue-50 rounded-lg">
@@ -807,14 +856,30 @@ export default function CurriculumDesigner({ uploads, methodology, onComplete, o
                         
                         <div className="flex items-center space-x-2">
                           <button
-                            onClick={() => setSelectedModule(module)}
-                            className="p-2 text-gray-400 hover:text-blue-500 transition-colors"
+                            onClick={() => toggleEditMode(module.id)}
+                            className={`px-4 py-2 rounded-lg transition-colors font-medium ${
+                              isEditing 
+                                ? 'bg-green-500 text-white hover:bg-green-600' 
+                                : 'bg-blue-500 text-white hover:bg-blue-600'
+                            }`}
+                            title={isEditing ? "Save Changes" : "Edit Module"}
                           >
-                            <Edit className="h-4 w-4" />
+                            {isEditing ? (
+                              <>
+                                <CheckSquare className="h-4 w-4 inline mr-1" />
+                                Save
+                              </>
+                            ) : (
+                              <>
+                                <Edit className="h-4 w-4 inline mr-1" />
+                                Edit
+                              </>
+                            )}
                           </button>
                           <button
                             onClick={() => deleteModule(module.id)}
                             className="p-2 text-gray-400 hover:text-red-500 transition-colors"
+                            title="Delete Module"
                           >
                             <Trash2 className="h-4 w-4" />
                           </button>
@@ -833,107 +898,10 @@ export default function CurriculumDesigner({ uploads, methodology, onComplete, o
                         </ul>
                       </div>
                     </div>
-                  ))}
+                  );
+                  })}
                 </div>
               </div>
-            </div>
-
-            {/* Module Editor Sidebar */}
-            <div className="lg:col-span-1">
-              {selectedModule ? (
-                <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-6 sticky top-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Edit Module</h3>
-                  
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Module Title
-                      </label>
-                      <input
-                        type="text"
-                        value={selectedModule.title}
-                        onChange={(e) => updateModule(selectedModule.id, { title: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Description
-                      </label>
-                      <textarea
-                        value={selectedModule.description}
-                        onChange={(e) => updateModule(selectedModule.id, { description: e.target.value })}
-                        rows={3}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Difficulty Level
-                      </label>
-                      <select
-                        value={selectedModule.difficulty}
-                        onChange={(e) => updateModule(selectedModule.id, { difficulty: e.target.value as TrainingModule['difficulty'] })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                      >
-                        <option value="beginner">Beginner</option>
-                        <option value="intermediate">Intermediate</option>
-                        <option value="advanced">Advanced</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Duration (minutes)
-                      </label>
-                      <input
-                        type="number"
-                        value={selectedModule.duration}
-                        onChange={(e) => updateModule(selectedModule.id, { duration: parseInt(e.target.value) })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                      />
-                    </div>
-
-                    <button
-                      onClick={() => setSelectedModule(null)}
-                      className="w-full px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all shadow-lg"
-                    >
-                      Save Changes
-                    </button>
-                  </div>
-
-                  {/* Enhanced Content Preview */}
-                  <div className="mb-4">
-                    <h5 className="font-medium text-gray-900 mb-2">AI Enhancements Applied:</h5>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                      <div className="flex items-center space-x-1 px-2 py-1 bg-red-50 rounded text-xs">
-                        <Video className="h-3 w-3 text-red-500" />
-                        <span>AI Video</span>
-                      </div>
-                      <div className="flex items-center space-x-1 px-2 py-1 bg-green-50 rounded text-xs">
-                        <Music className="h-3 w-3 text-green-500" />
-                        <span>Voice-over</span>
-                      </div>
-                      <div className="flex items-center space-x-1 px-2 py-1 bg-blue-50 rounded text-xs">
-                        <BarChart3 className="h-3 w-3 text-blue-500" />
-                        <span>Infographic</span>
-                      </div>
-                      <div className="flex items-center space-x-1 px-2 py-1 bg-purple-50 rounded text-xs">
-                        <Zap className="h-3 w-3 text-purple-500" />
-                        <span>Interactive</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-dashed border-gray-300 rounded-2xl p-8 text-center">
-                  <Edit className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <h4 className="font-medium text-gray-900 mb-2">Module Editor</h4>
-                  <p className="text-gray-600 text-sm">Select a module to edit its details and customize the content</p>
-                </div>
-              )}
             </div>
           </div>
 
@@ -1015,6 +983,17 @@ export default function CurriculumDesigner({ uploads, methodology, onComplete, o
           </div>
         </div>
       </div>
+
+      {/* PowerPoint Viewer Modal */}
+      {showPPTViewer && pptBlob && (
+        <PowerPointViewer
+          pptBlob={pptBlob}
+          onClose={() => {
+            setShowPPTViewer(false);
+            setPptBlob(null);
+          }}
+        />
+      )}
     </div>
   );
 }

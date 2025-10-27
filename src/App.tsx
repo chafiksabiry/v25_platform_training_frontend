@@ -27,6 +27,8 @@ import DocumentTransformer from './components/DocumentTransformer/DocumentTransf
 import LaunchedJourneyDashboard from './components/Dashboard/LaunchedJourneyDashboard';
 import JourneySuccess from './components/JourneyBuilder/JourneySuccess';
 import TraineePortal from './components/Trainee/TraineePortal';
+import PPTExportTester from './components/Demo/PPTExportTester';
+import QuickPPTExport from './components/Demo/QuickPPTExport';
 import { TrainingMethodology } from './types/methodology';
 import { healthInsuranceMethodology } from './data/healthInsuranceMethodology';
 import { 
@@ -636,6 +638,9 @@ function App() {
           onClick={() => setSidebarOpen(false)}
         />
       )}
+      
+      {/* Bouton flottant pour export PPT */}
+      <QuickPPTExport />
       
       <div className="flex-1 flex flex-col">
         <div className="bg-white border-b border-gray-200">
