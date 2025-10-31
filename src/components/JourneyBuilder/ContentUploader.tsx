@@ -13,6 +13,7 @@ export default function ContentUploader({ onComplete, onBack }: ContentUploaderP
   const [dragOver, setDragOver] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentProcessing, setCurrentProcessing] = useState<string | null>(null);
+  const [urlInput, setUrlInput] = useState('');
 
   const getFileIcon = (type: ContentUpload['type']) => {
     switch (type) {
@@ -90,6 +91,48 @@ export default function ContentUploader({ onComplete, onBack }: ContentUploaderP
     setCurrentProcessing(null);
     setIsProcessing(false);
   }, []);
+
+  const handleUrlSubmit = useCallback(async () => {
+    if (!urlInput.trim()) return;
+
+    const isYouTube = urlInput.includes('youtube.com') || urlInput.includes('youtu.be');
+    const urlUpload: ContentUpload = {
+      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+      name: isYouTube ? 'YouTube Video' : 'Web Page',
+      type: isYouTube ? 'video' : 'document',
+      size: 0,
+      uploadedAt: new Date().toISOString(),
+      status: 'uploading',
+    };
+
+    setUploads(prev => [...prev, urlUpload]);
+    setIsProcessing(true);
+    setCurrentProcessing(urlUpload.id);
+
+    try {
+      setUploads(prev => prev.map(u => 
+        u.id === urlUpload.id ? { ...u, status: 'processing' } : u
+      ));
+
+      const analysis = await AIService.analyzeUrl(urlInput);
+      
+      setUploads(prev => prev.map(u => 
+        u.id === urlUpload.id 
+          ? { ...u, status: 'analyzed', aiAnalysis: analysis, name: urlInput }
+          : u
+      ));
+
+      setUrlInput(''); // Clear input after successful analysis
+    } catch (error) {
+      console.error('URL Analysis failed:', error);
+      setUploads(prev => prev.map(u => 
+        u.id === urlUpload.id ? { ...u, status: 'error' } : u
+      ));
+    }
+
+    setCurrentProcessing(null);
+    setIsProcessing(false);
+  }, [urlInput]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -194,6 +237,43 @@ export default function ContentUploader({ onComplete, onBack }: ContentUploaderP
                 <span className="px-3 py-1 bg-purple-100 text-purple-800 text-sm rounded-full">Audio</span>
                 <span className="px-3 py-1 bg-pink-100 text-pink-800 text-sm rounded-full">Images</span>
               </div>
+            </div>
+          </div>
+
+          {/* URL Input Section */}
+          <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-8 mb-8">
+            <div className="flex items-center mb-4">
+              <Sparkles className="h-6 w-6 text-blue-500 mr-2" />
+              <h3 className="text-xl font-semibold text-gray-900">Or Add Content from URL</h3>
+            </div>
+            <p className="text-gray-600 mb-4">
+              Enter a YouTube video URL or a web page URL to analyze and extract content
+            </p>
+            <div className="flex gap-3">
+              <input
+                type="url"
+                value={urlInput}
+                onChange={(e) => setUrlInput(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleUrlSubmit()}
+                placeholder="https://www.youtube.com/watch?v=... or https://example.com/article"
+                className="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-gray-900"
+                disabled={isProcessing}
+              />
+              <button
+                onClick={handleUrlSubmit}
+                disabled={!urlInput.trim() || isProcessing}
+                className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium shadow-lg hover:shadow-xl"
+              >
+                <Zap className="h-5 w-5 inline mr-2" />
+                Analyze URL
+              </button>
+            </div>
+            <div className="mt-3 flex gap-2 text-sm text-gray-500">
+              <Video className="h-4 w-4 text-red-500" />
+              <span>YouTube videos</span>
+              <span className="mx-2">•</span>
+              <FileText className="h-4 w-4 text-blue-500" />
+              <span>Web pages & articles</span>
             </div>
           </div>
 

@@ -379,35 +379,145 @@ export default function TraineeModulePlayer({
                       </div>
                     </div>
 
-                    {/* Knowledge Checks */}
-                    <div className="bg-gradient-to-br from-purple-50 to-pink-50 border border-purple-200 rounded-xl p-6">
-                      <h3 className="font-semibold text-purple-900 mb-4 flex items-center space-x-2">
-                        <Brain className="h-5 w-5" />
-                        <span>Knowledge Checks</span>
-                      </h3>
-                      <div className="space-y-3">
-                        {module.aiGeneratedQuizzes.slice(0, 2).map((quiz, index) => (
-                          <button
-                            key={quiz.id}
-                            onClick={() => startQuiz(quiz)}
-                            className="w-full text-left p-4 bg-white border border-purple-200 rounded-lg hover:bg-purple-50 transition-colors"
-                          >
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <div className="font-medium text-gray-900">Quiz {index + 1}</div>
-                                <div className="text-sm text-gray-600">
-                                  Difficulty: {quiz.difficulty}/10 • AI Generated
+                    {/* Knowledge Checks / QCM */}
+                    {module.assessments && module.assessments.length > 0 && module.assessments[0].questions && (
+                      <div className="bg-gradient-to-br from-purple-50 to-pink-50 border border-purple-200 rounded-xl p-6">
+                        <h3 className="font-semibold text-purple-900 mb-4 flex items-center space-x-2">
+                          <Brain className="h-5 w-5" />
+                          <span>QCM - Quiz ({module.assessments[0].questions.length} Questions)</span>
+                        </h3>
+                        <div className="space-y-3">
+                          {module.assessments[0].questions.slice(0, 5).map((question: any, index: number) => (
+                            <button
+                              key={`quiz-${index}`}
+                              onClick={() => startQuiz({
+                                id: `quiz-${index}`,
+                                question: question.text,
+                                options: question.options,
+                                correctAnswer: question.correctAnswer,
+                                explanation: question.explanation || 'Good job!',
+                                difficulty: question.difficulty === 'easy' ? 3 : question.difficulty === 'medium' ? 5 : 8
+                              })}
+                              className="w-full text-left p-4 bg-white border border-purple-200 rounded-lg hover:bg-purple-50 transition-colors"
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="flex-1 pr-4">
+                                  <div className="font-medium text-gray-900 mb-1">Question {index + 1}</div>
+                                  <div className="text-sm text-gray-600 line-clamp-2">{question.text}</div>
+                                  <div className="text-xs text-purple-600 mt-1">
+                                    {question.difficulty} • {question.points || 10} points
+                                  </div>
                                 </div>
+                                <Brain className="h-5 w-5 text-purple-500 flex-shrink-0" />
                               </div>
-                              <Brain className="h-5 w-5 text-purple-500" />
+                            </button>
+                          ))}
+                          {module.assessments[0].questions.length > 5 && (
+                            <div className="text-center text-sm text-gray-600 py-2">
+                              +{module.assessments[0].questions.length - 5} autres questions disponibles
                             </div>
-                          </button>
-                        ))}
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* ✅ Section QCM Complète */}
+              {module.assessments && module.assessments.length > 0 && module.assessments[0].questions && (
+                <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl shadow-xl border-2 border-green-500 p-8 mb-6">
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <h2 className="text-2xl font-bold text-green-900 flex items-center">
+                        <Brain className="h-8 w-8 mr-3 text-green-600" />
+                        QCM - Évaluation du Module
+                      </h2>
+                      <p className="text-green-700 mt-2">
+                        {module.assessments[0].questions.length} questions • 
+                        Score de passage: {module.assessments[0].passingScore || 70}% • 
+                        Durée: {module.assessments[0].timeLimit || 30} min
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-3xl font-bold text-green-600">{module.assessments[0].questions.length}</div>
+                      <div className="text-sm text-green-700">Questions</div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    {module.assessments[0].questions.map((question: any, index: number) => (
+                      <button
+                        key={`full-quiz-${index}`}
+                        onClick={() => startQuiz({
+                          id: `quiz-${index}`,
+                          question: question.text,
+                          options: question.options,
+                          correctAnswer: question.correctAnswer,
+                          explanation: question.explanation || 'Good job!',
+                          difficulty: question.difficulty === 'easy' ? 3 : question.difficulty === 'medium' ? 5 : 8
+                        })}
+                        className="group bg-white border-2 border-green-200 rounded-lg p-5 hover:border-green-400 hover:shadow-lg transition-all text-left"
+                      >
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex items-center space-x-2">
+                            <div className="w-8 h-8 bg-green-500 text-white rounded-full flex items-center justify-center font-bold text-sm">
+                              {index + 1}
+                            </div>
+                            <div>
+                              <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                                question.difficulty === 'easy' ? 'bg-blue-100 text-blue-800' :
+                                question.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                                'bg-red-100 text-red-800'
+                              }`}>
+                                {question.difficulty}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="text-sm font-bold text-green-600">
+                            {question.points || 10} pts
+                          </div>
+                        </div>
+                        
+                        <p className="text-gray-900 font-medium mb-3 line-clamp-3">
+                          {question.text}
+                        </p>
+                        
+                        <div className="flex items-center justify-between text-sm text-gray-600">
+                          <span>{question.options?.length || 4} options</span>
+                          <div className="flex items-center text-green-600 group-hover:text-green-700 font-medium">
+                            <span className="mr-1">Commencer</span>
+                            <Brain className="h-4 w-4" />
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="bg-white rounded-lg p-6 border border-green-200">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                      <div>
+                        <div className="text-2xl font-bold text-gray-900">{module.assessments[0].questions.length}</div>
+                        <div className="text-sm text-gray-600">Questions Totales</div>
+                      </div>
+                      <div>
+                        <div className="text-2xl font-bold text-green-600">
+                          {module.assessments[0].questions.reduce((sum: number, q: any) => sum + (q.points || 10), 0)}
+                        </div>
+                        <div className="text-sm text-gray-600">Points Totaux</div>
+                      </div>
+                      <div>
+                        <div className="text-2xl font-bold text-blue-600">{module.assessments[0].passingScore || 70}%</div>
+                        <div className="text-sm text-gray-600">Score Minimum</div>
+                      </div>
+                      <div>
+                        <div className="text-2xl font-bold text-purple-600">{module.assessments[0].timeLimit || 30}</div>
+                        <div className="text-sm text-gray-600">Minutes</div>
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
 
             {/* Sidebar */}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Brain, BookOpen, CheckSquare, Play, Edit, Trash2, Plus, ArrowRight, Sparkles, Video, Music, BarChart3, Zap, Eye, Wand2, FileDown } from 'lucide-react';
+import { Brain, BookOpen, CheckSquare, Play, Edit, Trash2, Plus, ArrowRight, Sparkles, Video, Music, BarChart3, Zap, Eye, Wand2, FileDown, ChevronRight, FileText, Rocket } from 'lucide-react';
 import { ContentUpload, TrainingModule, ModuleContent, Assessment, Question } from '../../types/core';
 import { TrainingMethodology } from '../../types/methodology';
 import { AIService } from '../../infrastructure/services/AIService';
@@ -21,14 +21,21 @@ export default function CurriculumDesigner({ uploads, methodology, onComplete, o
   const [isExportingPPT, setIsExportingPPT] = useState(false);
   const [pptBlob, setPptBlob] = useState<Blob | null>(null);
   const [showPPTViewer, setShowPPTViewer] = useState(false);
+  const [currentStep, setCurrentStep] = useState<'plan' | 'content'>('plan');
+  const [isGeneratingContent, setIsGeneratingContent] = useState(false);
+  const [finalExam, setFinalExam] = useState<any>(null);
+  const [isGeneratingExam, setIsGeneratingExam] = useState(false);
 
   useEffect(() => {
-    generateInitialCurriculum();
+    if (currentStep === 'plan') {
+      generateTrainingPlan();
+    }
   }, [uploads]);
 
-  const generateInitialCurriculum = async () => {
+  // ÉTAPE 1 : Générer le plan de formation (structure seulement)
+  const generateTrainingPlan = async () => {
     setIsGenerating(true);
-    setEnhancementProgress({ 'initializing': 10 });
+    setEnhancementProgress({ 'plan': 10 });
     
     try {
       // ✅ SUPPORT DE PLUSIEURS FICHIERS : Combiner les analyses de tous les uploads
@@ -130,25 +137,109 @@ export default function CurriculumDesigner({ uploads, methodology, onComplete, o
           console.log('✅ Generated missing modules:', missingModules.length, 'Total modules:', modulesToUse.length);
         }
         
-        // Transformer le curriculum GPT-4 en modules TrainingModule
-        const generatedModules: TrainingModule[] = modulesToUse.map((aiModule, index) => ({
-          id: `ai-module-${index + 1}`,
-          title: aiModule.title,
-          description: aiModule.description,
-          content: generateModuleContentFromAI(aiModule),
-          duration: aiModule.duration,
-          difficulty: aiModule.difficulty,
-          prerequisites: combinedAnalysis.prerequisites,
-          learningObjectives: aiModule.learningObjectives,
-          topics: combinedAnalysis.keyTopics || [],
-          assessments: generateEnhancedAssessments(aiModule.learningObjectives)
-        }));
+        // ✅ GÉNÉRER LE PLAN AVEC CONTENU COMPLET ET PERSONNALISÉ
+        console.log('🚀 Starting AI-powered content generation for all modules...');
+        setEnhancementProgress({ 'ai-content': 40 });
         
-        console.log('✅ Final modules generated:', generatedModules.length);
+        // Récupérer toutes les transcriptions
+        const allTranscriptions = uploads
+          .filter(u => u.transcription || u.content)
+          .map(u => u.transcription || u.content || '')
+          .join('\n\n---\n\n');
         
-        setEnhancementProgress({ 'finalizing': 90 });
+        const fullModules: TrainingModule[] = await Promise.all(
+          modulesToUse.map(async (aiModule, index) => {
+            console.log(`📚 Module ${index + 1}/${modulesToUse.length}: Generating AI content for "${aiModule.title}"`);
+            
+            let moduleContent;
+            let assessments;
+            
+            try {
+              // ✅ Générer le CONTENU PERSONNALISÉ avec l'IA
+              const aiSections = await AIService.generateModuleContent(
+                aiModule.title,
+                aiModule.description,
+                allTranscriptions || `Training content for ${aiModule.title}`,
+                aiModule.learningObjectives
+              );
+              
+              moduleContent = aiSections.map((section: any, idx: number) => ({
+                id: section.id || `section-${idx + 1}`,
+                type: section.type || 'text',
+                title: section.title,
+                content: section.content,
+                duration: section.duration || 10
+              }));
+              
+              console.log(`  ✅ ${aiSections.length} sections with personalized content`);
+            } catch (error) {
+              console.warn(`  ⚠️ Using fallback content for "${aiModule.title}"`);
+              moduleContent = generateModuleContentFromAI(aiModule);
+            }
+            
+            try {
+              // ✅ Générer les QCM avec l'IA
+              assessments = await generateEnhancedAssessments(
+                aiModule.title,
+                aiModule.description,
+                aiModule.learningObjectives
+              );
+              
+              console.log(`  ✅ ${assessments[0]?.questions?.length || 0} QCM questions generated`);
+            } catch (error) {
+              console.warn(`  ⚠️ Using fallback QCM for "${aiModule.title}"`);
+              assessments = [];
+            }
+            
+            return {
+            id: `ai-module-${index + 1}`,
+            title: aiModule.title,
+            description: aiModule.description,
+              order: index + 1,
+              content: moduleContent,
+            duration: aiModule.duration,
+            difficulty: aiModule.difficulty,
+            prerequisites: combinedAnalysis.prerequisites,
+            learningObjectives: aiModule.learningObjectives,
+            topics: combinedAnalysis.keyTopics || [],
+              assessments: assessments,
+              completionCriteria: {
+                minimumScore: 70,
+                requiredActivities: ['video', 'quiz'],
+                timeRequirement: aiModule.duration
+              }
+            };
+          })
+        );
         
-        setModules(generatedModules);
+        console.log('✅ AI-powered content generation COMPLETE!');
+        console.log(`📊 ${fullModules.length} modules with personalized content and QCM`);
+        console.log(`📚 Total sections: ${fullModules.reduce((sum, m) => sum + m.content.length, 0)}`);
+        console.log(`📝 Total QCM: ${fullModules.reduce((sum, m) => sum + (m.assessments[0]?.questions?.length || 0), 0)} questions`);
+        
+        setEnhancementProgress({ 'content-complete': 90 });
+        setModules(fullModules);
+        
+        // ✅ Générer automatiquement l'examen final
+        console.log('🚀 Generating final exam automatically...');
+        try {
+          const examData = await AIService.generateFinalExam(
+            fullModules.map(m => ({
+              title: m.title,
+              description: m.description,
+              learningObjectives: m.learningObjectives
+            }))
+          );
+          
+          setFinalExam(examData);
+          console.log(`✅ Examen final généré : ${examData.questionCount} questions (${examData.totalPoints} points)`);
+          console.log(`⏱️ Temps: ${examData.duration} minutes | Score passage: ${examData.passingScore} points (70%)`);
+        } catch (error) {
+          console.warn('⚠️ Using fallback final exam');
+          // Fallback simple si l'API échoue
+        }
+        
+        setCurrentStep('content'); // ✅ Directement à l'étape "content"
         setEnhancementProgress({ 'complete': 100 });
       } else {
         // Fallback: générer des modules basiques si pas d'analyse
@@ -190,67 +281,145 @@ export default function CurriculumDesigner({ uploads, methodology, onComplete, o
     }
   };
 
-  // Nouvelle fonction helper pour transformer le module AI en contenu
+  // ✅ ÉTAPE 2: Générer le contenu détaillé et PERSONNALISÉ pour les modules
+  const generateDetailedContent = async () => {
+    if (modules.length === 0) {
+      console.warn('⚠️ No training plan available. Generate modules first.');
+      return;
+    }
+
+    setIsGeneratingContent(true);
+    console.log('🚀 Generating AI-powered personalized content for', modules.length, 'modules...');
+
+    try {
+      // Récupérer toutes les transcriptions des uploads
+      const allTranscriptions = uploads
+        .filter(u => u.transcription || u.content)
+        .map(u => u.transcription || u.content || '')
+        .join('\n\n---\n\n');
+
+      const updatedModules = await Promise.all(
+        modules.map(async (module, index) => {
+          console.log(`📚 Generating AI-personalized content for Module ${index + 1}: ${module.title}`);
+          
+          try {
+            // ✅ APPEL API pour générer des sections PERSONNALISÉES
+            const aiSections = await AIService.generateModuleContent(
+              module.title,
+              module.description,
+              allTranscriptions || `Training content for ${module.title}`,
+              module.learningObjectives
+            );
+
+            console.log(`✅ AI generated ${aiSections.length} personalized sections for "${module.title}"`);
+
+            // Convertir les sections AI en ModuleContent
+            const detailedContent: ModuleContent[] = aiSections.map((section: any, idx: number) => ({
+              id: section.id || `section-${idx + 1}`,
+              type: section.type || 'text',
+              title: section.title,
+              content: section.content,
+              duration: section.duration || 10
+            }));
+
+            // ✅ Générer les QCM professionnels de manière asynchrone
+            const assessments = await generateEnhancedAssessments(
+              module.title,
+              module.description,
+              module.learningObjectives
+            );
+
+            return {
+              ...module,
+              content: detailedContent,
+              assessments: assessments,
+              completionCriteria: {
+                ...module.completionCriteria,
+                requiredActivities: ['video', 'quiz']
+              }
+            };
+          } catch (error) {
+            console.error(`❌ Failed to generate AI content for "${module.title}", using fallback:`, error);
+            
+            // Fallback: utiliser le contenu générique
+            const detailedContent = generateModuleContentFromAI({
+              title: module.title,
+              description: module.description,
+              duration: module.duration,
+              difficulty: module.difficulty,
+              learningObjectives: module.learningObjectives
+            });
+
+            // Générer les QCM aussi pour le fallback
+            const assessments = await generateEnhancedAssessments(
+              module.title,
+              module.description,
+              module.learningObjectives
+            );
+
+            return {
+              ...module,
+              content: detailedContent,
+              assessments: assessments
+            };
+          }
+        })
+      );
+
+      console.log('✅ AI-powered personalized content generated for all modules!');
+      setModules(updatedModules);
+      setCurrentStep('content');
+      // ✅ Pas de popup - juste les logs console
+    } catch (error) {
+      console.error('❌ Error generating detailed content:', error);
+      alert('Failed to generate content. Please try again.');
+    } finally {
+      setIsGeneratingContent(false);
+    }
+  };
+
+  // ✅ Generate structured TEXT CONTENT organized in SECTIONS with AI-powered personalization
   const generateModuleContentFromAI = (aiModule: any): ModuleContent[] => {
+    // ✅ FALLBACK : Si on n'a pas de transcription, générer un contenu de base
+    // Le contenu personnalisé sera généré de manière asynchrone via generateDetailedContentForModule
     const content: ModuleContent[] = [];
     
-    // Introduction
-    content.push({
-      id: 'intro',
-      type: 'text',
-      title: `${aiModule.title} Introduction`,
-      content: aiModule.description,
-      duration: 5
-    });
+    // ✅ NOMBRE VARIABLE de sections (3 à 7)
+    const hash = aiModule.title.split('').reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0);
+    const sectionCount = 3 + (hash % 5); // 3 à 7 sections
     
-    // Enhanced elements from AI
-    if (aiModule.enhancedElements && Array.isArray(aiModule.enhancedElements)) {
-      aiModule.enhancedElements.forEach((element: string, index: number) => {
-        if (element.toLowerCase().includes('video')) {
-          content.push({
-            id: `video-${index}`,
-            type: 'video',
-            title: element,
-            content: { videoUrl: '#', generatedByAI: true },
-            duration: 10
-          });
-        } else if (element.toLowerCase().includes('infographic') || element.toLowerCase().includes('visual')) {
-          content.push({
-            id: `visual-${index}`,
-            type: 'interactive',
-            title: element,
-            content: { type: 'infographic', generatedByAI: true },
-            duration: 8
-          });
-        } else if (element.toLowerCase().includes('scenario') || element.toLowerCase().includes('interactive')) {
-          content.push({
-            id: `interactive-${index}`,
-            type: 'interactive',
-            title: element,
-            content: { type: 'scenario', generatedByAI: true },
-            duration: 15
-          });
-        } else {
-          content.push({
-            id: `content-${index}`,
-            type: 'text',
-            title: element,
-            content: `AI-generated content for: ${element}`,
-            duration: 7
-          });
-        }
+    // ✅ Pool de titres variés
+    const titleTemplates = [
+      `What is ${aiModule.title.replace('Module', '').replace(/\d+:/g, '')}?`,
+      `Understanding ${aiModule.title.split(' ').pop()}`,
+      `${aiModule.title.split(' ').pop()} in Practice`,
+      `Step-by-Step ${aiModule.title.split(' ').pop()} Guide`,
+      `Key Concepts in ${aiModule.title.split(' ').pop()}`,
+      `Advanced ${aiModule.title.split(' ').pop()} Techniques`,
+      `Implementing ${aiModule.title.split(' ').pop()}`,
+      `Troubleshooting ${aiModule.title.split(' ').pop()}`,
+      `${aiModule.title.split(' ').pop()} Best Practices`,
+      `Real-World ${aiModule.title.split(' ').pop()} Examples`
+    ];
+    
+    // Mélanger et sélectionner
+    const selectedTitles = titleTemplates
+      .sort(() => (hash % 3) - 1)
+      .slice(0, sectionCount);
+    
+    const baseDurations = [8, 10, 12, 14, 15, 18, 20];
+    
+    selectedTitles.forEach((title, index) => {
+      content.push({
+        id: `section-${index + 1}`,
+        type: 'text',
+        title: title,
+        content: `${aiModule.description}\n\nThis section covers important aspects of the topic. Content will be enhanced with AI-generated, topic-specific information.\n\nLearning Objectives:\n${aiModule.learningObjectives?.slice(0, 3).map((obj: string) => `• ${obj}`).join('\n') || '• Master key concepts\n• Apply knowledge in practice\n• Develop practical skills'}`,
+        duration: baseDurations[index % baseDurations.length]
       });
-    }
-    
-    // Assessment
-    content.push({
-      id: 'assessment',
-      type: 'quiz',
-      title: `${aiModule.title} Assessment`,
-      content: { questionCount: aiModule.assessments || 5 },
-      duration: aiModule.assessments * 2 || 10
     });
     
+    console.log(`✅ Generated ${content.length} varied fallback sections for: ${aiModule.title}`);
     return content;
   };
 
@@ -358,9 +527,44 @@ export default function CurriculumDesigner({ uploads, methodology, onComplete, o
     URL.revokeObjectURL(url);
   };
 
+  // ✅ Générer l'examen final global
+  const generateFinalExamGlobal = async () => {
+    if (modules.length === 0) {
+      console.warn('⚠️ No modules available. Generate modules first.');
+      return;
+    }
+
+    setIsGeneratingExam(true);
+    
+    try {
+      console.log('📝 Generating FINAL EXAM for entire training...');
+      
+      const formationTitle = methodology?.name || 'Formation Professionnelle';
+      const modulesData = modules.map(m => ({
+        title: m.title,
+        description: m.description,
+        learningObjectives: m.learningObjectives
+      }));
+
+      const examData = await AIService.generateFinalExam(modulesData, formationTitle);
+      
+      setFinalExam(examData);
+      
+      console.log(`✅ Examen final généré : ${examData.questionCount} questions (${examData.totalPoints} points)`);
+      console.log(`⏱️ Temps: ${examData.duration} minutes | Score passage: ${examData.passingScore} points (70%)`);
+      console.log('✅ Final exam data:', examData);
+
+    } catch (error) {
+      console.error('❌ Error generating final exam:', error);
+      alert('❌ Erreur lors de la génération de l\'examen final.');
+    } finally {
+      setIsGeneratingExam(false);
+    }
+  };
+
   const exportToPowerPoint = async () => {
     if (modules.length === 0) {
-      alert('⚠️ Aucun module à exporter. Veuillez générer des modules d\'abord.');
+      console.warn('⚠️ No modules to export. Generate modules first.');
       return;
     }
 
@@ -489,30 +693,69 @@ export default function CurriculumDesigner({ uploads, methodology, onComplete, o
     return baseContent;
   };
 
-  const generateEnhancedAssessments = (keyTopics: string[]): Assessment[] => {
-    const questions: Question[] = keyTopics.slice(0, 5).map((topic, index) => ({
-      id: `q${index + 1}`,
-      text: `In the context of ${topic.toLowerCase()}, what would be the most effective approach when faced with a challenging situation?`,
-      type: 'multiple-choice',
-      options: [
-        'Apply the fundamental principles systematically',
-        'Seek immediate supervisor guidance',
-        'Use creative problem-solving techniques',
-        'Combine multiple approaches strategically'
-      ],
-      correctAnswer: 3, // "Combine multiple approaches strategically"
-      explanation: `The most effective approach combines systematic application of principles with creative problem-solving, demonstrating mastery of ${topic.toLowerCase()}.`,
-      points: 20
-    }));
-
-    return [{
-      id: 'enhanced-assessment',
-      title: 'Comprehensive Module Assessment',
-      type: 'quiz',
-      questions,
-      passingScore: 80,
-      timeLimit: 20
-    }];
+  // ✅ Générer des QCM professionnels pour chaque module (10-15 questions)
+  const generateEnhancedAssessments = async (moduleTitle: string, moduleDescription: string, learningObjectives: string[]): Promise<Assessment[]> => {
+    try {
+      console.log(`📝 Generating QCM for module: ${moduleTitle}`);
+      
+      // Créer un contenu riche pour le module
+      const moduleContent = `${moduleTitle}\n\n${moduleDescription}\n\nObjectifs:\n${learningObjectives.join('\n')}`;
+      
+      // Appeler l'API pour générer 12 questions de QCM
+      const questions = await AIService.generateQuiz(moduleContent, 12);
+      
+      console.log(`✅ Generated ${questions.length} QCM questions for: ${moduleTitle}`);
+      
+      // Convertir en format Assessment
+      const assessmentQuestions: Question[] = questions.map((q: any, index: number) => ({
+        id: `q${index + 1}`,
+        text: q.text,
+        type: 'multiple-choice',
+        options: q.options,
+        correctAnswer: q.correctAnswer,
+        explanation: q.explanation,
+        points: q.points || 10
+      }));
+      
+      // Calculer le score de passage (70%)
+      const totalPoints = assessmentQuestions.reduce((sum, q) => sum + (q.points || 10), 0);
+      
+      return [{
+        id: `assessment-${moduleTitle.replace(/[^a-zA-Z0-9]/g, '-')}`,
+        title: `QCM : ${moduleTitle}`,
+        type: 'quiz',
+        questions: assessmentQuestions,
+        passingScore: Math.floor(totalPoints * 0.7),
+        timeLimit: assessmentQuestions.length * 2 // 2 minutes per question
+      }];
+    } catch (error) {
+      console.error(`❌ Failed to generate QCM for ${moduleTitle}, using fallback:`, error);
+      
+      // Fallback: questions génériques
+      const fallbackQuestions: Question[] = learningObjectives.slice(0, 8).map((obj, index) => ({
+        id: `q${index + 1}`,
+        text: `Concernant "${obj}", quelle est la meilleure approche?`,
+        type: 'multiple-choice',
+        options: [
+          'Appliquer les principes théoriques uniquement',
+          'Combiner théorie et pratique de manière adaptée',
+          'Suivre strictement une procédure fixe',
+          'Improviser selon les situations'
+        ],
+        correctAnswer: 1,
+        explanation: `La meilleure approche combine théorie et pratique, en s'adaptant au contexte pour atteindre: ${obj}`,
+        points: 10
+      }));
+      
+      return [{
+        id: `assessment-${moduleTitle}`,
+        title: `QCM : ${moduleTitle}`,
+        type: 'quiz',
+        questions: fallbackQuestions,
+        passingScore: 56, // 70% of 80 points
+        timeLimit: 16
+      }];
+    }
   };
 
   const updateModule = (moduleId: string, updates: Partial<TrainingModule>) => {
@@ -696,7 +939,9 @@ export default function CurriculumDesigner({ uploads, methodology, onComplete, o
             <div className="w-full">
               <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-8">
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-2xl font-semibold text-gray-900">Enhanced Training Modules ({modules.length} modules)</h3>
+                  <h3 className="text-2xl font-semibold text-gray-900">
+                    📚 Enhanced Training Modules ({modules.length} modules)
+                  </h3>
                   <div className="flex items-center space-x-3">
                     <button
                       onClick={addNewModule}
@@ -840,19 +1085,91 @@ export default function CurriculumDesigner({ uploads, methodology, onComplete, o
                             </div>
                           </div>
 
-                          {/* Content Preview */}
-                          <div className="mb-4">
-                            <h5 className="font-medium text-gray-900 mb-2">Enhanced Content Elements:</h5>
-                            <div className="flex flex-wrap gap-2">
-                              {module.content.map((content, idx) => (
-                                <div key={idx} className="flex items-center space-x-1 px-3 py-1 bg-gray-100 rounded-full text-sm">
-                                  {getContentTypeIcon(content.type)}
-                                  <span className="text-gray-700">{content.title}</span>
-                                </div>
-                              ))}
+                      {/* ✅ SECTIONS CONTENT STRUCTURE */}
+                      <div className="mb-4">
+                        <h5 className="font-semibold text-gray-900 mb-3 flex items-center">
+                          <FileText className="h-5 w-5 mr-2 text-indigo-600" />
+                          Module Content ({module.content.length} Sections)
+                        </h5>
+                        <div className="space-y-3 bg-gray-50 rounded-lg p-4 border border-gray-200">
+                          {module.content.map((section, idx) => (
+                            <details key={idx} className="group bg-white rounded-lg border border-gray-300 overflow-hidden hover:shadow-md transition-shadow">
+                              <summary className="cursor-pointer px-4 py-3 font-medium text-gray-900 hover:bg-indigo-50 transition-colors flex items-center justify-between">
+                                <div className="flex items-center space-x-2">
+                                  <BookOpen className="h-4 w-4 text-indigo-600" />
+                                  <span>{section.title}</span>
+                                  <span className="text-xs text-gray-500">({section.duration} min)</span>
                             </div>
-                          </div>
+                                <ChevronRight className="h-4 w-4 text-gray-400 group-open:rotate-90 transition-transform" />
+                              </summary>
+                              <div className="px-4 py-3 bg-gray-50 border-t border-gray-200">
+                                <div className="text-sm text-gray-700 whitespace-pre-line leading-relaxed">
+                                  {typeof section.content === 'string' 
+                                    ? section.content.substring(0, 300) + (section.content.length > 300 ? '...' : '')
+                                    : JSON.stringify(section.content, null, 2).substring(0, 200)
+                                  }
+                                </div>
+                                {typeof section.content === 'string' && section.content.length > 300 && (
+                                  <div className="mt-2 text-xs text-indigo-600 font-medium">
+                                    + {section.content.length - 300} more characters
+                                  </div>
+                                )}
+                              </div>
+                            </details>
+                          ))}
                         </div>
+                      </div>
+
+                      {/* ✅ QCM / ASSESSMENTS */}
+                      {module.assessments && module.assessments.length > 0 && (
+                        <div className="mb-4">
+                          <h5 className="font-semibold text-gray-900 mb-3 flex items-center">
+                            <CheckSquare className="h-5 w-5 mr-2 text-green-600" />
+                            QCM - Quiz ({module.assessments[0]?.questions?.length || 0} Questions)
+                          </h5>
+                          {module.assessments.map((assessment, aIdx) => (
+                            <details key={aIdx} className="group bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg border-2 border-green-200 overflow-hidden">
+                              <summary className="cursor-pointer px-4 py-3 font-medium text-green-900 hover:bg-green-100 transition-colors flex items-center justify-between">
+                                <div className="flex items-center space-x-2">
+                                  <CheckSquare className="h-4 w-4 text-green-600" />
+                                  <span>{assessment.title}</span>
+                                  <span className="text-xs bg-green-200 text-green-800 px-2 py-1 rounded-full">
+                                    {assessment.questions?.length || 0} Q • {assessment.passingScore || 0} pts min (70%)
+                                  </span>
+                                </div>
+                                <ChevronRight className="h-4 w-4 text-green-600 group-open:rotate-90 transition-transform" />
+                              </summary>
+                              <div className="px-4 py-3 bg-white border-t border-green-200">
+                                <div className="space-y-3">
+                                  {assessment.questions?.slice(0, 3).map((q: any, qIdx: number) => (
+                                    <div key={qIdx} className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                                      <p className="font-medium text-gray-900 text-sm mb-2">
+                                        <span className="text-green-600">Q{qIdx + 1}.</span> {q.text}
+                                      </p>
+                                      <div className="text-xs text-gray-600 space-y-1">
+                                        {q.options?.map((opt: string, i: number) => (
+                                          <div key={i} className={i === q.correctAnswer ? 'text-green-700 font-medium' : ''}>
+                                            {String.fromCharCode(65 + i)}. {opt} {i === q.correctAnswer && '✓'}
+                                          </div>
+                                        ))}
+                                      </div>
+                                      <div className="mt-2 text-xs text-gray-500">
+                                        Points: {q.points || 10} • {q.difficulty || 'medium'}
+                                      </div>
+                                    </div>
+                                  ))}
+                                  {assessment.questions && assessment.questions.length > 3 && (
+                                    <p className="text-xs text-center text-gray-600">
+                                      ... et {assessment.questions.length - 3} autres questions
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            </details>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                         
                         <div className="flex items-center space-x-2">
                           <button
@@ -905,6 +1222,68 @@ export default function CurriculumDesigner({ uploads, methodology, onComplete, o
             </div>
           </div>
 
+          {/* ✅ Final Exam Display */}
+          {finalExam && (
+            <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl shadow-xl border-2 border-green-500 p-8 mt-8">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h3 className="text-2xl font-bold text-green-900 flex items-center">
+                    <CheckSquare className="h-8 w-8 mr-3 text-green-600" />
+                    📝 Examen Final de Certification
+                  </h3>
+                  <p className="text-green-700 mt-2">{finalExam.formationTitle}</p>
+                </div>
+                <div className="text-right">
+                  <div className="text-3xl font-bold text-green-600">{finalExam.questionCount}</div>
+                  <div className="text-sm text-green-700">Questions</div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div className="bg-white rounded-lg p-4 text-center">
+                  <div className="text-2xl font-bold text-gray-900">{finalExam.totalPoints}</div>
+                  <div className="text-sm text-gray-600">Points Total</div>
+                </div>
+                <div className="bg-white rounded-lg p-4 text-center">
+                  <div className="text-2xl font-bold text-green-600">{finalExam.passingScore}</div>
+                  <div className="text-sm text-gray-600">Score Passage (70%)</div>
+                </div>
+                <div className="bg-white rounded-lg p-4 text-center">
+                  <div className="text-2xl font-bold text-blue-600">{finalExam.duration}</div>
+                  <div className="text-sm text-gray-600">Minutes</div>
+                </div>
+                <div className="bg-white rounded-lg p-4 text-center">
+                  <div className="text-2xl font-bold text-purple-600">{modules.length}</div>
+                  <div className="text-sm text-gray-600">Modules Couverts</div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-lg p-6 border border-green-200">
+                <h4 className="font-semibold text-gray-900 mb-4">Exemples de Questions :</h4>
+                {finalExam.questions.slice(0, 3).map((q: any, idx: number) => (
+                  <div key={idx} className="mb-4 pb-4 border-b border-gray-200 last:border-0">
+                    <p className="font-medium text-gray-900 mb-2">
+                      <span className="text-green-600 font-bold">Q{idx + 1}.</span> {q.text}
+                    </p>
+                    <div className="text-sm text-gray-600 space-y-1">
+                      {q.options.map((opt: string, i: number) => (
+                        <div key={i} className={i === q.correctAnswer ? 'text-green-700 font-medium' : ''}>
+                          {String.fromCharCode(65 + i)}. {opt} {i === q.correctAnswer && '✓'}
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-2 text-xs text-gray-500">
+                      Difficulté: {q.difficulty || 'medium'} • Points: {q.points || 10}
+                    </div>
+                  </div>
+                ))}
+                <p className="text-sm text-gray-600 mt-4 text-center">
+                  ... et {finalExam.questionCount - 3} autres questions
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Enhancement Summary */}
           <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-8 mt-8">
             <h3 className="text-2xl font-semibold text-gray-900 mb-6">
@@ -955,14 +1334,15 @@ export default function CurriculumDesigner({ uploads, methodology, onComplete, o
           <div className="flex justify-between items-center mt-8">
             <button
               onClick={onBack}
-              className="px-8 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-all font-medium"
+              className="px-8 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-all font-medium flex items-center space-x-2"
             >
-              Back to Upload
+              <ArrowRight className="h-5 w-5 rotate-180" />
+              <span>← Retour</span>
             </button>
             
             <div className="text-center">
               <div className="text-sm text-gray-500 mb-2">
-                {modules.length} enhanced modules ready
+                {modules.length} modules avec contenu et QCM
               </div>
               <div className="flex items-center space-x-2">
                 <Sparkles className="h-4 w-4 text-purple-500" />
@@ -975,10 +1355,10 @@ export default function CurriculumDesigner({ uploads, methodology, onComplete, o
             <button
               onClick={() => onComplete(modules)}
               disabled={modules.length === 0}
-              className="px-8 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl hover:from-purple-700 hover:to-pink-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium shadow-lg flex items-center space-x-2"
+              className="px-8 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium shadow-lg flex items-center space-x-2"
             >
-              <span>Continue to Rehearsal</span>
-              <ArrowRight className="h-5 w-5" />
+              <Rocket className="h-5 w-5" />
+              <span>🚀 LANCER LA FORMATION</span>
             </button>
           </div>
         </div>

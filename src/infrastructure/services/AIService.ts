@@ -71,6 +71,19 @@ export class AIService {
   }
 
   /**
+   * Analyse a URL (YouTube or HTML page) with AI
+   */
+  static async analyzeUrl(url: string): Promise<DocumentAnalysis> {
+    const response = await ApiClient.post('/ai/analyze-url', { url });
+    
+    if (!response.data.success) {
+      throw new Error(response.data.error || 'URL analysis failed');
+    }
+
+    return response.data.analysis;
+  }
+
+  /**
    * Améliore du contenu texte avec l'IA
    */
   static async enhanceContent(content: string): Promise<string> {
@@ -177,6 +190,47 @@ export class AIService {
     }
 
     return response.data as VideoScript;
+  }
+
+  /**
+   * Génère le contenu détaillé d'un module avec des sections personnalisées
+   * Utilise l'IA pour créer des titres de sections spécifiques basés sur le contenu réel
+   */
+  static async generateModuleContent(
+    moduleTitle: string,
+    moduleDescription: string,
+    fullTranscription: string,
+    learningObjectives: string[]
+  ): Promise<any[]> {
+    const response = await ApiClient.post('/ai/generate-module-content', {
+      moduleTitle,
+      moduleDescription,
+      fullTranscription,
+      learningObjectives
+    });
+
+    if (!response.data.success) {
+      throw new Error(response.data.error || 'Module content generation failed');
+    }
+
+    return response.data.sections || response.data.content;
+  }
+
+  /**
+   * Génère un EXAMEN FINAL GLOBAL pour toute la formation
+   * Couvre tous les modules avec 20-30 questions
+   */
+  static async generateFinalExam(modules: any[], formationTitle: string = 'Training Program'): Promise<any> {
+    const response = await ApiClient.post('/ai/generate-final-exam', {
+      modules,
+      formationTitle
+    });
+    
+    if (!response.data.success) {
+      throw new Error(response.data.error || 'Final exam generation failed');
+    }
+    
+    return response.data;
   }
 
   /**
