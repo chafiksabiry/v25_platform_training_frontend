@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { User, Sparkles, Zap, Upload, Wand2, Rocket, Eye, Target } from 'lucide-react';
 // import { useAuth } from './hooks/useAuth';
 import JourneyBuilder from './components/JourneyBuilder/JourneyBuilder';
+import { TrainingHub } from './components/Training';
+import { ManualTrainingSetup, ManualTrainingBuilder } from './components/ManualTraining';
 import MethodologyBuilder from './components/Methodology/MethodologyBuilder';
 import Header from './components/Layout/Header';
 import Sidebar from './components/Layout/Sidebar';
@@ -74,6 +76,9 @@ function App() {
   const [showLaunchedDashboard, setShowLaunchedDashboard] = useState(false);
   const [showTraineePortal, setShowTraineePortal] = useState(false);
   const [selectedTrainee, setSelectedTrainee] = useState<Rep | null>(null);
+  const [showManualTraining, setShowManualTraining] = useState(false);
+  const [manualTrainingSetupComplete, setManualTrainingSetupComplete] = useState(false);
+  const [manualTrainingSetupData, setManualTrainingSetupData] = useState<any>(null);
 
   const { progress, updateModuleProgress, updateStepProgress, updateAssessmentResult } = useTrainingProgress({
     modules: mockTrainingModules,
@@ -142,7 +147,7 @@ function App() {
     setSelectedTrainee(null);
   };
   // Show welcome screen for first-time users
-  if (!hasCompletedSetup && showWelcome && !showJourneyBuilder) {
+  if (!hasCompletedSetup && showWelcome && !showJourneyBuilder && !showManualTraining) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
         <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full p-8 text-center">
@@ -178,14 +183,49 @@ function App() {
             </div>
           </div>
           
-          <div className="space-y-4">
-            <button
-              onClick={() => setShowJourneyBuilder(true)}
-              className="w-full px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all font-semibold text-lg shadow-lg hover:shadow-xl flex items-center justify-center space-x-3"
-            >
-              <Sparkles className="h-6 w-6" />
-              <span>Start Building Your Training Journey</span>
-            </button>
+          <div className="space-y-6">
+            {/* Titre de sélection */}
+            <h2 className="text-xl font-semibold text-gray-800 mb-4">Choose Your Creation Method</h2>
+            
+            {/* Cards de choix */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* AI Creation */}
+              <button
+                onClick={() => setShowJourneyBuilder(true)}
+                className="group p-8 bg-gradient-to-br from-blue-500 to-purple-600 text-white rounded-xl shadow-lg hover:shadow-2xl transition-all transform hover:scale-105 text-left"
+              >
+                <Sparkles className="h-12 w-12 mb-4 group-hover:rotate-12 transition-transform" />
+                <h3 className="text-2xl font-bold mb-2">🤖 AI-Powered Creation</h3>
+                <p className="text-sm opacity-90 mb-4">
+                  Let AI automatically generate modules, quizzes, and interactive content from your documents.
+                </p>
+                <div className="flex items-center text-sm font-semibold">
+                  <span>Start with AI</span>
+                  <span className="ml-2 group-hover:translate-x-2 transition-transform">→</span>
+                </div>
+              </button>
+
+              {/* Manual Creation */}
+              <button
+                onClick={() => {
+                  console.log('Manual Training clicked!');
+                  setShowManualTraining(true);
+                }}
+                className="group p-8 bg-gradient-to-br from-green-500 to-teal-600 text-white rounded-xl shadow-lg hover:shadow-2xl transition-all transform hover:scale-105 text-left"
+              >
+                <Upload className="h-12 w-12 mb-4 group-hover:-translate-y-1 transition-transform" />
+                <h3 className="text-2xl font-bold mb-2">✍️ Manual Creation</h3>
+                <p className="text-sm opacity-90 mb-4">
+                  Full control with manual uploads: videos, PDFs, Word docs, YouTube links, and custom quizzes.
+                </p>
+                <div className="flex items-center text-sm font-semibold">
+                  <span>Create Manually</span>
+                  <span className="ml-2 group-hover:translate-x-2 transition-transform">→</span>
+                </div>
+              </button>
+            </div>
+
+            {/* Skip button */}
             <button
               onClick={() => { setShowWelcome(false); setHasCompletedSetup(true); }}
               className="text-gray-500 hover:text-gray-700 text-sm transition-colors"
@@ -195,6 +235,34 @@ function App() {
           </div>
         </div>
       </div>
+    );
+  }
+
+  // ✨ NOUVEAU : Afficher le Setup puis le ManualTrainingBuilder
+  if (showManualTraining) {
+    if (!manualTrainingSetupComplete) {
+      return (
+        <ManualTrainingSetup
+          onComplete={(setupData) => {
+            console.log('Setup complete:', setupData);
+            setManualTrainingSetupData(setupData);
+            setManualTrainingSetupComplete(true);
+          }}
+          onBack={() => setShowManualTraining(false)}
+        />
+      );
+    }
+
+    return (
+      <ManualTrainingBuilder 
+        companyId="company-123"
+        setupData={manualTrainingSetupData}
+        onBack={() => {
+          setShowManualTraining(false);
+          setManualTrainingSetupComplete(false);
+          setManualTrainingSetupData(null);
+        }}
+      />
     );
   }
 
@@ -675,7 +743,14 @@ function App() {
               className="flex items-center space-x-2 px-3 py-1 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm"
             >
               <Sparkles className="h-4 w-4" />
-              <span>New Journey</span>
+              <span>New Journey (IA)</span>
+            </button>
+            <button
+              onClick={() => setShowManualTraining(true)}
+              className="flex items-center space-x-2 px-3 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
+            >
+              <Upload className="h-4 w-4" />
+              <span>Manual Training</span>
             </button>
           </div>
         </div>

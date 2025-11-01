@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Brain, BookOpen, CheckSquare, Play, Edit, Trash2, Plus, ArrowRight, Sparkles, Video, Music, BarChart3, Zap, Eye, Wand2, FileDown, ChevronRight, FileText, Rocket } from 'lucide-react';
+import { Brain, BookOpen, CheckSquare, Play, Edit, Trash2, Plus, ArrowRight, Sparkles, Video, Music, BarChart3, Zap, Eye, Wand2, FileDown, ChevronRight, FileText, Rocket, RotateCcw } from 'lucide-react';
 import { ContentUpload, TrainingModule, ModuleContent, Assessment, Question } from '../../types/core';
 import { TrainingMethodology } from '../../types/methodology';
 import { AIService } from '../../infrastructure/services/AIService';
@@ -1332,13 +1332,34 @@ export default function CurriculumDesigner({ uploads, methodology, onComplete, o
 
           {/* Navigation */}
           <div className="flex justify-between items-center mt-8">
-            <button
-              onClick={onBack}
-              className="px-8 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-all font-medium flex items-center space-x-2"
-            >
-              <ArrowRight className="h-5 w-5 rotate-180" />
-              <span>← Retour</span>
-            </button>
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={onBack}
+                className="px-8 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-all font-medium flex items-center space-x-2"
+              >
+                <ArrowRight className="h-5 w-5 rotate-180" />
+                <span>← Retour Upload</span>
+              </button>
+              
+              <button
+                onClick={() => {
+                  console.log('🔄 Régénération du plan de formation...');
+                  setModules([]);
+                  setCurrentStep('plan');
+                  setIsGenerating(true);
+                  // Relancer la génération
+                  setTimeout(() => {
+                    window.location.reload();
+                  }, 500);
+                }}
+                disabled={isGenerating}
+                className="px-6 py-3 border-2 border-blue-500 text-blue-600 rounded-xl hover:bg-blue-50 transition-all font-medium flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Régénérer tout le plan de formation"
+              >
+                <RotateCcw className="h-5 w-5" />
+                <span>🔄 Régénérer</span>
+              </button>
+            </div>
             
             <div className="text-center">
               <div className="text-sm text-gray-500 mb-2">
