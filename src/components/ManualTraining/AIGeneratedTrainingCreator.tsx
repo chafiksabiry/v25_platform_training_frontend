@@ -3,7 +3,7 @@ import { Sparkles, Upload, Loader2, CheckCircle2, AlertCircle, ArrowRight, FileT
 import { cloudinaryService, CloudinaryUploadResult } from '../../lib/cloudinaryService';
 import axios from 'axios';
 
-const API_BASE = 'http://localhost:5010';
+const API_BASE = 'https://api-training.harx.ai';
 
 interface UploadedFile {
   id: string;

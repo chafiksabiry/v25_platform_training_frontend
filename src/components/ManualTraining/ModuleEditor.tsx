@@ -6,7 +6,7 @@ import { FileUploader } from './FileUploader';
 import { QuizBuilder } from './QuizBuilder';
 import axios from 'axios';
 
-const API_BASE = 'http://localhost:5010';
+const API_BASE = 'https://api-training.harx.ai';
 
 interface ModuleEditorProps {
   training: ManualTraining;

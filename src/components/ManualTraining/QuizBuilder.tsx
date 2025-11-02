@@ -3,7 +3,7 @@ import { Plus, ArrowLeft, Save, Trash2, X, Edit2, HelpCircle } from 'lucide-reac
 import { ManualTraining, ManualTrainingModule, ManualQuiz, QuizQuestion, QuizSettings } from '../../types/manualTraining';
 import axios from 'axios';
 
-const API_BASE = 'http://localhost:5010';
+const API_BASE = 'https://api-training.harx.ai';
 
 interface QuizBuilderProps {
   module: ManualTrainingModule;

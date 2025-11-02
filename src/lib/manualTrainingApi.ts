@@ -2,7 +2,7 @@
 import axios from 'axios';
 import { ManualTraining, ManualTrainingModule, ManualQuiz, TrainingProgress, QuizResult } from '../types/manualTraining';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5010';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://api-training.harx.ai';
 
 const api = axios.create({
   baseURL: API_BASE,

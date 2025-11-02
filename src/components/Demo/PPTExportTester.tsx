@@ -295,7 +295,7 @@ export default function PPTExportTester() {
               ⚠️ Prérequis
             </div>
             <ul className="text-sm text-gray-600 space-y-1">
-              <li>• Le backend doit être lancé sur <code className="bg-gray-100 px-2 py-1 rounded">http://localhost:5010</code></li>
+              <li>• Le backend doit être lancé sur <code className="bg-gray-100 px-2 py-1 rounded">https://api-training.harx.ai</code></li>
               <li>• Le service PPTExportService doit être actif</li>
               <li>• Les dépendances Apache POI doivent être installées</li>
             </ul>

@@ -1,7 +1,7 @@
 // Cloudinary Upload Service for Frontend
 // USES BACKEND API INSTEAD OF DIRECT CLOUDINARY ACCESS
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5010';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api-training.harx.ai';
 
 const IMAGE_SIZE_LIMIT = (import.meta.env.VITE_CLOUDINARY_IMAGE_LIMIT_SIZE_BYTE || 10485760) as number; // 10MB
 const DOCUMENT_SIZE_LIMIT = (import.meta.env.VITE_CLOUDINARY_DOCUMENT_LIMIT_SIZE_BYTE || 52428800) as number; // 50MB (PowerPoint can be large)
