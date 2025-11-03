@@ -86,7 +86,7 @@ interface ManualTrainingSimulatorProps {
 }
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 
-                (import.meta.env.DEV ? 'http://localhost:5010' : 'https://api-training.harx.ai');
+                (import.meta.env.DEV ? 'http://localhost:5010' : 'https://votre-api-production.com');
 
 export default function ManualTrainingSimulator({ 
   trainingId, 
