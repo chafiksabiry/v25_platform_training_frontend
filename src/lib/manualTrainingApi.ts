@@ -2,7 +2,28 @@
 import axios from 'axios';
 import { ManualTraining, ManualTrainingModule, ManualQuiz, TrainingProgress, QuizResult } from '../types/manualTraining';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://api-training.harx.ai';
+// Détection automatique de l'environnement
+const getApiBaseUrl = () => {
+  // Si une variable d'environnement est définie, l'utiliser
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL;
+  }
+  
+  // Sinon, détecter automatiquement selon l'environnement
+  const isDevelopment = import.meta.env.DEV || import.meta.env.MODE === 'development';
+  
+  if (isDevelopment) {
+    // Environnement local
+    return 'http://localhost:5010';
+  } else {
+    // Environnement production - remplacez par votre URL de production
+    return 'https://api-training.harx.ai';
+  }
+};
+
+const API_BASE = getApiBaseUrl();
+
+console.log('🌐 API Base URL:', API_BASE);
 
 const api = axios.create({
   baseURL: API_BASE,

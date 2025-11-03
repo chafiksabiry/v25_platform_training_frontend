@@ -1,12 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, ArrowLeft, ArrowRight, Edit2, Trash2, Save, X, FileText, Video, Image, Youtube, Type, Play, ChevronDown, ChevronUp, GripVertical, Move } from 'lucide-react';
+import { Plus, ArrowLeft, ArrowRight, Edit2, Trash2, Save, X, FileText, Video, Image, Youtube, Type, Play, ChevronDown, ChevronUp, GripVertical, Move, Award, Sparkles } from 'lucide-react';
 import { ManualTraining, ManualTrainingModule, TrainingSection, SectionContent, ContentFile } from '../../types/manualTraining';
 import { CloudinaryUploadResult } from '../../lib/cloudinaryService';
 import { FileUploader } from './FileUploader';
 import { QuizBuilder } from './QuizBuilder';
+import { FinalExamGenerator } from './FinalExamGenerator';
+import ManualTrainingSimulator from './ManualTrainingSimulator';
 import axios from 'axios';
 
-const API_BASE = 'https://api-training.harx.ai';
+// Détection automatique de l'environnement
+const getApiBaseUrl = () => {
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL;
+  }
+  const isDevelopment = import.meta.env.DEV || import.meta.env.MODE === 'development';
+  return isDevelopment ? 'http://localhost:5010' : 'https://votre-api-production.com';
+};
+
+const API_BASE = getApiBaseUrl();
 
 interface ModuleEditorProps {
   training: ManualTraining;
@@ -19,13 +30,22 @@ export const ModuleEditor: React.FC<ModuleEditorProps> = ({ training, onBack }) 
   const [editingModule, setEditingModule] = useState(false);
   const [editingSection, setEditingSection] = useState<TrainingSection | null>(null);
   const [showQuizBuilder, setShowQuizBuilder] = useState(false);
+  const [showFinalExamGenerator, setShowFinalExamGenerator] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [quizzesCount, setQuizzesCount] = useState<Map<string, number>>(new Map());
+  const [finalExamExists, setFinalExamExists] = useState(false);
   const [sectionCreationStep, setSectionCreationStep] = useState(0); // 0: button only, 1: title only, 2: full form
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
   const [draggedSection, setDraggedSection] = useState<{ section: TrainingSection; fromModuleId: string; sectionIndex: number } | null>(null);
   const [editingSectionInList, setEditingSectionInList] = useState<{ section: TrainingSection; moduleId: string } | null>(null);
   const [sectionEditForm, setSectionEditForm] = useState({ title: '', description: '' });
   const [dragOverSectionIndex, setDragOverSectionIndex] = useState<number | null>(null);
+  
+  // ✨ Track which modules are currently generating quizzes to avoid duplicate requests
+  const [generatingQuizzes, setGeneratingQuizzes] = useState<Set<string>>(new Set());
+  
+  // ✨ Simulator state
+  const [showSimulator, setShowSimulator] = useState(false);
 
   // Module Form
   const [moduleForm, setModuleForm] = useState({
@@ -60,11 +80,102 @@ export const ModuleEditor: React.FC<ModuleEditorProps> = ({ training, onBack }) 
       const response = await axios.get(`${API_BASE}/manual-trainings/${training.id}/modules`);
       if (response.data.success) {
         setModules(response.data.data);
+        
+        // Load quiz counts for each module
+        loadQuizCounts(response.data.data);
+        
+        // Check if final exam exists
+        loadFinalExamStatus();
       }
     } catch (error) {
       console.error('Error loading modules:', error);
     } finally {
       setLoading(false);
+    }
+  };
+  
+  const loadQuizCounts = async (modulesList: ManualTrainingModule[]) => {
+    const counts = new Map<string, number>();
+    
+    for (const module of modulesList) {
+      try {
+        const response = await axios.get(`${API_BASE}/manual-trainings/modules/${module.id}/quizzes`);
+        if (response.data.success) {
+          const quizCount = response.data.data.length;
+          counts.set(module.id!, quizCount);
+          
+          // ✨ AUTO-GENERATE quiz if module has sections but no quiz yet
+          // 🚫 TEMPORARILY DISABLED - OpenAI quota exceeded
+          // Uncomment when quota is recharged
+          /*
+          if (quizCount === 0 && module.sections && module.sections.length > 0 && !generatingQuizzes.has(module.id!)) {
+            console.log(`📝 Module "${module.title}" has sections but no quiz - auto-generating...`);
+            setGeneratingQuizzes(prev => new Set(prev).add(module.id!));
+            generateQuizForModule(module.id!, module.title);
+          }
+          */
+        }
+      } catch (error) {
+        console.error(`Error loading quizzes for module ${module.id}:`, error);
+      }
+    }
+    
+    setQuizzesCount(counts);
+  };
+  
+  const loadFinalExamStatus = async () => {
+    try {
+      const response = await axios.get(`${API_BASE}/manual-trainings/${training.id}/quizzes`);
+      if (response.data.success) {
+        // Check if there's a quiz without moduleId (final exam)
+        const hasFinalExam = response.data.data.some((quiz: any) => !quiz.moduleId);
+        setFinalExamExists(hasFinalExam);
+      }
+    } catch (error) {
+      console.error('Error checking final exam status:', error);
+    }
+  };
+
+  // ✨ Helper function to generate quiz for a single module (background, non-blocking)
+  const generateQuizForModule = async (moduleId: string, moduleTitle: string) => {
+    try {
+      console.log(`🤖 Auto-generating quiz for module: ${moduleTitle}`);
+      
+      const response = await axios.post(`${API_BASE}/manual-trainings/ai/generate-quiz`, {
+        moduleId: moduleId,
+        numberOfQuestions: 5,
+        difficulty: 'medium',
+        questionTypes: {
+          multipleChoice: true,
+          trueFalse: true,
+          shortAnswer: false,
+        },
+      });
+
+      if (response.data.success) {
+        console.log(`✅ Quiz auto-generated for ${moduleTitle}`);
+        // Remove from generating set
+        setGeneratingQuizzes(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(moduleId);
+          return newSet;
+        });
+        // ✨ Update quiz count for this specific module only (no full reload)
+        setQuizzesCount(prev => new Map(prev).set(moduleId, 1));
+      }
+    } catch (error: any) {
+      console.error(`❌ Error auto-generating quiz for ${moduleTitle}:`, error);
+      // ✨ Log detailed error information
+      if (error.response?.data) {
+        console.error('📝 Backend error details:', error.response.data);
+      }
+      // Remove from generating set even on error to allow retry
+      setGeneratingQuizzes(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(moduleId);
+        return newSet;
+      });
+      // Don't show error to user - silent background operation
     }
   };
 
@@ -89,9 +200,13 @@ export const ModuleEditor: React.FC<ModuleEditorProps> = ({ training, onBack }) 
         setEditingModule(false);
         setModuleForm({ title: '', description: '', estimatedDuration: 0 });
         
+        const newModule = response.data.data;
+        
+        // ✨ AUTO-GENERATE QUIZ for new module (in background, don't wait)
+        generateQuizForModule(newModule.id, newModule.title);
+        
         if (autoOpenSection) {
           // ✨ Automatically select the newly created module
-          const newModule = response.data.data;
           setSelectedModule(newModule);
           
           // ✨ Auto-open section creation - start at step 1 (title input)
@@ -142,6 +257,9 @@ export const ModuleEditor: React.FC<ModuleEditorProps> = ({ training, onBack }) 
         const updatedModule = response.data.data;
         setSelectedModule(updatedModule);
         await loadModules();
+        
+        // ✨ AUTO-REGENERATE QUIZ when a new section is added
+        generateQuizForModule(selectedModule.id, selectedModule.title);
         
         if (goToQuiz) {
           // ✨ Go to quiz builder
@@ -317,6 +435,14 @@ export const ModuleEditor: React.FC<ModuleEditorProps> = ({ training, onBack }) 
       }
       
       await loadModules();
+      
+      // ✨ Refresh the selected module to update the right side view
+      if (selectedModule) {
+        const updatedModuleResponse = await axios.get(`${API_BASE}/manual-trainings/modules/${selectedModule.id}`);
+        if (updatedModuleResponse.data.success) {
+          setSelectedModule(updatedModuleResponse.data.data);
+        }
+      }
     } catch (error: any) {
       console.error('Error moving/reordering section:', error);
       console.error('Error details:', error.response?.data);
@@ -347,6 +473,14 @@ export const ModuleEditor: React.FC<ModuleEditorProps> = ({ training, onBack }) 
       });
       
       await loadModules();
+      
+      // ✨ Refresh the selected module to update the right side view
+      if (selectedModule) {
+        const updatedModuleResponse = await axios.get(`${API_BASE}/manual-trainings/modules/${selectedModule.id}`);
+        if (updatedModuleResponse.data.success) {
+          setSelectedModule(updatedModuleResponse.data.data);
+        }
+      }
     } catch (error) {
       console.error('Error moving section:', error);
     } finally {
@@ -399,6 +533,17 @@ export const ModuleEditor: React.FC<ModuleEditorProps> = ({ training, onBack }) 
     );
   }
 
+  // ✨ Simulator Mode
+  if (showSimulator) {
+    return (
+      <ManualTrainingSimulator
+        trainingId={training.id!}
+        trainingTitle={training.trainingName}
+        onClose={() => setShowSimulator(false)}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Fixed Header */}
@@ -420,6 +565,23 @@ export const ModuleEditor: React.FC<ModuleEditorProps> = ({ training, onBack }) 
 
           {/* Right: Action buttons */}
           <div className="flex items-center space-x-3">
+            {/* Final Exam Button */}
+            <button
+              onClick={() => setShowFinalExamGenerator(true)}
+              className={`flex items-center px-4 py-2 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white rounded-lg font-medium shadow-md transition-all transform hover:scale-105 relative ${
+                finalExamExists ? 'ring-2 ring-green-400' : ''
+              }`}
+            >
+              <Award className="w-5 h-5 mr-2" />
+              Examen Final
+              {finalExamExists && (
+                <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                </span>
+              )}
+            </button>
+
             {/* View Button */}
             <button
               onClick={() => alert('View functionality - Coming soon!')}
@@ -434,7 +596,7 @@ export const ModuleEditor: React.FC<ModuleEditorProps> = ({ training, onBack }) 
 
             {/* Simulate as Learner */}
             <button
-              onClick={() => alert('Simulate as Learner - Coming soon!')}
+              onClick={() => setShowSimulator(true)}
               className="flex items-center px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium shadow-md transition-all transform hover:scale-105"
             >
               <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -494,9 +656,16 @@ export const ModuleEditor: React.FC<ModuleEditorProps> = ({ training, onBack }) 
                     <div className="flex-1">
                       <h3 className="font-medium text-gray-900">{module.title}</h3>
                       <p className="text-sm text-gray-600 mt-1 line-clamp-2">{module.description}</p>
-                      <p className="text-xs text-gray-500 mt-2">
-                        {module.sections?.length || 0} sections • {module.estimatedDuration} min
-                      </p>
+                      <div className="flex items-center justify-between mt-2">
+                        <p className="text-xs text-gray-500">
+                          {module.sections?.length || 0} sections • {module.estimatedDuration} min
+                        </p>
+                        {quizzesCount.get(module.id!) ? (
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                            ✓ {quizzesCount.get(module.id!)} Quiz{quizzesCount.get(module.id!)! > 1 ? 'zes' : ''}
+                          </span>
+                        ) : null}
+                      </div>
                       
                       {/* Section Titles - Draggable & Editable */}
                       {module.sections && module.sections.length > 0 && (
@@ -1142,6 +1311,18 @@ export const ModuleEditor: React.FC<ModuleEditorProps> = ({ training, onBack }) 
           )}
         </div>
       </div>
+
+      {/* Final Exam Generator Modal */}
+      {showFinalExamGenerator && (
+        <FinalExamGenerator
+          training={training}
+          onExamGenerated={(exam) => {
+            setShowFinalExamGenerator(false);
+            alert('Examen final créé avec succès! ' + exam.questions?.length + ' questions générées.');
+          }}
+          onClose={() => setShowFinalExamGenerator(false)}
+        />
+      )}
     </div>
   );
 };

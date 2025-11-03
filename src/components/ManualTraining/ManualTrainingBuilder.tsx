@@ -7,7 +7,7 @@ import { ModuleEditor } from './ModuleEditor';
 import { AIContentOrganizer } from './AIContentOrganizer';
 import axios from 'axios';
 
-const API_BASE = 'https://api-training.harx.ai';
+const API_BASE = 'http://localhost:5010';
 
 interface ManualTrainingBuilderProps {
   companyId: string;

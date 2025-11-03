@@ -1,9 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, ArrowLeft, Save, Trash2, X, Edit2, HelpCircle } from 'lucide-react';
+import { Plus, ArrowLeft, Save, Trash2, X, Edit2, HelpCircle, Sparkles } from 'lucide-react';
 import { ManualTraining, ManualTrainingModule, ManualQuiz, QuizQuestion, QuizSettings } from '../../types/manualTraining';
 import axios from 'axios';
+import { AIQuizGenerator } from './AIQuizGenerator';
 
-const API_BASE = 'https://api-training.harx.ai';
+// Détection automatique de l'environnement
+const getApiBaseUrl = () => {
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL;
+  }
+  const isDevelopment = import.meta.env.DEV || import.meta.env.MODE === 'development';
+  return isDevelopment ? 'http://localhost:5010' : 'https://votre-api-production.com';
+};
+
+const API_BASE = getApiBaseUrl();
 
 interface QuizBuilderProps {
   module: ManualTrainingModule;
@@ -17,6 +27,7 @@ export const QuizBuilder: React.FC<QuizBuilderProps> = ({ module, training, onBa
   const [editingQuiz, setEditingQuiz] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<QuizQuestion | null>(null);
   const [loading, setLoading] = useState(false);
+  const [showAIGenerator, setShowAIGenerator] = useState(false);
 
   // Quiz Form
   const [quizForm, setQuizForm] = useState<Partial<ManualQuiz>>({
@@ -223,17 +234,27 @@ export const QuizBuilder: React.FC<QuizBuilderProps> = ({ module, training, onBa
     <div className="min-h-screen bg-gray-50">
       {/* Fixed Header */}
       <div className="fixed top-0 left-0 right-0 bg-white shadow-md z-50 px-6 py-4">
-        <div className="flex items-center space-x-4">
-          <button
-            onClick={onBack}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <div>
-            <h1 className="text-3xl font-bold">Quiz Management</h1>
-            <p className="text-gray-600">{module.title} - {training.title}</p>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={onBack}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <div>
+              <h1 className="text-3xl font-bold">Quiz Management</h1>
+              <p className="text-gray-600">{module.title} - {training.title}</p>
+            </div>
           </div>
+          {/* AI Generate Button */}
+          <button
+            onClick={() => setShowAIGenerator(true)}
+            className="flex items-center px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 shadow-lg transition-all transform hover:scale-105"
+          >
+            <Sparkles className="w-5 h-5 mr-2" />
+            Générer avec l'IA
+          </button>
         </div>
       </div>
 
@@ -646,6 +667,20 @@ export const QuizBuilder: React.FC<QuizBuilderProps> = ({ module, training, onBa
           </div>
         </div>
       </div>
+
+      {/* AI Quiz Generator Modal */}
+      {showAIGenerator && (
+        <AIQuizGenerator
+          module={module}
+          trainingId={training.id!}
+          onQuizGenerated={(quiz) => {
+            setShowAIGenerator(false);
+            loadQuizzes();
+            setSelectedQuiz(quiz);
+          }}
+          onClose={() => setShowAIGenerator(false)}
+        />
+      )}
     </div>
   );
 };
