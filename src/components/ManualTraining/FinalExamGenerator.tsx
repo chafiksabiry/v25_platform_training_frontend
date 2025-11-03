@@ -9,7 +9,7 @@ const getApiBaseUrl = () => {
     return import.meta.env.VITE_API_BASE_URL;
   }
   const isDevelopment = import.meta.env.DEV || import.meta.env.MODE === 'development';
-  return isDevelopment ? 'http://localhost:5010' : 'https://votre-api-production.com';
+  return isDevelopment ? 'http://localhost:5010' : 'https://api-training.harx.ai';
 };
 
 const API_BASE = getApiBaseUrl();
