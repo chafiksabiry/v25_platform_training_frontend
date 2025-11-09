@@ -122,6 +122,8 @@ export default function ManualTrainingSimulator({
   const [questionResponseTimes, setQuestionResponseTimes] = useState<Map<string, number[]>>(new Map()); // quizId -> array of response times
   const [answeredQuestions, setAnsweredQuestions] = useState<Map<string, Set<number>>>(new Map()); // quizId -> Set of answered question indices (locked)
   const [questionTimer, setQuestionTimer] = useState(0); // Timer for current question in seconds
+  const [questionTimeLimit, setQuestionTimeLimit] = useState(45); // 45 seconds per question
+  const [questionTimeLeft, setQuestionTimeLeft] = useState(45); // Time left for current question (countdown from 45)
   const [penaltyEndTime, setPenaltyEndTime] = useState<Map<string, number>>(new Map()); // quizId-questionIdx -> timestamp when penalty ends
   const [penaltyTimeLeft, setPenaltyTimeLeft] = useState(0); // Seconds left in penalty
   const [showCertification, setShowCertification] = useState(false);
@@ -315,6 +317,28 @@ export default function ManualTrainingSimulator({
       };
 
       const handleKeyDown = (e: KeyboardEvent) => {
+        // Detect Fn key press - FRAUD
+        // Fn key detection: check for Fn key code, key name, or special key combinations
+        const isFnKey = e.key === 'Fn' || 
+                       e.key === 'Function' || 
+                       e.code === 'Fn' ||
+                       e.code === 'Function' ||
+                       e.keyCode === 0 || // Fn key sometimes has keyCode 0
+                       (e.location === 3 && e.key.length === 0) || // Some Fn keys have location 3
+                       (e.key === 'Unidentified' && e.code === '') || // Some systems report Fn as Unidentified
+                       (e.which === 0 && !e.ctrlKey && !e.altKey && !e.shiftKey && !e.metaKey); // Fn key often has which=0 with no modifiers
+        
+        if (isFnKey) {
+          e.preventDefault();
+          e.stopPropagation();
+          const questionIdx = currentQuestionIndex.get(quizId || '') || 0;
+          if (quizId) {
+            addViolation(quizId, questionIdx, 'fn_key_fraud');
+            console.log('🚨 Fn KEY DETECTED - FRAUD!', { key: e.key, code: e.code, keyCode: e.keyCode, which: e.which, location: e.location });
+          }
+          return false;
+        }
+        
         // Block ALL keyboard keys during quiz (except Tab for navigation)
         // Allow only: Tab (for accessibility), Enter/Space (for clicking buttons/options)
         const allowedKeys = ['Tab', 'Enter', ' ', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
@@ -396,6 +420,65 @@ export default function ManualTrainingSimulator({
       }
     }
   }, [currentSection, currentQuestionIndex, questionStartTime, quizSubmitted]);
+
+  // 45-second countdown timer per question
+  useEffect(() => {
+    if (currentSection?.type === 'quiz') {
+      const quizId = currentSection.quiz?.id;
+      const questionIdx = currentQuestionIndex.get(quizId || '') || 0;
+      const isSubmitted = quizSubmitted.get(quizId || '');
+      
+      if (!isSubmitted && quizId) {
+        // Reset timer to 45 seconds when question changes
+        setQuestionTimeLeft(45);
+        
+        const interval = setInterval(() => {
+          setQuestionTimeLeft(prev => {
+            if (prev <= 1) {
+              // Time's up - auto-advance to next question
+              const currentQuiz = currentSection.quiz;
+              if (currentQuiz && questionIdx < currentQuiz.questions.length - 1) {
+                // Move to next question
+                setCurrentQuestionIndex(prev => new Map(prev).set(quizId, questionIdx + 1));
+                // Lock current question
+                setAnsweredQuestions(prev => {
+                  const newMap = new Map(prev);
+                  const answeredSet = newMap.get(quizId) || new Set<number>();
+                  answeredSet.add(questionIdx);
+                  newMap.set(quizId, answeredSet);
+                  return newMap;
+                });
+              } else {
+                // Last question - lock it and trigger auto-submit
+                setAnsweredQuestions(prev => {
+                  const newMap = new Map(prev);
+                  const answeredSet = newMap.get(quizId) || new Set<number>();
+                  answeredSet.add(questionIdx);
+                  newMap.set(quizId, answeredSet);
+                  return newMap;
+                });
+                // Auto-submit after a short delay to allow state update
+                setTimeout(() => {
+                  const submitButton = document.querySelector('[data-auto-submit="true"]') as HTMLButtonElement;
+                  if (submitButton) {
+                    submitButton.click();
+                  }
+                }, 500);
+              }
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+        
+        return () => clearInterval(interval);
+      } else {
+        setQuestionTimeLeft(45);
+      }
+    } else {
+      setQuestionTimeLeft(45);
+    }
+  }, [currentSection, currentQuestionIndex, quizSubmitted]);
 
   // Anti-Cheating: Update penalty countdown every second
   useEffect(() => {
@@ -696,6 +779,11 @@ export default function ManualTrainingSimulator({
 
 
   const renderSectionContent = () => {
+    // Show completion message if training is finished
+    if (showCertification) {
+      return renderCompletionMessage();
+    }
+
     if (!currentSection) return null;
 
     const { content } = currentSection;
@@ -942,8 +1030,8 @@ export default function ManualTrainingSimulator({
       const answeredSet = answeredQuestions.get(quizId) || new Set<number>();
       const targetIdx = questionIdx - 1;
       
+      // Don't allow going back to locked questions (no alert, just block)
       if (answeredSet.has(targetIdx)) {
-        alert('❌ Cette question est verrouillée. Vous ne pouvez pas revenir en arrière.');
         return;
       }
 
@@ -1161,12 +1249,26 @@ export default function ManualTrainingSimulator({
                 </div>
               )}
               {!isSubmitted && (
-                <div className={`flex items-center space-x-1 px-2 py-1 rounded font-mono font-bold ${
-                  isTimerWarning ? 'bg-orange-500 text-white animate-pulse' : 'bg-gray-100 text-gray-800'
-                }`}>
-                  <Clock className="w-3 h-3" />
-                  <span>{formatQuestionTimer(questionTimer)}</span>
-                </div>
+                <>
+                  {/* 45-second countdown timer per question */}
+                  <div className={`flex items-center space-x-1 px-2 py-1 rounded font-mono font-bold ${
+                    questionTimeLeft <= 10 
+                      ? 'bg-red-500 text-white animate-pulse' 
+                      : questionTimeLeft <= 20
+                        ? 'bg-orange-500 text-white'
+                        : 'bg-blue-500 text-white'
+                  }`}>
+                    <Clock className="w-3 h-3" />
+                    <span>{questionTimeLeft}s</span>
+                  </div>
+                  {/* Elapsed time timer */}
+                  <div className={`flex items-center space-x-1 px-2 py-1 rounded font-mono font-bold ${
+                    isTimerWarning ? 'bg-orange-500 text-white animate-pulse' : 'bg-gray-100 text-gray-800'
+                  }`}>
+                    <Clock className="w-3 h-3" />
+                    <span>{formatQuestionTimer(questionTimer)}</span>
+                  </div>
+                </>
               )}
             </div>
           </div>
@@ -1422,9 +1524,9 @@ export default function ManualTrainingSimulator({
             <div className="flex items-center justify-between">
               <button
                 onClick={handlePreviousQuestion}
-                disabled={questionIdx === 0}
+                disabled={questionIdx === 0 || (answeredSet.has(questionIdx - 1))}
                 className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                  questionIdx === 0
+                  questionIdx === 0 || (answeredSet.has(questionIdx - 1))
                     ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
                     : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
                 }`}
@@ -1455,6 +1557,7 @@ export default function ManualTrainingSimulator({
               ) : (
                 <button
                   onClick={handleSubmitQuiz}
+                  data-auto-submit="true"
                   className="px-4 py-1.5 rounded-lg text-sm font-medium transition-all bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white shadow-lg"
                 >
                   Submit Quiz
@@ -1468,8 +1571,8 @@ export default function ManualTrainingSimulator({
   };
 
 
-  // Certification Screen
-  if (showCertification) {
+  // Render completion message function
+  const renderCompletionMessage = () => {
     const finalExamModule = modules.find(m => m.id === 'final-exam');
     const finalExamQuiz = finalExamModule ? quizzes.get('final-exam') : null;
     const finalExamScore = finalExamQuiz ? (quizScores.get(finalExamQuiz.id) || 0) : 0;
@@ -1478,84 +1581,80 @@ export default function ManualTrainingSimulator({
       month: 'long', 
       day: 'numeric' 
     });
+    const regularModules = modules.filter(m => m.id !== 'final-exam');
+    const totalCompletedSections = regularModules.reduce((total, module) => {
+      return total + (module.sections?.filter(s => completedSections.has(s.id)).length || 0);
+    }, 0);
 
     return (
-      <div className="min-h-screen bg-gradient-to-br from-amber-50 via-yellow-50 to-orange-50 flex items-center justify-center p-6">
-        <div className="max-w-4xl w-full bg-white rounded-2xl shadow-2xl overflow-hidden border-4 border-amber-400">
-          {/* Header with gradient */}
-          <div className="bg-gradient-to-r from-amber-400 via-yellow-400 to-orange-400 p-8 text-center">
-            <div className="flex justify-center mb-4">
-              <div className="w-32 h-32 bg-white rounded-full flex items-center justify-center shadow-lg">
-                <Trophy className="w-20 h-20 text-amber-600" />
-              </div>
+      <div className="bg-gradient-to-br from-amber-50 via-yellow-50 to-orange-50 rounded-xl border-4 border-amber-400 shadow-2xl overflow-hidden">
+        {/* Header with gradient */}
+        <div className="bg-gradient-to-r from-amber-400 via-yellow-400 to-orange-400 p-6 text-center">
+          <div className="flex justify-center mb-3">
+            <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center shadow-lg">
+              <Trophy className="w-16 h-16 text-amber-600" />
             </div>
-            <h1 className="text-5xl font-bold text-white mb-2">Certificate of Completion</h1>
-            <p className="text-xl text-amber-900 font-semibold">Training Program</p>
+          </div>
+          <h1 className="text-4xl font-bold text-white mb-2">🎉 Félicitations !</h1>
+          <p className="text-lg text-amber-900 font-semibold">Formation Terminée avec Succès</p>
+        </div>
+
+        {/* Certificate Content */}
+        <div className="p-8 text-center">
+          <p className="text-base text-gray-700 mb-4">
+            Vous avez terminé avec succès la formation
+          </p>
+          <h3 className="text-2xl font-bold text-indigo-700 mb-6">
+            {trainingTitle}
+          </h3>
+          
+          {/* Stats */}
+          <div className="grid grid-cols-3 gap-4 my-6">
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-lg border-2 border-blue-200">
+              <div className="text-2xl font-bold text-blue-600 mb-1">
+                {regularModules.length}
+              </div>
+              <div className="text-xs text-gray-600">Modules Complétés</div>
+            </div>
+            <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-lg border-2 border-green-200">
+              <div className="text-2xl font-bold text-green-600 mb-1">
+                {totalCompletedSections}
+              </div>
+              <div className="text-xs text-gray-600">Sections Complétées</div>
+            </div>
+            <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-lg border-2 border-purple-200">
+              <div className="text-2xl font-bold text-purple-600 mb-1">
+                {finalExamScore}%
+              </div>
+              <div className="text-xs text-gray-600">Score Examen Final</div>
+            </div>
           </div>
 
-          {/* Certificate Content */}
-          <div className="p-12 text-center">
-            <p className="text-lg text-gray-700 mb-6">
-              This is to certify that
-            </p>
-            <h2 className="text-4xl font-bold text-gray-900 mb-8 border-b-2 border-amber-300 pb-4 inline-block">
-              [Your Name]
-            </h2>
-            <p className="text-xl text-gray-700 mb-4">
-              has successfully completed the training program
-            </p>
-            <h3 className="text-3xl font-bold text-indigo-700 mb-8">
-              {trainingTitle}
-            </h3>
-            
-            {/* Stats */}
-            <div className="grid grid-cols-3 gap-6 my-8">
-              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-lg border-2 border-blue-200">
-                <div className="text-3xl font-bold text-blue-600 mb-1">
-                  {modules.filter(m => m.id !== 'final-exam').length}
-                </div>
-                <div className="text-sm text-gray-600">Modules Completed</div>
-              </div>
-              <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-lg border-2 border-green-200">
-                <div className="text-3xl font-bold text-green-600 mb-1">
-                  {totalSections}
-                </div>
-                <div className="text-sm text-gray-600">Sections Completed</div>
-              </div>
-              <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-lg border-2 border-purple-200">
-                <div className="text-3xl font-bold text-purple-600 mb-1">
-                  {finalExamScore}%
-                </div>
-                <div className="text-sm text-gray-600">Final Exam Score</div>
-              </div>
-            </div>
+          <div className="mt-6 pt-6 border-t-2 border-gray-200">
+            <p className="text-gray-600 mb-1 text-sm">Date de Complétion</p>
+            <p className="text-lg font-semibold text-gray-800">{completionDate}</p>
+          </div>
 
-            <div className="mt-8 pt-8 border-t-2 border-gray-200">
-              <p className="text-gray-600 mb-2">Date of Completion</p>
-              <p className="text-xl font-semibold text-gray-800">{completionDate}</p>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="mt-10 flex justify-center space-x-4">
-              <button
-                onClick={() => window.print()}
-                className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all font-semibold shadow-lg flex items-center space-x-2"
-              >
-                <FileText className="w-5 h-5" />
-                <span>Print Certificate</span>
-              </button>
-              <button
-                onClick={onClose}
-                className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-all font-semibold"
-              >
-                Close
-              </button>
-            </div>
+          {/* Action Buttons */}
+          <div className="mt-8 flex justify-center space-x-3">
+            <button
+              onClick={() => window.print()}
+              className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all font-semibold shadow-lg flex items-center space-x-2 text-sm"
+            >
+              <FileText className="w-4 h-4" />
+              <span>Imprimer le Certificat</span>
+            </button>
+            <button
+              onClick={onClose}
+              className="px-5 py-2.5 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-all font-semibold text-sm"
+            >
+              Fermer
+            </button>
           </div>
         </div>
       </div>
     );
-  }
+  };
 
   if (loading) {
     return (
@@ -1679,22 +1778,38 @@ export default function ManualTrainingSimulator({
                       return (
                           <button
                             key={section.id}
-                            onClick={() => goToSection(moduleIndex, sectionIndex)}
-                            className={`w-full p-3 pl-12 flex items-center space-x-3 hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50 transition-all border-l-4 ${
-                              isCurrentSection
-                                ? 'border-indigo-600 bg-gradient-to-r from-indigo-50 to-purple-50'
-                                : 'border-transparent'
+                            onClick={() => {
+                              // Don't allow navigation to completed sections
+                              if (!sectionCompleted) {
+                                goToSection(moduleIndex, sectionIndex);
+                              }
+                            }}
+                            disabled={sectionCompleted}
+                            className={`w-full p-3 pl-12 flex items-center space-x-3 transition-all border-l-4 ${
+                              sectionCompleted
+                                ? 'opacity-50 cursor-not-allowed bg-gray-100 border-transparent'
+                                : isCurrentSection
+                                  ? 'border-indigo-600 bg-gradient-to-r from-indigo-50 to-purple-50 hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50'
+                                  : 'border-transparent hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50'
                             }`}
                           >
-                            <div className={`${isCurrentSection ? 'text-indigo-600' : 'text-gray-500'}`}>
+                            <div className={`${sectionCompleted ? 'text-gray-400' : isCurrentSection ? 'text-indigo-600' : 'text-gray-500'}`}>
                               {getSectionIcon(section.type)}
                             </div>
                             <div className="flex-1 text-left min-w-0">
-                              <p className={`text-sm ${isCurrentSection ? 'text-indigo-900 font-medium' : 'text-gray-700'} truncate`}>
+                              <p className={`text-sm ${
+                                sectionCompleted 
+                                  ? 'text-gray-400' 
+                                  : isCurrentSection 
+                                    ? 'text-indigo-900 font-medium' 
+                                    : 'text-gray-700'
+                              } truncate`}>
                                 {section.title}
                               </p>
                               {section.estimatedDuration && (
-                                <p className="text-xs text-gray-500">{section.estimatedDuration} min</p>
+                                <p className={`text-xs ${sectionCompleted ? 'text-gray-400' : 'text-gray-500'}`}>
+                                  {section.estimatedDuration} min
+                                </p>
                               )}
                             </div>
                             {sectionCompleted && (
@@ -1764,8 +1879,8 @@ export default function ManualTrainingSimulator({
               {renderSectionContent()}
             </div>
 
-            {/* Navigation Buttons - Hide for quiz sections */}
-            {currentSection?.type !== 'quiz' && (
+            {/* Navigation Buttons - Hide for quiz sections and completion message */}
+            {!showCertification && currentSection?.type !== 'quiz' && (
               <div className="bg-white rounded-lg shadow-sm p-3">
                 <div className="flex items-center justify-between">
                   <button

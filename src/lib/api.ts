@@ -120,7 +120,7 @@ class ApiClientClass {
     const url = `${this.baseURL}${endpoint}`;
     
     try {
-      const response = await fetch(url, config);
+    const response = await fetch(url, config);
       
       // Check if response has content before trying to parse JSON
       const contentType = response.headers.get('content-type');
@@ -142,19 +142,19 @@ class ApiClientClass {
         }
       }
 
-      if (!response.ok) {
+    if (!response.ok) {
         throw new ApiError(
           data.message || data.error || 'Upload failed', 
           response.status,
           data.errors
         );
-      }
+    }
 
-      return {
-        data,
-        status: response.status,
-        message: data.message,
-      };
+    return {
+      data,
+      status: response.status,
+      message: data.message,
+    };
     } catch (error) {
       if (error instanceof ApiError) {
         throw error;

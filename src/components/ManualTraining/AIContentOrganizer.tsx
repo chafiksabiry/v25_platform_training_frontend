@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Upload, File, Image, Video, Loader2, CheckCircle2, AlertCircle, Sparkles, ArrowRight, X, BarChart3, Clock, RefreshCw, Edit2, BookOpen, FileText, Play, Youtube, Layers } from 'lucide-react';
+import { Upload, File, Image, Video, Loader2, CheckCircle2, AlertCircle, Sparkles, ArrowRight, X, BarChart3, Clock, RefreshCw, Edit2, BookOpen, FileText, Play, Youtube, Layers, GripVertical, ArrowUp, ArrowDown, ChevronDown, ChevronUp, Eye, EyeOff } from 'lucide-react';
 import { cloudinaryService, CloudinaryUploadResult } from '../../lib/cloudinaryService';
 import { AIService, DocumentAnalysis } from '../../infrastructure/services/AIService';
 import axios from 'axios';
@@ -51,9 +51,14 @@ export const AIContentOrganizer: React.FC<AIContentOrganizerProps> = ({
   const [generatingInitialOrganization, setGeneratingInitialOrganization] = useState(false);
   const [showOrganizationInput, setShowOrganizationInput] = useState(false);
   const [generationOptions, setGenerationOptions] = useState({
-    generateModuleQuizzes: true,
-    generateFinalExam: true,
+    generateModuleQuizzes: false,
+    generateFinalExam: false,
   });
+  const [organizationComplete, setOrganizationComplete] = useState(false);
+  const [editingModuleId, setEditingModuleId] = useState<string | null>(null);
+  const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
+  const [showPromptInput, setShowPromptInput] = useState(false);
+  const [editedModules, setEditedModules] = useState<Map<string, { title: string; description: string }>>(new Map());
 
   // Check if OpenAI is available
   const checkAIAvailability = async () => {
@@ -273,6 +278,80 @@ export const AIContentOrganizer: React.FC<AIContentOrganizerProps> = ({
     }
   };
 
+  const handleEditModule = (moduleId: string, currentTitle: string, currentDescription: string) => {
+    setEditingModuleId(moduleId);
+    const newMap = new Map(editedModules);
+    newMap.set(moduleId, { title: currentTitle, description: currentDescription || '' });
+    setEditedModules(newMap);
+  };
+
+  const handleSaveModule = async (moduleId: string) => {
+    const edited = editedModules.get(moduleId);
+    if (!edited) return;
+
+    try {
+      const response = await axios.put(`${API_BASE}/manual-trainings/modules/${moduleId}`, {
+        title: edited.title,
+        description: edited.description,
+      });
+
+      if (response.data.success) {
+        await loadTrainingOrganization();
+        setEditingModuleId(null);
+      }
+    } catch (err) {
+      console.error('Error updating module:', err);
+      setError('Failed to update module');
+    }
+  };
+
+  const handleCancelEdit = (moduleId: string) => {
+    setEditingModuleId(null);
+    const newMap = new Map(editedModules);
+    newMap.delete(moduleId);
+    setEditedModules(newMap);
+  };
+
+  const handleMoveModule = async (moduleId: string, direction: 'up' | 'down') => {
+    const currentIndex = trainingOrganization.findIndex(m => m.id === moduleId);
+    if (currentIndex === -1) return;
+
+    const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+    if (newIndex < 0 || newIndex >= trainingOrganization.length) return;
+
+    try {
+      // Swap orderIndex values
+      const currentModule = trainingOrganization[currentIndex];
+      const targetModule = trainingOrganization[newIndex];
+      
+      const currentOrder = currentModule.orderIndex || currentIndex;
+      const targetOrder = targetModule.orderIndex || newIndex;
+
+      // Update both modules
+      await Promise.all([
+        axios.put(`${API_BASE}/manual-trainings/modules/${moduleId}`, { orderIndex: targetOrder }),
+        axios.put(`${API_BASE}/manual-trainings/modules/${targetModule.id}`, { orderIndex: currentOrder }),
+      ]);
+
+      await loadTrainingOrganization();
+    } catch (err) {
+      console.error('Error moving module:', err);
+      setError('Failed to move module');
+    }
+  };
+
+  const toggleModuleExpansion = (moduleId: string) => {
+    setExpandedModules(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(moduleId)) {
+        newSet.delete(moduleId);
+      } else {
+        newSet.add(moduleId);
+      }
+      return newSet;
+    });
+  };
+
   const handleProcessWithAI = async () => {
     if (uploadedFiles.length === 0) {
       setError('Please upload at least one file');
@@ -317,12 +396,12 @@ export const AIContentOrganizer: React.FC<AIContentOrganizerProps> = ({
       if (response.data.success) {
         // Load organization after successful organization
         await loadTrainingOrganization();
-        // Wait a bit before calling onComplete to show the organization
-        setTimeout(() => {
-          onComplete();
-        }, 2000);
+        // Mark organization as complete - user can now view it and continue manually
+        setOrganizationComplete(true);
+        setProcessing(false);
       } else {
         setError('Failed to organize content with AI');
+        setProcessing(false);
       }
     } catch (err: any) {
       console.error('AI processing error:', err);
@@ -540,61 +619,213 @@ export const AIContentOrganizer: React.FC<AIContentOrganizerProps> = ({
                 <Layers className="w-6 h-6 text-indigo-600 mr-2" />
                 Training Organization
               </h3>
-              {loadingOrganization && (
-                <Loader2 className="w-5 h-5 text-indigo-600 animate-spin" />
-              )}
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => setShowPromptInput(!showPromptInput)}
+                  className="px-3 py-2 text-sm bg-white border-2 border-indigo-300 text-indigo-700 rounded-lg hover:bg-indigo-50 transition-colors font-medium flex items-center space-x-2"
+                  title={showPromptInput ? 'Hide prompt input' : 'Show prompt input'}
+                >
+                  {showPromptInput ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  <span>{showPromptInput ? 'Hide' : 'Show'} Prompt</span>
+                </button>
+                {loadingOrganization && (
+                  <Loader2 className="w-5 h-5 text-indigo-600 animate-spin" />
+                )}
+              </div>
             </div>
+
+            {/* Prompt Input Display */}
+            {showPromptInput && (
+              <div className="mb-4 p-4 bg-white rounded-lg border-2 border-indigo-200">
+                <div className="flex items-center mb-2">
+                  <Sparkles className="w-4 h-4 text-indigo-600 mr-2" />
+                  <span className="text-sm font-semibold text-gray-700">Organization Instructions:</span>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                  <p className="text-sm text-gray-800 whitespace-pre-wrap">
+                    {organizationInstructions || initialOrganization || 'No custom instructions provided. AI used default organization.'}
+                  </p>
+                </div>
+              </div>
+            )}
 
             <div className="space-y-4">
               {trainingOrganization.map((module, moduleIndex) => {
+                const moduleId = module.id || `module-${moduleIndex}`;
                 const sections = module.sections || [];
                 const sortedSections = sections.sort((a: any, b: any) => (a.orderIndex || 0) - (b.orderIndex || 0));
+                const isExpanded = expandedModules.has(moduleId);
+                const isEditing = editingModuleId === moduleId;
+                const edited = editedModules.get(moduleId);
+                const currentTitle = edited?.title || module.title || `Module ${moduleIndex + 1}`;
+                const currentDescription = edited?.description || module.description || '';
                 
                 return (
                   <div
-                    key={module.id || moduleIndex}
+                    key={moduleId}
                     className="bg-white rounded-lg border-2 border-indigo-200 p-4 shadow-md hover:shadow-lg transition-all"
                   >
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-center space-x-3 flex-1">
-                        <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-md">
-                          {moduleIndex + 1}
-                        </div>
-                        <div className="flex-1">
-                          <h4 className="font-bold text-lg text-gray-900 mb-1">
-                            {module.title || `Module ${moduleIndex + 1}`}
-                          </h4>
-                          {module.description && (
-                            <p className="text-sm text-gray-600 line-clamp-2">{module.description}</p>
-                          )}
-                        </div>
+                    <div className="flex items-start gap-3">
+                      {/* Drag Handle & Move Buttons */}
+                      <div className="flex flex-col items-center gap-1 pt-1">
+                        <GripVertical className="w-5 h-5 text-gray-400 cursor-move" />
+                        <button
+                          onClick={() => handleMoveModule(moduleId, 'up')}
+                          disabled={moduleIndex === 0}
+                          className="p-1 text-indigo-600 hover:bg-indigo-100 rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                          title="Move up"
+                        >
+                          <ArrowUp className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleMoveModule(moduleId, 'down')}
+                          disabled={moduleIndex === trainingOrganization.length - 1}
+                          className="p-1 text-indigo-600 hover:bg-indigo-100 rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                          title="Move down"
+                        >
+                          <ArrowDown className="w-4 h-4" />
+                        </button>
                       </div>
-                      <div className="flex-shrink-0 ml-4">
-                        <span className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm font-semibold">
-                          {sortedSections.length} {sortedSections.length === 1 ? 'Section' : 'Sections'}
-                        </span>
+
+                      {/* Module Number */}
+                      <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-md">
+                        {moduleIndex + 1}
+                      </div>
+
+                      {/* Module Content */}
+                      <div className="flex-1">
+                        {isEditing ? (
+                          <div className="space-y-3">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Module Title</label>
+                              <input
+                                type="text"
+                                value={edited?.title || ''}
+                                onChange={(e) => {
+                                  const newMap = new Map(editedModules);
+                                  const current = newMap.get(moduleId) || { title: currentTitle, description: currentDescription };
+                                  newMap.set(moduleId, { ...current, title: e.target.value });
+                                  setEditedModules(newMap);
+                                }}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                placeholder="Enter module title"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                              <textarea
+                                value={edited?.description || ''}
+                                onChange={(e) => {
+                                  const newMap = new Map(editedModules);
+                                  const current = newMap.get(moduleId) || { title: currentTitle, description: currentDescription };
+                                  newMap.set(moduleId, { ...current, description: e.target.value });
+                                  setEditedModules(newMap);
+                                }}
+                                rows={3}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                placeholder="Enter module description"
+                              />
+                            </div>
+                            <div className="flex justify-end space-x-2">
+                              <button
+                                onClick={() => handleCancelEdit(moduleId)}
+                                className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors text-sm"
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                onClick={() => handleSaveModule(moduleId)}
+                                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm"
+                              >
+                                Save
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="flex items-start justify-between mb-2">
+                              <div className="flex-1">
+                                <h4 className="font-bold text-lg text-gray-900 mb-1">
+                                  {currentTitle}
+                                </h4>
+                                {currentDescription && (
+                                  <p className="text-sm text-gray-600">{currentDescription}</p>
+                                )}
+                              </div>
+                              <div className="flex items-center space-x-2 ml-4">
+                                <button
+                                  onClick={() => handleEditModule(moduleId, currentTitle, currentDescription)}
+                                  className="p-2 text-indigo-600 hover:bg-indigo-100 rounded-lg transition-colors"
+                                  title="Edit module"
+                                >
+                                  <Edit2 className="w-4 h-4" />
+                                </button>
+                                <span className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm font-semibold">
+                                  {sortedSections.length} {sortedSections.length === 1 ? 'Section' : 'Sections'}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Sections Preview */}
+                            {sortedSections.length > 0 && (
+                              <div className="mt-3">
+                                <button
+                                  onClick={() => toggleModuleExpansion(moduleId)}
+                                  className="flex items-center space-x-2 text-sm text-indigo-600 hover:text-indigo-700 font-medium mb-2"
+                                >
+                                  {isExpanded ? (
+                                    <>
+                                      <ChevronUp className="w-4 h-4" />
+                                      <span>Hide Documents</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <ChevronDown className="w-4 h-4" />
+                                      <span>Show Documents ({sortedSections.length})</span>
+                                    </>
+                                  )}
+                                </button>
+
+                                {isExpanded && (
+                                  <div className="pt-3 border-t border-gray-200 space-y-2">
+                                    {sortedSections.map((section: any, sectionIndex: number) => (
+                                      <div
+                                        key={section.id || sectionIndex}
+                                        className="flex items-center space-x-3 px-4 py-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200 hover:border-blue-300 transition-colors"
+                                      >
+                                        <div className="text-blue-600 flex-shrink-0">
+                                          {getSectionIcon(section.type || 'document')}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                          <div className="font-medium text-gray-800 text-sm">
+                                            {section.title || `Section ${sectionIndex + 1}`}
+                                          </div>
+                                          {section.description && (
+                                            <p className="text-xs text-gray-600 mt-1 line-clamp-2">
+                                              {section.description}
+                                            </p>
+                                          )}
+                                          {section.contentUrl && (
+                                            <a
+                                              href={section.contentUrl}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="text-xs text-blue-600 hover:text-blue-800 mt-1 inline-block"
+                                            >
+                                              View Document →
+                                            </a>
+                                          )}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </>
+                        )}
                       </div>
                     </div>
-
-                    {sortedSections.length > 0 && (
-                      <div className="mt-3 pt-3 border-t border-gray-200">
-                        <div className="flex flex-wrap gap-2">
-                          {sortedSections.map((section: any, sectionIndex: number) => (
-                            <div
-                              key={section.id || sectionIndex}
-                              className="flex items-center space-x-2 px-3 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200 hover:border-blue-300 transition-colors"
-                            >
-                              <div className="text-blue-600">
-                                {getSectionIcon(section.type || 'document')}
-                              </div>
-                              <span className="text-sm font-medium text-gray-800">
-                                {section.title || `Section ${sectionIndex + 1}`}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
                   </div>
                 );
               })}
@@ -831,33 +1062,48 @@ export const AIContentOrganizer: React.FC<AIContentOrganizerProps> = ({
 
         {/* Actions */}
         <div className="flex items-center justify-between pt-6 border-t">
-          <button
-            onClick={onSkip}
-            className="px-6 py-3 text-gray-600 hover:text-gray-800 transition-colors font-medium"
-            disabled={processing}
-          >
-            {aiAvailable === false ? 'Continue Manual Creation' : 'Skip AI & Create Manually'}
-          </button>
+          {organizationComplete ? (
+            // Show "Continue to Modules" button after organization is complete
+            <div className="flex items-center justify-end w-full">
+              <button
+                onClick={onComplete}
+                className="px-8 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all flex items-center font-semibold shadow-lg transform hover:scale-105"
+              >
+                <span>Continue to Modules</span>
+                <ArrowRight className="w-5 h-5 ml-2" />
+              </button>
+            </div>
+          ) : (
+            <>
+              <button
+                onClick={onSkip}
+                className="px-6 py-3 text-gray-600 hover:text-gray-800 transition-colors font-medium"
+                disabled={processing}
+              >
+                {aiAvailable === false ? 'Continue Manual Creation' : 'Skip AI & Create Manually'}
+              </button>
 
-          {aiAvailable !== false && (
-            <button
-              onClick={handleProcessWithAI}
-              disabled={uploadedFiles.length === 0 || uploading || processing}
-              className="px-8 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center font-semibold shadow-lg"
-            >
-              {processing ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                  Organizing with AI...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-5 h-5 mr-2" />
-                  Organize with AI
-                  <ArrowRight className="w-5 h-5 ml-2" />
-                </>
+              {aiAvailable !== false && (
+                <button
+                  onClick={handleProcessWithAI}
+                  disabled={uploadedFiles.length === 0 || uploading || processing}
+                  className="px-8 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center font-semibold shadow-lg"
+                >
+                  {processing ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                      Organizing with AI...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-5 h-5 mr-2" />
+                      Organize with AI
+                      <ArrowRight className="w-5 h-5 ml-2" />
+                    </>
+                  )}
+                </button>
               )}
-            </button>
+            </>
           )}
         </div>
       </div>
