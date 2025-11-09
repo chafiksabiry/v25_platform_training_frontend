@@ -33,7 +33,7 @@ export const FinalExamGenerator: React.FC<FinalExamGeneratorProps> = ({
 
   // Exam generation settings
   const [settings, setSettings] = useState({
-    numberOfQuestions: 10, // Reduced to 10 for gpt-4o-mini token limits (8192 total)
+    numberOfQuestions: 20, // Final exam: 20 questions
     passingScore: 80,
     timeLimit: 45,
   });

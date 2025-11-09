@@ -1,14 +1,16 @@
 import React, { useState, useRef } from 'react';
-import { Upload, X, File, Image, Video, FileText, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Upload, X, File, Image, Video, FileText, Loader2, CheckCircle2, AlertCircle, BarChart3, Clock, Sparkles } from 'lucide-react';
 import { cloudinaryService, CloudinaryUploadResult, UploadProgress } from '../../lib/cloudinaryService';
+import { AIService, DocumentAnalysis } from '../../infrastructure/services/AIService';
 
 interface FileUploaderProps {
   fileType: 'image' | 'video' | 'document';
-  onUploadComplete: (result: CloudinaryUploadResult) => void;
+  onUploadComplete: (result: CloudinaryUploadResult, analysis?: DocumentAnalysis) => void;
   onError?: (error: string) => void;
   accept?: string;
   maxSizeMB?: number;
   folder?: string;
+  showAnalysis?: boolean; // Show AI analysis for documents
 }
 
 export const FileUploader: React.FC<FileUploaderProps> = ({
@@ -18,12 +20,16 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
   accept,
   maxSizeMB,
   folder,
+  showAnalysis = true, // Default to true for documents
 }) => {
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState<UploadProgress | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [uploadSuccess, setUploadSuccess] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [analysis, setAnalysis] = useState<DocumentAnalysis | null>(null);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const getAcceptType = (): string => {
@@ -108,17 +114,39 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
       }
 
       setUploadSuccess(true);
-      onUploadComplete(result);
       
-      // Reset after 2 seconds
-      setTimeout(() => {
-        setFile(null);
-        setProgress(null);
-        setUploadSuccess(false);
-        if (fileInputRef.current) {
-          fileInputRef.current.value = '';
+      // Analyze document if it's a document type and showAnalysis is enabled
+      if (fileType === 'document' && showAnalysis) {
+        setAnalyzing(true);
+        setAnalysisError(null);
+        try {
+          const analysisResult = await AIService.analyzeDocument(fileToUpload);
+          setAnalysis(analysisResult);
+          onUploadComplete(result, analysisResult);
+        } catch (analysisErr: any) {
+          console.error('AI Analysis failed:', analysisErr);
+          setAnalysisError(analysisErr.message || 'Analysis failed');
+          // Still call onUploadComplete even if analysis fails
+          onUploadComplete(result);
+        } finally {
+          setAnalyzing(false);
         }
-      }, 2000);
+      } else {
+        onUploadComplete(result);
+      }
+      
+      // Don't auto-reset if analysis is showing
+      if (!showAnalysis || fileType !== 'document') {
+        setTimeout(() => {
+          setFile(null);
+          setProgress(null);
+          setUploadSuccess(false);
+          setAnalysis(null);
+          if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+          }
+        }, 2000);
+      }
 
     } catch (err: any) {
       const errorMessage = err.message || 'Upload failed';
@@ -254,9 +282,9 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
         </div>
       )}
 
-      {/* Success Message */}
+      {/* Success Message with Analysis */}
       {uploadSuccess && (
-        <div className="border border-green-300 bg-green-50 rounded-lg p-6">
+        <div className="border border-green-300 bg-green-50 rounded-lg p-6 space-y-4">
           <div className="flex items-center justify-center text-green-600">
             <CheckCircle2 className="w-8 h-8 mr-3" />
             <div>
@@ -264,6 +292,65 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
               <p className="text-sm text-green-700">File uploaded to Cloudinary</p>
             </div>
           </div>
+
+          {/* AI Analysis Results */}
+          {fileType === 'document' && showAnalysis && (
+            <div className="mt-4 pt-4 border-t border-green-200">
+              {analyzing && (
+                <div className="flex items-center justify-center space-x-2 text-blue-600 py-4">
+                  <Sparkles className="w-5 h-5 animate-pulse" />
+                  <span className="text-sm font-medium">AI is analyzing this document...</span>
+                </div>
+              )}
+
+              {analysis && !analyzing && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="text-center p-3 bg-white rounded-lg border border-green-200">
+                      <BarChart3 className="h-6 w-6 text-green-600 mx-auto mb-1" />
+                      <div className="text-lg font-bold text-green-600">{analysis.difficulty}/10</div>
+                      <div className="text-xs text-gray-600">Difficulty</div>
+                    </div>
+                    <div className="text-center p-3 bg-white rounded-lg border border-green-200">
+                      <Clock className="h-6 w-6 text-green-600 mx-auto mb-1" />
+                      <div className="text-lg font-bold text-green-600">{analysis.estimatedReadTime}m</div>
+                      <div className="text-xs text-gray-600">Duration</div>
+                    </div>
+                  </div>
+                  
+                  {analysis.keyTopics && analysis.keyTopics.length > 0 && (
+                    <div>
+                      <h5 className="font-medium text-gray-900 mb-2">Key Topics Identified:</h5>
+                      <div className="flex flex-wrap gap-2">
+                        {analysis.keyTopics.map((topic, index) => (
+                          <span key={index} className="px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full">
+                            {topic}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {analysis.suggestedModules && analysis.suggestedModules.length > 0 && (
+                    <div>
+                      <h5 className="font-medium text-gray-900 mb-2">AI will create {analysis.suggestedModules.length} modules:</h5>
+                      <div className="text-sm text-gray-600">
+                        {analysis.suggestedModules.join(' → ')}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {analysisError && (
+                <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <p className="text-sm text-yellow-800">
+                    ⚠️ Analysis failed: {analysisError}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>

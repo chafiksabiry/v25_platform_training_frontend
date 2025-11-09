@@ -61,7 +61,7 @@ export class AIService {
     const formData = new FormData();
     formData.append('file', file);
 
-    const response = await ApiClient.upload('/ai/analyze-document', formData);
+    const response = await ApiClient.upload('/api/ai/analyze-document', formData);
     
     if (!response.data.success) {
       throw new Error(response.data.error || 'Analysis failed');
@@ -74,7 +74,7 @@ export class AIService {
    * Analyse a URL (YouTube or HTML page) with AI
    */
   static async analyzeUrl(url: string): Promise<DocumentAnalysis> {
-    const response = await ApiClient.post('/ai/analyze-url', { url });
+    const response = await ApiClient.post('/api/ai/analyze-url', { url });
     
     if (!response.data.success) {
       throw new Error(response.data.error || 'URL analysis failed');
@@ -87,7 +87,7 @@ export class AIService {
    * Améliore du contenu texte avec l'IA
    */
   static async enhanceContent(content: string): Promise<string> {
-    const response = await ApiClient.post('/ai/enhance-content', { content });
+    const response = await ApiClient.post('/api/ai/enhance-content', { content });
     
     if (!response.data.success) {
       throw new Error(response.data.error || 'Enhancement failed');
@@ -100,7 +100,7 @@ export class AIService {
    * Génère des questions de quiz avec l'IA
    */
   static async generateQuiz(content: string, count: number = 5): Promise<QuizQuestion[]> {
-    const response = await ApiClient.post('/ai/generate-quiz', { content, count });
+    const response = await ApiClient.post('/api/ai/generate-quiz', { content, count });
     
     if (!response.data.success) {
       throw new Error(response.data.error || 'Quiz generation failed');
@@ -136,7 +136,7 @@ export class AIService {
    * Chat avec l'AI Tutor
    */
   static async chat(message: string, context: string = ''): Promise<string> {
-    const response = await ApiClient.post('/ai/chat', { message, context });
+    const response = await ApiClient.post('/api/ai/chat', { message, context });
     
     if (!response.data.success) {
       throw new Error(response.data.error || 'Chat failed');
@@ -152,7 +152,7 @@ export class AIService {
     analysis: DocumentAnalysis, 
     industry: string = 'General'
   ): Promise<Curriculum> {
-    const response = await ApiClient.post('/ai/generate-curriculum', { 
+    const response = await ApiClient.post('/api/ai/generate-curriculum', { 
       analysis, 
       industry 
     });
@@ -179,7 +179,7 @@ export class AIService {
     description: string,
     learningObjectives: string[]
   ): Promise<VideoScript> {
-    const response = await ApiClient.post('/ai/generate-video-script', {
+    const response = await ApiClient.post('/api/ai/generate-video-script', {
       title,
       description,
       learningObjectives
@@ -202,7 +202,7 @@ export class AIService {
     fullTranscription: string,
     learningObjectives: string[]
   ): Promise<any[]> {
-    const response = await ApiClient.post('/ai/generate-module-content', {
+    const response = await ApiClient.post('/api/ai/generate-module-content', {
       moduleTitle,
       moduleDescription,
       fullTranscription,
@@ -221,7 +221,7 @@ export class AIService {
    * Couvre tous les modules avec 20-30 questions
    */
   static async generateFinalExam(modules: any[], formationTitle: string = 'Training Program'): Promise<any> {
-    const response = await ApiClient.post('/ai/generate-final-exam', {
+    const response = await ApiClient.post('/api/ai/generate-final-exam', {
       modules,
       formationTitle
     });

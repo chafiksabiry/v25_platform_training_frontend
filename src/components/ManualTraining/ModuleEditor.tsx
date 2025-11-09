@@ -1,11 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, ArrowLeft, ArrowRight, Edit2, Trash2, Save, X, FileText, Video, Image, Youtube, Type, Play, ChevronDown, ChevronUp, GripVertical, Move, Award, Sparkles } from 'lucide-react';
 import { ManualTraining, ManualTrainingModule, TrainingSection, SectionContent, ContentFile } from '../../types/manualTraining';
 import { CloudinaryUploadResult } from '../../lib/cloudinaryService';
 import { FileUploader } from './FileUploader';
 import { QuizBuilder } from './QuizBuilder';
+import { QuizTaker } from './QuizTaker';
 import { FinalExamGenerator } from './FinalExamGenerator';
 import ManualTrainingSimulator from './ManualTrainingSimulator';
+import { TrainingSettingsModal } from './TrainingSettingsModal';
+import { ModuleSettingsModal } from './ModuleSettingsModal';
 import axios from 'axios';
 
 // Détection automatique de l'environnement
@@ -46,6 +49,45 @@ export const ModuleEditor: React.FC<ModuleEditorProps> = ({ training, onBack }) 
   
   // ✨ Simulator state
   const [showSimulator, setShowSimulator] = useState(false);
+  
+  // ✨ Current View: 'sections', 'quiz', or 'finalExam'
+  // Always start with sections, quiz comes after, final exam after last module
+  const [currentView, setCurrentView] = useState<'sections' | 'quiz' | 'finalExam'>('sections');
+  
+  // ✨ Quiz completion state
+  const [isQuizCompleted, setIsQuizCompleted] = useState(false);
+  
+  // ✨ Final exam state
+  const [finalExam, setFinalExam] = useState<ManualQuiz | null>(null);
+  const [isFinalExamCompleted, setIsFinalExamCompleted] = useState(false);
+  
+  // Always start with sections view when module is selected
+  useEffect(() => {
+    setCurrentView('sections');
+    setIsQuizCompleted(false); // Reset when switching modules
+    setIsFinalExamCompleted(false); // Reset final exam completion
+  }, [selectedModule?.id]);
+  
+  // Load final exam when component mounts
+  useEffect(() => {
+    loadFinalExam();
+  }, [training.id]);
+
+  // ✨ Training Settings Modal
+  const [showTrainingSettings, setShowTrainingSettings] = useState(false);
+  
+  // ✨ Module Settings Modal
+  const [showModuleSettings, setShowModuleSettings] = useState(false);
+  
+  // ✨ Section Edit Mode (in main area)
+  const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
+
+  // ✨ Sidebar Collapse State
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  
+  // ✨ Sidebar Resize State
+  const [sidebarWidth, setSidebarWidth] = useState(320); // 320px = w-80
+  const [isResizing, setIsResizing] = useState(false);
 
   // Module Form
   const [moduleForm, setModuleForm] = useState({
@@ -61,18 +103,62 @@ export const ModuleEditor: React.FC<ModuleEditorProps> = ({ training, onBack }) 
     content: {},
   });
 
+  // ✨ Sidebar Resize Handlers (MUST be before any conditional returns)
+  const startResize = useCallback(() => {
+    setIsResizing(true);
+  }, []);
+
+  const stopResize = useCallback(() => {
+    setIsResizing(false);
+  }, []);
+
+  const resize = useCallback((e: MouseEvent) => {
+    if (!sidebarCollapsed) {
+      const newWidth = e.clientX - 24; // 24px = left offset (left-6)
+      
+      // Min: 200px, Max: 600px
+      if (newWidth >= 200 && newWidth <= 600) {
+        setSidebarWidth(newWidth);
+      }
+    }
+  }, [sidebarCollapsed]);
+
+  // Add/remove event listeners for resize
+  useEffect(() => {
+    if (isResizing) {
+      const handleMouseMove = (e: MouseEvent) => resize(e);
+      const handleMouseUp = () => stopResize();
+      
+      document.addEventListener('mousemove', handleMouseMove as any);
+      document.addEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove as any);
+        document.removeEventListener('mouseup', handleMouseUp);
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+      };
+    } else {
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    }
+  }, [isResizing, resize, stopResize]);
+
   useEffect(() => {
     if (training.id) {
       loadModules();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [training.id]);
 
-  // ✨ Auto-open module creation form if no modules exist
-  useEffect(() => {
-    if (modules.length === 0 && !editingModule && !loading) {
-      setEditingModule(true);
-    }
-  }, [modules.length, loading]);
+  // ✨ Auto-open module creation form if no modules exist - DISABLED
+  // useEffect(() => {
+  //   if (modules.length === 0 && !editingModule && !loading) {
+  //     setEditingModule(true);
+  //   }
+  // }, [modules.length, loading]);
 
   const loadModules = async () => {
     setLoading(true);
@@ -111,7 +197,7 @@ export const ModuleEditor: React.FC<ModuleEditorProps> = ({ training, onBack }) 
           if (quizCount === 0 && module.sections && module.sections.length > 0 && !generatingQuizzes.has(module.id!)) {
             console.log(`📝 Module "${module.title}" has sections but no quiz - auto-generating...`);
             setGeneratingQuizzes(prev => new Set(prev).add(module.id!));
-            generateQuizForModule(module.id!, module.title);
+            generateQuizForModule(module.id!, module.title, module);
           }
           */
         }
@@ -135,15 +221,65 @@ export const ModuleEditor: React.FC<ModuleEditorProps> = ({ training, onBack }) 
       console.error('Error checking final exam status:', error);
     }
   };
+  
+  // Load final exam quiz
+  const loadFinalExam = async () => {
+    try {
+      const response = await axios.get(`${API_BASE}/manual-trainings/${training.id}/quizzes`);
+      if (response.data.success) {
+        // Find final exam (quiz without moduleId or with special moduleId)
+        const exam = response.data.data.find((quiz: any) => 
+          !quiz.moduleId || quiz.moduleId === 'FINAL_EXAM' || quiz.moduleId === 'final-exam'
+        );
+        if (exam) {
+          setFinalExam(exam);
+          setFinalExamExists(true);
+        } else {
+          setFinalExam(null);
+          setFinalExamExists(false);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading final exam:', error);
+      setFinalExam(null);
+    }
+  };
+
+  // ✨ Helper function to calculate number of questions for a module (5-15)
+  const calculateQuestionsForModule = (module: ManualTrainingModule): number => {
+    const baseQuestions = 5; // Minimum
+    const maxQuestions = 15; // Maximum
+    const sectionCount = module.sections?.length || 0;
+    
+    // Calculate: 5 + (sections * 2), capped at 15
+    const calculatedQuestions = baseQuestions + (sectionCount * 2);
+    
+    // Ensure it's between 5 and 15
+    return Math.max(baseQuestions, Math.min(maxQuestions, calculatedQuestions));
+  };
 
   // ✨ Helper function to generate quiz for a single module (background, non-blocking)
-  const generateQuizForModule = async (moduleId: string, moduleTitle: string) => {
+  const generateQuizForModule = async (moduleId: string, moduleTitle: string, module?: ManualTrainingModule) => {
     try {
       console.log(`🤖 Auto-generating quiz for module: ${moduleTitle}`);
       
+      // Calculate dynamic number of questions (5-15)
+      let numberOfQuestions = 5; // Default
+      if (module) {
+        numberOfQuestions = calculateQuestionsForModule(module);
+      } else {
+        // Try to find module in the list
+        const foundModule = modules.find(m => m.id === moduleId);
+        if (foundModule) {
+          numberOfQuestions = calculateQuestionsForModule(foundModule);
+        }
+      }
+      
+      console.log(`📊 Generating ${numberOfQuestions} questions for module: ${moduleTitle}`);
+      
       const response = await axios.post(`${API_BASE}/manual-trainings/ai/generate-quiz`, {
         moduleId: moduleId,
-        numberOfQuestions: 5,
+        numberOfQuestions: numberOfQuestions,
         difficulty: 'medium',
         questionTypes: {
           multipleChoice: true,
@@ -203,7 +339,7 @@ export const ModuleEditor: React.FC<ModuleEditorProps> = ({ training, onBack }) 
         const newModule = response.data.data;
         
         // ✨ AUTO-GENERATE QUIZ for new module (in background, don't wait)
-        generateQuizForModule(newModule.id, newModule.title);
+        generateQuizForModule(newModule.id, newModule.title, newModule);
         
         if (autoOpenSection) {
           // ✨ Automatically select the newly created module
@@ -259,7 +395,7 @@ export const ModuleEditor: React.FC<ModuleEditorProps> = ({ training, onBack }) 
         await loadModules();
         
         // ✨ AUTO-REGENERATE QUIZ when a new section is added
-        generateQuizForModule(selectedModule.id, selectedModule.title);
+        generateQuizForModule(selectedModule.id, selectedModule.title, selectedModule);
         
         if (goToQuiz) {
           // ✨ Go to quiz builder
@@ -282,7 +418,7 @@ export const ModuleEditor: React.FC<ModuleEditorProps> = ({ training, onBack }) 
     }
   };
 
-  const handleFileUpload = async (result: CloudinaryUploadResult) => {
+  const handleFileUpload = async (result: CloudinaryUploadResult, analysis?: any) => {
     const contentFile: ContentFile = {
       id: crypto.randomUUID(),
       name: result.publicId.split('/').pop() || 'file',
@@ -523,6 +659,7 @@ export const ModuleEditor: React.FC<ModuleEditorProps> = ({ training, onBack }) 
     setSectionEditForm({ title: '', description: '' });
   };
 
+
   if (showQuizBuilder && selectedModule) {
     return (
       <QuizBuilder
@@ -544,6 +681,8 @@ export const ModuleEditor: React.FC<ModuleEditorProps> = ({ training, onBack }) 
     );
   }
 
+  // Remove the full-screen quiz view - we'll show it inline instead
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Fixed Header */}
@@ -557,9 +696,18 @@ export const ModuleEditor: React.FC<ModuleEditorProps> = ({ training, onBack }) 
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
-            <div>
-              <h1 className="text-3xl font-bold">{training.title}</h1>
-              <p className="text-gray-600">Manage Modules & Content</p>
+            <div className="flex items-center space-x-3">
+              <div>
+                <h1 className="text-3xl font-bold">{training.title}</h1>
+                <p className="text-gray-600">{training.description || 'Manage modules and content'}</p>
+              </div>
+              <button
+                onClick={() => setShowTrainingSettings(true)}
+                className="p-2 hover:bg-blue-50 text-blue-600 rounded-lg transition-colors"
+                title="Training settings"
+              >
+                <Edit2 className="w-5 h-5" />
+              </button>
             </div>
           </div>
 
@@ -573,7 +721,7 @@ export const ModuleEditor: React.FC<ModuleEditorProps> = ({ training, onBack }) 
               }`}
             >
               <Award className="w-5 h-5 mr-2" />
-              Examen Final
+              Final Exam
               {finalExamExists && (
                 <span className="absolute -top-1 -right-1 flex h-3 w-3">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
@@ -625,83 +773,220 @@ export const ModuleEditor: React.FC<ModuleEditorProps> = ({ training, onBack }) 
 
       {/* Content with padding-top to account for fixed header */}
       <div className="pt-32 pb-6">
-        {/* Modules List - Fixed Left Column */}
-        <div className="fixed left-6 top-32 bottom-6 w-80 z-40">
-          <div className="bg-white rounded-lg shadow-md p-6 h-full flex flex-col">
-            <div className="flex items-center justify-between mb-4 flex-shrink-0">
-              <h2 className="text-xl font-bold">Modules</h2>
-              <button
-                onClick={() => setEditingModule(true)}
-                className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-              </button>
+        {/* Modules List - Fixed Left Column with Resizable */}
+        <div 
+          className={`fixed left-6 top-32 bottom-6 z-40 ${!isResizing ? 'transition-all duration-300' : ''}`}
+          style={{ 
+            width: sidebarCollapsed ? '80px' : `${sidebarWidth}px`
+          }}
+        >
+          <div className="bg-white rounded-xl shadow-xl h-full flex flex-col overflow-hidden relative group border border-gray-100 [&_*::-webkit-scrollbar]:w-2 [&_*::-webkit-scrollbar-track]:bg-transparent [&_*::-webkit-scrollbar-thumb]:bg-gray-300 [&_*::-webkit-scrollbar-thumb]:rounded-full [&_*::-webkit-scrollbar-thumb:hover]:bg-gray-400">
+            {/* Toggle Button */}
+            <div className={`flex items-center justify-between p-2 flex-shrink-0 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-purple-50 ${sidebarCollapsed ? 'justify-center' : ''}`}>
+              {!sidebarCollapsed && (
+                <h2 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                  Modules
+                </h2>
+              )}
+              <div className="flex items-center space-x-2">
+                {!sidebarCollapsed && (
+                  <button
+                    onClick={() => setEditingModule(true)}
+                    className="p-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all shadow-md hover:shadow-xl transform hover:scale-110 active:scale-95"
+                    title="Add module"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                )}
+                <button
+                  onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                  className="relative p-2.5 bg-white hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 rounded-xl transition-all shadow-md hover:shadow-xl transform hover:scale-110 active:scale-95 border border-gray-200 group"
+                  title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                >
+                  {sidebarCollapsed ? (
+                    /* Collapsed: Show "expand" icon (three lines getting wider) */
+                    <div className="flex flex-col space-y-1 w-4 h-4 justify-center items-end">
+                      <div className="h-0.5 w-2 bg-blue-600 rounded-full transition-all group-hover:bg-blue-700" />
+                      <div className="h-0.5 w-3 bg-blue-600 rounded-full transition-all group-hover:bg-blue-700" />
+                      <div className="h-0.5 w-4 bg-blue-600 rounded-full transition-all group-hover:bg-blue-700" />
+                    </div>
+                  ) : (
+                    /* Expanded: Show "collapse" icon (three equal lines) */
+                    <div className="flex flex-col space-y-1 w-4 h-4 justify-center items-center">
+                      <div className="h-0.5 w-4 bg-gray-600 rounded-full transition-all group-hover:bg-blue-600 group-hover:w-2" />
+                      <div className="h-0.5 w-4 bg-gray-600 rounded-full transition-all group-hover:bg-blue-600 group-hover:w-3" />
+                      <div className="h-0.5 w-4 bg-gray-600 rounded-full transition-all group-hover:bg-blue-600 group-hover:w-4" />
+                    </div>
+                  )}
+                </button>
+              </div>
             </div>
 
             {/* Modules List - Scrollable */}
-            <div className="space-y-2 overflow-y-auto flex-1 pr-2">
-              {modules.map((module) => (
+            <div className={`space-y-2 overflow-y-auto flex-1 py-2 ${sidebarCollapsed ? 'px-1' : 'px-2'}`}>
+              {modules.map((module, index) => (
                 <div
                   key={module.id}
-                  onClick={() => setSelectedModule(module)}
+                  onClick={() => {
+                    setSelectedModule(module);
+                    // View will auto-switch based on quiz availability
+                  }}
                   onDragOver={handleModuleDragOver}
                   onDrop={(e) => handleModuleDrop(module.id!, e)}
-                  className={`p-4 rounded-lg cursor-pointer transition-colors ${
+                  className={`rounded-xl cursor-pointer transition-all duration-300 group/module ${
                     selectedModule?.id === module.id
-                      ? 'bg-blue-50 border-2 border-blue-500'
-                      : 'bg-gray-50 hover:bg-gray-100 border-2 border-transparent'
-                  } ${draggedSection && draggedSection.fromModuleId !== module.id ? 'ring-2 ring-green-300' : ''}`}
+                      ? 'bg-gradient-to-br from-blue-50 via-purple-50 to-blue-50 border-2 border-blue-400 shadow-lg scale-[1.02]'
+                      : 'bg-white hover:bg-gradient-to-br hover:from-gray-50 hover:to-gray-100 border-2 border-gray-200 hover:border-blue-300 hover:shadow-md'
+                  } ${draggedSection && draggedSection.fromModuleId !== module.id ? 'ring-2 ring-green-300 ring-offset-2' : ''} ${
+                    sidebarCollapsed ? 'p-2' : 'p-2.5'
+                  }`}
+                  title={sidebarCollapsed ? module.title : ''}
                 >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h3 className="font-medium text-gray-900">{module.title}</h3>
-                      <p className="text-sm text-gray-600 mt-1 line-clamp-2">{module.description}</p>
-                      <div className="flex items-center justify-between mt-2">
-                        <p className="text-xs text-gray-500">
-                          {module.sections?.length || 0} sections • {module.estimatedDuration} min
+                  {sidebarCollapsed ? (
+                    /* Collapsed View - Elegant Number Badge */
+                    <div className="flex flex-col items-center justify-center py-1">
+                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-bold text-lg shadow-md transition-all duration-300 ${
+                        selectedModule?.id === module.id
+                          ? 'bg-gradient-to-br from-blue-500 via-blue-600 to-purple-600 text-white ring-4 ring-blue-300 ring-opacity-50 scale-110 animate-pulse'
+                          : 'bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200 text-gray-700 group-hover/module:from-blue-50 group-hover/module:to-purple-50 group-hover/module:text-blue-600 group-hover/module:scale-105 group-hover/module:shadow-xl'
+                      }`}>
+                        {index + 1}
+                      </div>
+                      
+                      {/* Section Indicators */}
+                      {module.sections && module.sections.length > 0 && (
+                        <div className="mt-2 flex flex-col items-center space-y-1">
+                          {module.sections.slice(0, 4).map((section, idx) => (
+                            <div
+                              key={section.id || idx}
+                              className={`rounded-full transition-all duration-300 ${
+                                selectedModule?.id === module.id 
+                                  ? 'w-2.5 h-2.5 bg-gradient-to-r from-blue-400 to-purple-500 shadow-sm ring-1 ring-blue-200' 
+                                  : 'w-2 h-2 bg-gray-300 group-hover/module:bg-blue-300 group-hover/module:w-2.5 group-hover/module:h-2.5'
+                              }`}
+                              title={section.title}
+                            />
+                          ))}
+                          {module.sections.length > 4 && (
+                            <div className={`text-xs font-bold mt-0.5 px-1 py-0.5 rounded-full ${
+                              selectedModule?.id === module.id 
+                                ? 'text-blue-600 bg-blue-100' 
+                                : 'text-gray-500 bg-gray-100 group-hover/module:text-blue-500'
+                            }`}>
+                              +{module.sections.length - 4}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      
+                      {/* Quiz Badge */}
+                      {quizzesCount.get(module.id!) && (
+                        <div className={`mt-2 w-6 h-6 rounded-lg flex items-center justify-center text-xs font-bold shadow-sm transition-all ${
+                          selectedModule?.id === module.id
+                            ? 'bg-gradient-to-br from-purple-500 to-purple-600 text-white ring-2 ring-purple-300'
+                            : 'bg-gradient-to-br from-purple-100 to-purple-200 text-purple-700 group-hover/module:from-purple-200 group-hover/module:to-purple-300'
+                        }`}>
+                          Q
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    /* Full View - All Details */
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center space-x-2 mb-1">
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm shadow-md transition-all duration-300 flex-shrink-0 ${
+                            selectedModule?.id === module.id
+                              ? 'bg-gradient-to-br from-blue-500 via-blue-600 to-purple-600 text-white ring-2 ring-blue-300 ring-opacity-50'
+                              : 'bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200 text-gray-700 group-hover/module:from-blue-50 group-hover/module:to-purple-50 group-hover/module:text-blue-600 group-hover/module:shadow-xl'
+                          }`}>
+                            {index + 1}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h3 className={`font-bold text-sm truncate ${
+                              selectedModule?.id === module.id 
+                                ? 'text-blue-700' 
+                                : 'text-gray-900 group-hover/module:text-blue-600'
+                            }`}>
+                              {module.title}
+                            </h3>
+                          </div>
+                        </div>
+                        <p className={`text-xs mt-0.5 line-clamp-2 ml-10 ${
+                          selectedModule?.id === module.id 
+                            ? 'text-gray-700' 
+                            : 'text-gray-600'
+                        }`}>
+                          {module.description}
                         </p>
+                      <div className="flex items-center justify-between mt-2 ml-10">
+                        <div className="flex items-center space-x-2 text-xs">
+                          <span className={`inline-flex items-center px-1.5 py-0.5 rounded ${
+                            selectedModule?.id === module.id
+                              ? 'bg-blue-100 text-blue-700'
+                              : 'bg-gray-100 text-gray-600 group-hover/module:bg-blue-50 group-hover/module:text-blue-600'
+                          }`}>
+                            <FileText className="w-3 h-3 mr-0.5" />
+                            <span className="font-semibold text-xs">{module.sections?.length || 0}</span>
+                          </span>
+                          <span className={`inline-flex items-center px-1.5 py-0.5 rounded ${
+                            selectedModule?.id === module.id
+                              ? 'bg-purple-100 text-purple-700'
+                              : 'bg-gray-100 text-gray-600 group-hover/module:bg-purple-50 group-hover/module:text-purple-600'
+                          }`}>
+                            <svg className="w-3 h-3 mr-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span className="font-semibold text-xs">{module.estimatedDuration}m</span>
+                          </span>
+                        </div>
                         {quizzesCount.get(module.id!) ? (
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                            ✓ {quizzesCount.get(module.id!)} Quiz{quizzesCount.get(module.id!)! > 1 ? 'zes' : ''}
+                          <span className="inline-flex items-center px-3 py-1 rounded-xl text-xs font-bold bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-md">
+                            <Award className="w-3 h-3 mr-1" />
+                            {quizzesCount.get(module.id!)}
                           </span>
                         ) : null}
                       </div>
                       
                       {/* Section Titles - Draggable & Editable */}
                       {module.sections && module.sections.length > 0 && (
-                        <div className="mt-3 pt-3 border-t border-gray-200 space-y-1">
+                        <div className={`mt-2 pt-2 space-y-1 ${
+                          selectedModule?.id === module.id 
+                            ? 'border-t-2 border-blue-300' 
+                            : 'border-t border-gray-200'
+                        }`}>
                           {[...module.sections]
                             .sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0))
                             .map((section, idx) => (
                             <div key={section.id || idx}>
                               {editingSectionInList?.section.id === section.id ? (
                                 // Edit Mode
-                                <div className="bg-white p-3 rounded-lg border-2 border-blue-400 space-y-2" onClick={(e) => e.stopPropagation()}>
+                                <div className="bg-gradient-to-br from-blue-50 to-purple-50 p-2 rounded-lg border-2 border-blue-400 shadow-md space-y-1.5" onClick={(e) => e.stopPropagation()}>
                                   <input
                                     type="text"
                                     value={sectionEditForm.title}
                                     onChange={(e) => setSectionEditForm({ ...sectionEditForm, title: e.target.value })}
-                                    className="w-full px-2 py-1 border rounded text-xs"
+                                    className="w-full px-2 py-1 border-2 border-blue-300 rounded text-xs focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                     placeholder="Section title"
                                   />
                                   <textarea
                                     value={sectionEditForm.description}
                                     onChange={(e) => setSectionEditForm({ ...sectionEditForm, description: e.target.value })}
-                                    className="w-full px-2 py-1 border rounded text-xs resize-none"
+                                    className="w-full px-2 py-1 border-2 border-blue-300 rounded text-xs resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                     rows={2}
                                     placeholder="Description (optional)"
                                   />
-                                  <div className="flex space-x-2">
+                                  <div className="flex space-x-1.5">
                                     <button
                                       onClick={handleSaveEditSection}
-                                      className="flex-1 px-2 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700"
+                                      className="flex-1 px-2 py-1 bg-gradient-to-r from-green-500 to-green-600 text-white rounded text-xs font-medium hover:from-green-600 hover:to-green-700 shadow-sm hover:shadow-md transition-all transform hover:scale-105 active:scale-95"
                                     >
-                                      <Save className="w-3 h-3 inline mr-1" />
+                                      <Save className="w-3 h-3 inline mr-0.5" />
                                       Save
                                     </button>
                                     <button
                                       onClick={handleCancelEditSection}
-                                      className="px-2 py-1 bg-gray-300 text-gray-700 rounded text-xs hover:bg-gray-400"
+                                      className="px-2 py-1 bg-gray-200 text-gray-700 rounded text-xs font-medium hover:bg-gray-300 shadow-sm transition-all transform hover:scale-105 active:scale-95"
                                     >
                                       <X className="w-3 h-3" />
                                     </button>
@@ -718,24 +1003,33 @@ export const ModuleEditor: React.FC<ModuleEditorProps> = ({ training, onBack }) 
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setSelectedModule(module);
+                                    setCurrentView('sections'); // Force sections view when clicking on section
                                     // Scroll to section in main view
                                     const sectionElement = document.getElementById(`section-${section.id}`);
                                     if (sectionElement) {
                                       sectionElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
                                     }
                                   }}
-                                  className={`flex items-center text-xs group hover:bg-white hover:shadow-sm p-2 rounded transition-all cursor-move ${
+                                  className={`flex items-center text-xs group/section hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 px-2 py-1.5 rounded-lg transition-all cursor-move border-2 ${
                                     dragOverSectionIndex === idx 
-                                      ? 'border-t-2 border-blue-500' 
-                                      : ''
+                                      ? 'border-blue-400 bg-blue-50 shadow-md' 
+                                      : 'border-transparent hover:border-blue-200 hover:shadow-sm'
                                   }`}
                                 >
-                                  <GripVertical className="w-3 h-3 text-gray-400 mr-1 flex-shrink-0" />
-                                  <span className="text-gray-400 mr-2 flex-shrink-0">{idx + 1}.</span>
-                                  <span className="text-gray-700 line-clamp-1 flex-1">{section.title}</span>
+                                  <GripVertical className="w-3 h-3 text-gray-400 group-hover/section:text-blue-500 mr-1.5 flex-shrink-0 transition-colors" />
+                                  <span className={`font-bold mr-1.5 flex-shrink-0 text-xs ${
+                                    selectedModule?.id === module.id 
+                                      ? 'text-blue-600' 
+                                      : 'text-gray-400 group-hover/section:text-blue-500'
+                                  }`}>{idx + 1}.</span>
+                                  <span className={`line-clamp-1 flex-1 font-medium text-xs ${
+                                    selectedModule?.id === module.id 
+                                      ? 'text-gray-800' 
+                                      : 'text-gray-700 group-hover/section:text-gray-900'
+                                  }`}>{section.title}</span>
                                   <button
                                     onClick={(e) => handleStartEditSection(section, module.id!, e)}
-                                    className="opacity-0 group-hover:opacity-100 p-1 hover:bg-blue-100 rounded ml-2 flex-shrink-0"
+                                    className="opacity-0 group-hover/section:opacity-100 p-1 hover:bg-blue-100 rounded ml-1.5 flex-shrink-0 transition-all transform hover:scale-110"
                                   >
                                     <Edit2 className="w-3 h-3 text-blue-600" />
                                   </button>
@@ -751,123 +1045,185 @@ export const ModuleEditor: React.FC<ModuleEditorProps> = ({ training, onBack }) 
                         e.stopPropagation();
                         handleDeleteModule(module.id!);
                       }}
-                      className="p-1 text-red-600 hover:bg-red-50 rounded"
+                      className="p-1.5 text-red-500 hover:bg-red-50 hover:text-red-700 rounded-lg transition-all transform hover:scale-110 active:scale-95 opacity-0 group-hover/module:opacity-100 shadow-sm hover:shadow-md"
+                      title="Delete module"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
+                  )}
                 </div>
               ))}
 
               {modules.length === 0 && !editingModule && (
-                <p className="text-center text-gray-500 py-8">No modules yet</p>
+                <div className="flex flex-col items-center justify-center py-12 px-4">
+                  <div className="w-20 h-20 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center mb-4">
+                    <FileText className="w-10 h-10 text-gray-400" />
+                  </div>
+                  <p className="text-center text-gray-500 font-medium">No modules</p>
+                  <p className="text-center text-gray-400 text-sm mt-1">Click + to create</p>
+                </div>
               )}
             </div>
 
             {/* Create Module Form - Displayed at bottom */}
             {editingModule && (
-              <div className="mt-4 p-4 bg-gray-50 rounded-lg space-y-3 border-2 border-blue-200">
-                <h3 className="font-medium text-gray-900 mb-2">New Module</h3>
+              <div className="mt-2 p-2.5 bg-gradient-to-br from-blue-50 via-purple-50 to-blue-50 rounded-xl space-y-2 border-2 border-blue-300 shadow-md">
+                <h3 className="font-bold text-gray-900 mb-1 flex items-center text-sm">
+                  <Sparkles className="w-3.5 h-3.5 mr-1.5 text-blue-600" />
+                  New Module
+                </h3>
                 <input
                   type="text"
                   placeholder="Module title"
                   value={moduleForm.title}
                   onChange={(e) => setModuleForm({ ...moduleForm, title: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                  className="w-full px-2.5 py-1.5 border-2 border-blue-200 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white shadow-sm"
                 />
                 <textarea
                   placeholder="Module description"
                   value={moduleForm.description}
                   onChange={(e) => setModuleForm({ ...moduleForm, description: e.target.value })}
                   rows={2}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                  className="w-full px-2.5 py-1.5 border-2 border-blue-200 rounded-lg text-xs resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white shadow-sm"
                 />
                 <input
                   type="number"
                   placeholder="Duration (minutes)"
                   value={moduleForm.estimatedDuration}
                   onChange={(e) => setModuleForm({ ...moduleForm, estimatedDuration: parseInt(e.target.value) || 0 })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                  className="w-full px-2.5 py-1.5 border-2 border-blue-200 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white shadow-sm"
                 />
-                <div className="flex flex-col space-y-2">
+                <div className="flex flex-col space-y-1.5 pt-1">
                   <button
                     onClick={() => handleCreateModule(true)}
-                    className="w-full px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm flex items-center justify-center"
+                    className="w-full px-2.5 py-1.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 text-xs font-semibold flex items-center justify-center shadow-sm hover:shadow-md transition-all transform hover:scale-105 active:scale-95"
                   >
                     Save & Add Sections
-                    <ArrowRight className="w-4 h-4 ml-1" />
+                    <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
                   </button>
-                  <div className="flex space-x-2">
+                  <div className="flex space-x-1.5">
                     <button
                       onClick={() => handleCreateModule(false)}
-                      className="flex-1 px-3 py-2 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 text-sm"
+                      className="flex-1 px-2 py-1.5 border-2 border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 text-xs font-medium shadow-sm hover:shadow-md transition-all transform hover:scale-105 active:scale-95"
                     >
-                      <Save className="w-4 h-4 inline mr-1" />
+                      <Save className="w-3.5 h-3.5 inline mr-1" />
                       Save
                     </button>
                     <button
                       onClick={() => setEditingModule(false)}
-                      className="px-3 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 text-sm"
+                      className="px-2 py-1.5 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 text-xs font-medium shadow-sm hover:shadow-md transition-all transform hover:scale-105 active:scale-95"
                     >
-                      <X className="w-4 h-4" />
+                      <X className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 </div>
               </div>
             )}
-
-            {/* Add Another Module Button */}
-            {!editingModule && modules.length > 0 && (
-              <button
-                onClick={() => setEditingModule(true)}
-                className="w-full mt-4 px-4 py-3 border-2 border-dashed border-gray-300 text-gray-600 rounded-lg hover:border-blue-500 hover:text-blue-600 hover:bg-blue-50 transition-all flex items-center justify-center"
-              >
-                <Plus className="w-5 h-5 mr-2" />
-                Add Another Module
-              </button>
-            )}
           </div>
+
+          {/* Resize Handle - Only visible when not collapsed */}
+          {!sidebarCollapsed && (
+            <div
+              onMouseDown={startResize}
+              className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize group/handle"
+              style={{ 
+                zIndex: 50,
+                right: '-4px' // Extend outside for easier grabbing
+              }}
+            >
+              {/* Visual indicator */}
+              <div 
+                className={`absolute right-1 top-0 bottom-0 w-1 rounded-full transition-all ${
+                  isResizing 
+                    ? 'bg-blue-500 w-1' 
+                    : 'bg-gray-300 group-hover/handle:bg-blue-400 group-hover/handle:w-1'
+                }`}
+              />
+              {/* Drag handle pill */}
+              <div className={`absolute right-0 top-1/2 -translate-y-1/2 w-3 h-20 bg-blue-500 rounded-l-lg transition-all ${
+                isResizing 
+                  ? 'opacity-100 shadow-lg' 
+                  : 'opacity-0 group-hover/handle:opacity-100 group-hover/handle:shadow-md'
+              }`}>
+                <div className="absolute inset-0 flex flex-col items-center justify-center space-y-1 px-0.5">
+                  <div className="w-0.5 h-1 bg-white rounded-full opacity-70" />
+                  <div className="w-0.5 h-1 bg-white rounded-full opacity-70" />
+                  <div className="w-0.5 h-1 bg-white rounded-full opacity-70" />
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Module Content - With left margin for fixed sidebar */}
-        <div className="ml-96 px-6">
+        <div 
+          className={`px-6 ${!isResizing ? 'transition-all duration-300' : ''}`}
+          style={{
+            marginLeft: sidebarCollapsed ? '104px' : `${sidebarWidth + 48}px` // +48px for left-6 padding
+          }}
+        >
           {selectedModule ? (
             <div className="bg-white rounded-lg shadow-md p-6 flex flex-col overflow-hidden" style={{ minHeight: 'calc(100vh - 10rem)' }}>
-              {/* Header - Fixed */}
-              <div className="flex items-center justify-between mb-6 flex-shrink-0">
-                <h2 className="text-2xl font-bold">{selectedModule.title}</h2>
-                <button
-                  onClick={() => setShowQuizBuilder(true)}
-                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-                >
-                  Manage Quizzes
-                </button>
-              </div>
+              {/* Header - Fixed (hidden for final exam) */}
+              {currentView !== 'finalExam' && (
+                <div className="flex items-center justify-between mb-6 flex-shrink-0">
+                  <div className="flex items-center space-x-3">
+                    <h2 className="text-2xl font-bold">{selectedModule.title}</h2>
+                    <button
+                      onClick={() => setShowModuleSettings(true)}
+                      className="p-2 hover:bg-purple-50 text-purple-600 rounded-lg transition-colors"
+                      title="Edit module"
+                    >
+                      <Edit2 className="w-5 h-5" />
+                    </button>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <button
+                      onClick={() => {
+                        setSectionForm({
+                          title: '',
+                          type: 'video',
+                          content: {},
+                        });
+                        setSectionCreationStep(1);
+                      }}
+                      className="p-2.5 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl hover:from-green-600 hover:to-green-700 transition-all shadow-md hover:shadow-xl transform hover:scale-110 active:scale-95"
+                      title="Add a section"
+                    >
+                      <Plus className="w-5 h-5" />
+                    </button>
+                    
+                    {/* Quiz Button */}
+                    <button
+                      onClick={() => setShowQuizBuilder(true)}
+                      className={`px-4 py-2.5 rounded-xl font-medium transition-all shadow-md hover:shadow-xl transform hover:scale-105 active:scale-95 flex items-center space-x-2 ${
+                        quizzesCount.get(selectedModule.id!) 
+                          ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white hover:from-purple-600 hover:to-purple-700' 
+                          : 'bg-white border-2 border-purple-300 text-purple-600 hover:bg-purple-50'
+                      }`}
+                      title={quizzesCount.get(selectedModule.id!) ? 'View quizzes' : 'Create a quiz'}
+                    >
+                      <Award className="w-4 h-4" />
+                      <span className="text-sm">
+                        {quizzesCount.get(selectedModule.id!) 
+                          ? `Quiz (${quizzesCount.get(selectedModule.id!)})` 
+                          : 'Add Quiz'}
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Scrollable Content */}
               <div className="flex-1 overflow-y-auto pr-2">
-                <p className="text-gray-600 mb-6">{selectedModule.description}</p>
+                {/* Only show description when viewing sections, not quiz or final exam */}
+                {currentView === 'sections' && (
+                  <p className="text-gray-600 mb-6">{selectedModule.description}</p>
+                )}
 
                 {/* Add Section Form - Progressive Steps */}
                 <div className="mb-6">
-                {/* Step 0: Button Only */}
-                {sectionCreationStep === 0 && (
-                  <button
-                    onClick={() => {
-                      setSectionForm({
-                        title: '',
-                        type: 'video',
-                        content: {},
-                      });
-                      setSectionCreationStep(1);
-                    }}
-                    className="w-full px-6 py-4 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all shadow-md hover:shadow-lg flex items-center justify-center text-lg font-semibold"
-                  >
-                    <Plus className="w-6 h-6 mr-2" />
-                    Create New Section
-                  </button>
-                )}
-
                 {/* Step 1: Title Only */}
                 {sectionCreationStep === 1 && (
                   <div className="p-6 bg-blue-50 rounded-lg border-2 border-blue-200">
@@ -1014,7 +1370,8 @@ export const ModuleEditor: React.FC<ModuleEditorProps> = ({ training, onBack }) 
                 )}
               </div>
 
-              {/* Sections List */}
+              {/* Sections List - Only show if no quiz or explicitly viewing sections */}
+              {currentView === 'sections' && (
               <div className="space-y-4">
                 <h3 className="font-medium">Sections</h3>
                 
@@ -1276,30 +1633,109 @@ export const ModuleEditor: React.FC<ModuleEditorProps> = ({ training, onBack }) 
                   })
                 ) : (
                   sectionCreationStep === 0 && (
-                    <p className="text-center text-gray-500 py-8">No sections yet. Click "Create New Section" above to get started.</p>
+                    <div className="flex flex-col items-center justify-center py-12">
+                      <div className="w-24 h-24 rounded-full bg-gradient-to-br from-green-100 to-green-200 flex items-center justify-center mb-4">
+                        <FileText className="w-12 h-12 text-green-600" />
+                      </div>
+                      <p className="text-center text-gray-600 font-medium mb-2">Aucune section</p>
+                      <p className="text-center text-gray-400 text-sm">Cliquez sur le bouton <span className="inline-flex items-center px-2 py-0.5 rounded bg-green-100 text-green-700 font-semibold mx-1"><Plus className="w-3 h-3 mr-0.5" />Ajouter</span> en haut</p>
+                    </div>
                   )
                 )}
-
-                {/* Add Another Section Button */}
-                {sectionCreationStep === 0 && selectedModule.sections && selectedModule.sections.length > 0 && (
-                  <button
-                    onClick={() => {
-                      setSectionForm({
-                        title: '',
-                        type: 'text',
-                        content: { text: '', keyPoints: [] },
-                      });
-                      setSectionCreationStep(1); // Start at title input
-                    }}
-                    className="w-full mt-4 px-4 py-3 border-2 border-dashed border-gray-300 text-gray-600 rounded-lg hover:border-green-500 hover:text-green-600 hover:bg-green-50 transition-all flex items-center justify-center"
-                  >
-                    <Plus className="w-5 h-5 mr-2" />
-                    Add Another Section
-                  </button>
-                )}
               </div>
+              )}
+
+              {/* Quiz View - Display quiz questions inline */}
+              {currentView === 'quiz' && (
+                <QuizTaker 
+                  moduleId={selectedModule.id!} 
+                  trainingId={training.id!}
+                  onQuizComplete={(completed) => setIsQuizCompleted(completed)}
+                />
+              )}
+
+              {/* Final Exam View - Display final exam after last module */}
+              {currentView === 'finalExam' && finalExam && (
+                <div className="space-y-4">
+                  <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-300 rounded-xl p-4 mb-4">
+                    <div className="flex items-center space-x-3">
+                      <Award className="w-8 h-8 text-amber-600" />
+                      <div>
+                        <h3 className="text-xl font-bold text-amber-900">Final Exam</h3>
+                        <p className="text-sm text-amber-700">{finalExam.description || 'Comprehensive final examination covering all modules'}</p>
+                      </div>
+                    </div>
+                  </div>
+                  <QuizTaker 
+                    moduleId="final-exam" 
+                    trainingId={training.id!}
+                    onQuizComplete={(completed) => setIsFinalExamCompleted(completed)}
+                  />
+                </div>
+              )}
               </div>
               {/* End of Scrollable Content */}
+
+              {/* Next Button - Fixed at Bottom */}
+              <div className="border-t border-gray-200 p-4 bg-gray-50 flex-shrink-0">
+                <button
+                  onClick={() => {
+                    if (currentView === 'sections') {
+                      // Check if there are quizzes for this module
+                      const hasQuiz = quizzesCount.get(selectedModule.id!) && quizzesCount.get(selectedModule.id!)! > 0;
+                      
+                      if (hasQuiz) {
+                        // Go to quiz view
+                        setCurrentView('quiz');
+                      } else {
+                        // No quiz, check if this is the last module
+                        const currentIndex = modules.findIndex(m => m.id === selectedModule.id);
+                        if (currentIndex < modules.length - 1) {
+                          // Go to next module
+                          const nextIndex = currentIndex + 1;
+                          setSelectedModule(modules[nextIndex]);
+                        } else {
+                          // Last module, check if final exam exists
+                          if (finalExam) {
+                            setCurrentView('finalExam');
+                          }
+                        }
+                      }
+                    } else if (currentView === 'quiz') {
+                      // Currently in quiz view, check if this is the last module
+                      const currentIndex = modules.findIndex(m => m.id === selectedModule.id);
+                      if (currentIndex < modules.length - 1) {
+                        // Go to next module
+                        const nextIndex = currentIndex + 1;
+                        setSelectedModule(modules[nextIndex]);
+                      } else {
+                        // Last module completed, show final exam if exists
+                        if (finalExam) {
+                          setCurrentView('finalExam');
+                        }
+                      }
+                    } else if (currentView === 'finalExam') {
+                      // Final exam completed, nothing more to do
+                      // Could show completion message or redirect
+                    }
+                  }}
+                  disabled={
+                    (currentView === 'finalExam' && !isFinalExamCompleted)
+                  }
+                  className="w-full px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl hover:from-blue-600 hover:to-blue-700 transition-all shadow-md hover:shadow-xl transform hover:scale-105 active:scale-95 flex items-center justify-center space-x-2 font-semibold disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:shadow-md"
+                >
+                  <span>
+                    {currentView === 'finalExam' && isFinalExamCompleted 
+                      ? 'Training Completed!' 
+                      : currentView === 'finalExam' 
+                        ? 'Complete Final Exam' 
+                        : 'Next'}
+                  </span>
+                  {currentView !== 'finalExam' || !isFinalExamCompleted ? (
+                    <ArrowRight className="w-5 h-5" />
+                  ) : null}
+                </button>
+              </div>
             </div>
           ) : (
             <div className="bg-white rounded-lg shadow-md p-12 text-center flex flex-col items-center justify-center" style={{ minHeight: 'calc(100vh - 10rem)' }}>
@@ -1321,6 +1757,30 @@ export const ModuleEditor: React.FC<ModuleEditorProps> = ({ training, onBack }) 
             alert('Examen final créé avec succès! ' + exam.questions?.length + ' questions générées.');
           }}
           onClose={() => setShowFinalExamGenerator(false)}
+        />
+      )}
+
+      {/* Training Settings Modal */}
+      {showTrainingSettings && (
+        <TrainingSettingsModal
+          training={training}
+          onClose={() => setShowTrainingSettings(false)}
+          onUpdate={() => {
+            // Force re-render to show updated training info
+            loadModules();
+          }}
+        />
+      )}
+
+      {/* Module Settings Modal */}
+      {showModuleSettings && selectedModule && (
+        <ModuleSettingsModal
+          module={selectedModule}
+          onClose={() => setShowModuleSettings(false)}
+          onUpdate={() => {
+            // Force re-render to show updated module info
+            loadModules();
+          }}
         />
       )}
     </div>

@@ -15,7 +15,13 @@ class ApiClientClass {
   private token: string | null = null;
 
   constructor() {
-    this.baseURL = import.meta.env.VITE_API_URL || process.env.NEXT_PUBLIC_API_URL || 'https://api-training.harx.ai';
+    // Use same logic as manualTrainingApi.ts for consistency
+    if (import.meta.env.VITE_API_BASE_URL) {
+      this.baseURL = import.meta.env.VITE_API_BASE_URL;
+    } else {
+      const isDevelopment = import.meta.env.DEV || import.meta.env.MODE === 'development';
+      this.baseURL = isDevelopment ? 'http://localhost:5010' : 'https://api-training.harx.ai';
+    }
   }
 
   setToken(token: string) {
@@ -106,23 +112,59 @@ class ApiClientClass {
       method: 'POST',
       headers: {
         ...(token && { Authorization: `Bearer ${token}` }),
+        // Don't set Content-Type for FormData - browser will set it with boundary
       },
       body: formData,
     };
 
     const url = `${this.baseURL}${endpoint}`;
-    const response = await fetch(url, config);
-    const data = await response.json();
+    
+    try {
+      const response = await fetch(url, config);
+      
+      // Check if response has content before trying to parse JSON
+      const contentType = response.headers.get('content-type');
+      let data: any;
+      
+      if (contentType && contentType.includes('application/json')) {
+        data = await response.json();
+      } else {
+        // If not JSON, read as text
+        const text = await response.text();
+        try {
+          data = JSON.parse(text);
+        } catch {
+          // If text is not JSON, create error object
+          data = { 
+            message: text || 'Upload failed', 
+            error: text || 'Upload failed' 
+          };
+        }
+      }
 
-    if (!response.ok) {
-      throw new ApiError(data.message || 'Upload failed', response.status);
+      if (!response.ok) {
+        throw new ApiError(
+          data.message || data.error || 'Upload failed', 
+          response.status,
+          data.errors
+        );
+      }
+
+      return {
+        data,
+        status: response.status,
+        message: data.message,
+      };
+    } catch (error) {
+      if (error instanceof ApiError) {
+        throw error;
+      }
+      // Network or other errors
+      throw new ApiError(
+        error instanceof Error ? error.message : 'Network error during upload',
+        0
+      );
     }
-
-    return {
-      data,
-      status: response.status,
-      message: data.message,
-    };
   }
 }
 

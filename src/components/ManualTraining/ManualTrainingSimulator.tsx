@@ -124,6 +124,8 @@ export default function ManualTrainingSimulator({
   const [questionTimer, setQuestionTimer] = useState(0); // Timer for current question in seconds
   const [penaltyEndTime, setPenaltyEndTime] = useState<Map<string, number>>(new Map()); // quizId-questionIdx -> timestamp when penalty ends
   const [penaltyTimeLeft, setPenaltyTimeLeft] = useState(0); // Seconds left in penalty
+  const [showCertification, setShowCertification] = useState(false);
+  const [finalExamCompleted, setFinalExamCompleted] = useState(false);
   
   // Track violation types per quiz
   const [violationTypes, setViolationTypes] = useState<Map<string, Set<string>>>(new Map()); // quizId -> Set of violation types
@@ -641,6 +643,22 @@ export default function ManualTrainingSimulator({
     }
   };
 
+  const checkAndShowCertification = () => {
+    // Check if all modules (except final exam) are completed
+    const regularModules = modules.filter(m => m.id !== 'final-exam');
+    const allModulesCompleted = regularModules.every(module => completedModules.has(module.id));
+    
+    // Check if final exam is completed and passed
+    const finalExamModule = modules.find(m => m.id === 'final-exam');
+    const finalExamQuiz = finalExamModule ? quizzes.get('final-exam') : null;
+    const finalExamPassed = finalExamQuiz && finalExamCompleted && 
+      (quizScores.get(finalExamQuiz.id) || 0) >= (finalExamQuiz.passingScore || 80);
+    
+    if (allModulesCompleted && finalExamPassed) {
+      setShowCertification(true);
+    }
+  };
+
   const handleModuleComplete = () => {
     if (currentModule) {
       setCompletedModules(prev => new Set(prev).add(currentModule.id));
@@ -651,9 +669,12 @@ export default function ManualTrainingSimulator({
       setCurrentModuleIndex(prev => prev + 1);
       setCurrentSectionIndex(0);
     } else {
-      // All modules completed
-      alert('🎉 Congratulations! You have completed all modules!');
-      onClose();
+      // All modules completed - check for certification
+      checkAndShowCertification();
+      if (!showCertification) {
+        // If no certification yet, just show completion message
+        alert('🎉 Congratulations! You have completed all modules!');
+      }
     }
   };
 
@@ -1016,6 +1037,16 @@ export default function ManualTrainingSimulator({
         // Mark quiz section as completed
         if (currentSection?.id) {
           setCompletedSections(prev => new Set(prev).add(currentSection.id));
+        }
+
+        // Check if final exam is completed and passed
+        if (currentModule?.id === 'final-exam') {
+          const passingScore = quiz.passingScore || 80;
+          if (finalScore >= passingScore) {
+            setFinalExamCompleted(true);
+            // Check if all modules are completed to show certification
+            setTimeout(() => checkAndShowCertification(), 1000);
+          }
         }
       } catch (error) {
         console.error('❌ Error submitting quiz:', error);
@@ -1436,6 +1467,95 @@ export default function ManualTrainingSimulator({
     );
   };
 
+
+  // Certification Screen
+  if (showCertification) {
+    const finalExamModule = modules.find(m => m.id === 'final-exam');
+    const finalExamQuiz = finalExamModule ? quizzes.get('final-exam') : null;
+    const finalExamScore = finalExamQuiz ? (quizScores.get(finalExamQuiz.id) || 0) : 0;
+    const completionDate = new Date().toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
+
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-amber-50 via-yellow-50 to-orange-50 flex items-center justify-center p-6">
+        <div className="max-w-4xl w-full bg-white rounded-2xl shadow-2xl overflow-hidden border-4 border-amber-400">
+          {/* Header with gradient */}
+          <div className="bg-gradient-to-r from-amber-400 via-yellow-400 to-orange-400 p-8 text-center">
+            <div className="flex justify-center mb-4">
+              <div className="w-32 h-32 bg-white rounded-full flex items-center justify-center shadow-lg">
+                <Trophy className="w-20 h-20 text-amber-600" />
+              </div>
+            </div>
+            <h1 className="text-5xl font-bold text-white mb-2">Certificate of Completion</h1>
+            <p className="text-xl text-amber-900 font-semibold">Training Program</p>
+          </div>
+
+          {/* Certificate Content */}
+          <div className="p-12 text-center">
+            <p className="text-lg text-gray-700 mb-6">
+              This is to certify that
+            </p>
+            <h2 className="text-4xl font-bold text-gray-900 mb-8 border-b-2 border-amber-300 pb-4 inline-block">
+              [Your Name]
+            </h2>
+            <p className="text-xl text-gray-700 mb-4">
+              has successfully completed the training program
+            </p>
+            <h3 className="text-3xl font-bold text-indigo-700 mb-8">
+              {trainingTitle}
+            </h3>
+            
+            {/* Stats */}
+            <div className="grid grid-cols-3 gap-6 my-8">
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-lg border-2 border-blue-200">
+                <div className="text-3xl font-bold text-blue-600 mb-1">
+                  {modules.filter(m => m.id !== 'final-exam').length}
+                </div>
+                <div className="text-sm text-gray-600">Modules Completed</div>
+              </div>
+              <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-lg border-2 border-green-200">
+                <div className="text-3xl font-bold text-green-600 mb-1">
+                  {totalSections}
+                </div>
+                <div className="text-sm text-gray-600">Sections Completed</div>
+              </div>
+              <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-lg border-2 border-purple-200">
+                <div className="text-3xl font-bold text-purple-600 mb-1">
+                  {finalExamScore}%
+                </div>
+                <div className="text-sm text-gray-600">Final Exam Score</div>
+              </div>
+            </div>
+
+            <div className="mt-8 pt-8 border-t-2 border-gray-200">
+              <p className="text-gray-600 mb-2">Date of Completion</p>
+              <p className="text-xl font-semibold text-gray-800">{completionDate}</p>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="mt-10 flex justify-center space-x-4">
+              <button
+                onClick={() => window.print()}
+                className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all font-semibold shadow-lg flex items-center space-x-2"
+              >
+                <FileText className="w-5 h-5" />
+                <span>Print Certificate</span>
+              </button>
+              <button
+                onClick={onClose}
+                className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-all font-semibold"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
