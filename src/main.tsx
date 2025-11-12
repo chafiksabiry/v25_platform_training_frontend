@@ -37,8 +37,16 @@ console.log('[Training] Stored token from localStorage:', token);
 // Check authentication - redirect if not logged in (check both userId and token)
 if (!token || !userId){
   console.log('[Training] Authentication failed - userId:', userId, 'token:', token ? 'Present' : 'Not found');
-  console.log('[Training] Redirecting to /app1');
-  window.location.href = '/app1';
+  console.log('[Training] Redirecting to login page');
+  
+  // Redirect to main app login page
+  if (window.location.hostname === 'training.harx.ai') {
+    // If accessed directly via training.harx.ai, redirect to main app
+    window.location.href = 'https://v25.harx.ai/app1';
+  } else {
+    // If accessed via v25.harx.ai (Qiankun), redirect to app1
+    window.location.href = '/app1';
+  }
 } else {
   // Decode token and get user info
   const userInfo = decodeToken(token);

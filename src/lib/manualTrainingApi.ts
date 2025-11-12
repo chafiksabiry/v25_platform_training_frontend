@@ -9,14 +9,14 @@ const getApiBaseUrl = () => {
     return import.meta.env.VITE_API_BASE_URL;
   }
   
-  // Sinon, détecter automatiquement selon l'environnement
-  const isDevelopment = import.meta.env.DEV || import.meta.env.MODE === 'development';
+  // Détecter selon l'hostname
+  const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
   
-  if (isDevelopment) {
+  if (isLocal) {
     // Environnement local
     return 'http://localhost:5010';
   } else {
-    // Environnement production - remplacez par votre URL de production
+    // Environnement production
     return 'https://api-training.harx.ai';
   }
 };

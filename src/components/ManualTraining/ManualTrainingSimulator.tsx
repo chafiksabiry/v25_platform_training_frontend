@@ -86,7 +86,10 @@ interface ManualTrainingSimulatorProps {
 }
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 
-                (import.meta.env.DEV ? 'http://localhost:5010' : '  https://api-training.harx.ai');
+                (() => {
+                  const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+                  return isLocal ? 'http://localhost:5010' : 'https://api-training.harx.ai';
+                })();
 
 export default function ManualTrainingSimulator({ 
   trainingId, 

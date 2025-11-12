@@ -3,7 +3,15 @@ import { Sparkles, Upload, Loader2, CheckCircle2, AlertCircle, ArrowRight, FileT
 import { cloudinaryService, CloudinaryUploadResult } from '../../lib/cloudinaryService';
 import axios from 'axios';
 
-const API_BASE = 'http://localhost:5010';
+const getApiBaseUrl = () => {
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL;
+  }
+  const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  return isLocal ? 'http://localhost:5010' : 'https://api-training.harx.ai';
+};
+
+const API_BASE = getApiBaseUrl();
 
 interface UploadedFile {
   id: string;

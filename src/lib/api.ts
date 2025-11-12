@@ -20,7 +20,8 @@ class ApiClientClass {
       this.baseURL = import.meta.env.VITE_API_BASE_URL;
     } else {
       const isDevelopment = import.meta.env.DEV || import.meta.env.MODE === 'development';
-      this.baseURL = isDevelopment ? 'http://localhost:5010' : 'https://api-training.harx.ai';
+      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+      this.baseURL = isLocal ? 'http://localhost:5010' : 'https://api-training.harx.ai';
     }
   }
 

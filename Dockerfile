@@ -13,7 +13,13 @@ RUN npm install
 # Copy the source code and serve configuration
 COPY . .
 
-# Build the app
+# Build argument for API URL (can be overridden at build time)
+ARG VITE_API_BASE_URL=https://api-training.harx.ai
+
+# Set environment variable for API URL (default for standalone deployment)
+ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
+
+# Build the app with environment variables
 RUN npm run build
 
 # Install a lightweight HTTP server to serve the build
