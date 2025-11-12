@@ -1,16 +1,33 @@
 import React from 'react';
 import './public-path';  // For proper Qiankun integration
 import { qiankunWindow } from 'vite-plugin-qiankun/dist/helper';
+
+console.log('[Training] main.tsx is being executed');
+
+import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
 import ErrorBoundary from './components/ErrorBoundary/ErrorBoundary';
 import './index.css';
+import Cookies from 'js-cookie';
+
+const userId = Cookies.get('userId');
+console.log('[Training] Stored userId from cookie:', userId);
+
+// Check authentication - redirect if not logged in
+if (userId == null){
+  console.log('[Training] No userId found, redirecting to /app1');
+  window.location.href = '/app1';
+}
 
 // Store the root instance for proper unmounting
 let root: ReturnType<typeof createRoot> | null = null;
 
 function render(props: { container?: HTMLElement }) {
   const { container } = props;
+  console.log('[Training] Render function called with props:', props);
+  console.log('[Training] Container provided:', container);
+  
   const rootElement = container
     ? container.querySelector('#root')
     : document.getElementById('root');
@@ -19,24 +36,37 @@ function render(props: { container?: HTMLElement }) {
     console.log('[Training] Rendering in container:', rootElement);
     // Create the root instance if it doesn't exist
     if (!root) {
+      console.log('[Training] Creating new root instance');
       root = createRoot(rootElement);
     }
+    console.log('[Training] Rendering App component');
     root.render(
-      <React.StrictMode>
+      <StrictMode>
         <ErrorBoundary>
           <App />
         </ErrorBoundary>
-      </React.StrictMode>
+      </StrictMode>
     );
+    console.log('[Training] App component rendered');
   } else {
     console.warn('[Training] Root element not found!');
+    console.log('[Training] Document body:', document.body.innerHTML);
   }
 }
 
 export async function bootstrap() {
   console.time('[Training] bootstrap');
   console.log('[Training] Bootstrapping...');
-  return Promise.resolve();
+  
+  try {
+    // Immediate resolution to avoid timeouts
+    console.log('[Training] Bootstrap completed successfully');
+    console.timeEnd('[Training] bootstrap');
+  } catch (error) {
+    console.error('[Training] Bootstrap failed:', error);
+    console.timeEnd('[Training] bootstrap');
+    throw error;
+  }
 }
 
 export async function mount(props: any) {
@@ -68,10 +98,30 @@ export async function unmount(props: any) {
   return Promise.resolve();
 }
 
+// Add error handling for module loading
+window.addEventListener('error', (event) => {
+  console.error('[Training] Error loading module:', event);
+});
+
 // Standalone mode: If the app is running outside Qiankun, it will use this code
 if (!qiankunWindow.__POWERED_BY_QIANKUN__) {
   console.log('[Training] Running in standalone mode');
-  render({});
+  console.log('[Training] Document ready state:', document.readyState);
+  
+  // Wait for the DOM to be fully loaded
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      console.log('[Training] DOM content loaded, rendering app');
+      render({});
+    });
+  } else {
+    console.log('[Training] DOM already loaded, rendering app immediately');
+    try {
+      render({});
+    } catch (error) {
+      console.error('[Training] Error rendering app:', error);
+    }
+  }
 } else {
   console.log('[Training] Running inside Qiankun');
   // Qiankun will control the lifecycle
