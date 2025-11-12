@@ -38,13 +38,14 @@ export default defineConfig(({ mode }) => {
       fs: {
         strict: true, // Ensure static assets are correctly resolved
       },
-      proxy: {
-        '/training': {
-          target: 'https://training.harx.ai',
-          changeOrigin: true,
-          secure: false,
-        },
-      },
+      // Proxy commented out - uncomment if you need to proxy to external server
+      // proxy: {
+      //   '/training': {
+      //     target: 'https://training.harx.ai',
+      //     changeOrigin: true,
+      //     secure: false,
+      //   },
+      // },
     },
     build: {
       target: 'esnext',
