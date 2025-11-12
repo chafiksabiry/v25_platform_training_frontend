@@ -11,6 +11,24 @@ import ErrorBoundary from './components/ErrorBoundary/ErrorBoundary';
 import './index.css';
 import Cookies from 'js-cookie';
 
+// Function to decode JWT token
+const decodeToken = (token: string) => {
+  try {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    return JSON.parse(jsonPayload);
+  } catch (error) {
+    console.error('[Training] Error decoding token:', error);
+    return null;
+  }
+};
+
 const userId = Cookies.get('userId');
 const token = localStorage.getItem('token');
 console.log('[Training] Stored userId from cookie:', userId);
@@ -21,6 +39,25 @@ if (!token || !userId){
   console.log('[Training] Authentication failed - userId:', userId, 'token:', token ? 'Present' : 'Not found');
   console.log('[Training] Redirecting to /app1');
   window.location.href = '/app1';
+} else {
+  // Decode token and get user info
+  const userInfo = decodeToken(token);
+  console.log('[Training] Decoded user info from token:', userInfo);
+  
+  if (userInfo) {
+    console.log('[Training] User ID:', userInfo.userId || userInfo.id || userInfo.sub);
+    console.log('[Training] User email:', userInfo.email);
+    console.log('[Training] User name:', userInfo.name || userInfo.fullName);
+    console.log('[Training] Token expiry:', userInfo.exp ? new Date(userInfo.exp * 1000) : 'Not available');
+    
+    // Check if token is expired
+    if (userInfo.exp && userInfo.exp * 1000 < Date.now()) {
+      console.warn('[Training] Token is expired, redirecting to /app1');
+      localStorage.removeItem('token');
+      Cookies.remove('userId');
+      window.location.href = '/app1';
+    }
+  }
 }
 
 // Store the root instance for proper unmounting
