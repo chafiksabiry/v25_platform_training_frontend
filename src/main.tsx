@@ -12,11 +12,14 @@ import './index.css';
 import Cookies from 'js-cookie';
 
 const userId = Cookies.get('userId');
+const token = localStorage.getItem('token');
 console.log('[Training] Stored userId from cookie:', userId);
+console.log('[Training] Stored token from localStorage:', token);
 
-// Check authentication - redirect if not logged in
-if (userId == null){
-  console.log('[Training] No userId found, redirecting to /app1');
+// Check authentication - redirect if not logged in (check both userId and token)
+if (!token || !userId){
+  console.log('[Training] Authentication failed - userId:', userId, 'token:', token ? 'Present' : 'Not found');
+  console.log('[Training] Redirecting to /app1');
   window.location.href = '/app1';
 }
 
