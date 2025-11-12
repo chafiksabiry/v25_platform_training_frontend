@@ -39,8 +39,8 @@ export default defineConfig(({ mode }) => {
         strict: true, // Ensure static assets are correctly resolved
       },
       proxy: {
-        '/api': {
-          target: 'https://api-training.harx.ai',
+        '/training': {
+          target: 'https://training.harx.ai',
           changeOrigin: true,
           secure: false,
         },
