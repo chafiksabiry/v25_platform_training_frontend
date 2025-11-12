@@ -82,9 +82,6 @@ export const ModuleEditor: React.FC<ModuleEditorProps> = ({ training, onBack }) 
   
   // ✨ Section Edit Mode (in main area)
   const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
-  
-  // ✨ Current Section Index - Display one section at a time
-  const [currentSectionIndex, setCurrentSectionIndex] = useState(0);
 
   // ✨ Sidebar Collapse State
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -1394,58 +1391,37 @@ export const ModuleEditor: React.FC<ModuleEditorProps> = ({ training, onBack }) 
               {/* Sections List - Only show if no quiz or explicitly viewing sections */}
               {currentView === 'sections' && (
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-medium">Sections</h3>
-                  {selectedModule.sections && selectedModule.sections.length > 0 && (
-                    <div className="flex items-center space-x-2 text-sm text-gray-600">
-                      <span>
-                        Section {currentSectionIndex + 1} / {selectedModule.sections.length}
-                      </span>
-                    </div>
-                  )}
-                </div>
+                <h3 className="font-medium">Sections</h3>
                 
-                {selectedModule.sections && selectedModule.sections.length > 0 ? (() => {
-                  const sortedSections = [...selectedModule.sections]
-                    .sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0));
-                  
-                  // Only show the current section
-                  const currentSection = sortedSections[currentSectionIndex];
-                  if (!currentSection) {
-                    if (currentSectionIndex > 0) {
-                      setCurrentSectionIndex(0);
-                    }
-                    return null;
-                  }
-                  
-                  // Auto-expand documents and videos by default
-                  const shouldAutoExpand = currentSection.type === 'video' || currentSection.type === 'youtube' || currentSection.type === 'document' || currentSection.type === 'image' || currentSection.type === 'powerpoint';
-                  const isExpanded = shouldAutoExpand || expandedSections.has(currentSection.id!);
-                  const youtubeId = currentSection.content.youtubeUrl ? extractYouTubeId(currentSection.content.youtubeUrl) : null;
-                  
-                  return (
-                    <div key={currentSection.id} id={`section-${currentSection.id}`} className="bg-gray-50 rounded-lg border border-gray-200 overflow-hidden scroll-mt-24">
+                {selectedModule.sections && selectedModule.sections.length > 0 ? (
+                  [...selectedModule.sections]
+                    .sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0))
+                    .map((section) => {
+                    const isExpanded = expandedSections.has(section.id!);
+                    const youtubeId = section.content.youtubeUrl ? extractYouTubeId(section.content.youtubeUrl) : null;
+                    
+                    return (
+                      <div key={section.id} id={`section-${section.id}`} className="bg-gray-50 rounded-lg border border-gray-200 overflow-hidden scroll-mt-24">
                         {/* Section Header */}
                         <div className="p-4 flex items-start justify-between">
                           <div className="flex items-start space-x-3 flex-1">
-                            {getSectionIcon(currentSection.type)}
+                            {getSectionIcon(section.type)}
                             <div className="flex-1">
-                              <h4 className="font-medium text-gray-900">{currentSection.title}</h4>
-                              <p className="text-sm text-gray-600 mt-1">Type: {currentSection.type}</p>
+                              <h4 className="font-medium text-gray-900">{section.title}</h4>
+                              <p className="text-sm text-gray-600 mt-1">Type: {section.type}</p>
                               
-                              {currentSection.content.text && !isExpanded && (
-                                <p className="text-sm text-gray-700 mt-2">{currentSection.content.text.substring(0, 100)}...</p>
+                              {section.content.text && !isExpanded && (
+                                <p className="text-sm text-gray-700 mt-2">{section.content.text.substring(0, 100)}...</p>
                               )}
                             </div>
                           </div>
                           
                           <div className="flex items-center space-x-2">
-                            {/* Collapse/Expand Button - Only for documents/videos (optional) */}
-                            {shouldAutoExpand && (
+                            {/* Play/Expand Button */}
+                            {(section.type === 'video' || section.type === 'youtube' || section.type === 'document' || section.type === 'image' || section.type === 'powerpoint') && (
                               <button
-                                onClick={() => toggleSectionExpanded(currentSection.id!)}
-                                className="p-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors flex items-center space-x-1"
-                                title={isExpanded ? "Hide content" : "Show content"}
+                                onClick={() => toggleSectionExpanded(section.id!)}
+                                className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-1"
                               >
                                 {isExpanded ? (
                                   <>
@@ -1454,8 +1430,8 @@ export const ModuleEditor: React.FC<ModuleEditorProps> = ({ training, onBack }) 
                                   </>
                                 ) : (
                                   <>
-                                    <ChevronDown className="w-4 h-4" />
-                                    <span className="text-xs">Show</span>
+                                    <Play className="w-4 h-4" />
+                                    <span className="text-xs">{section.type === 'image' ? 'View' : 'Play'}</span>
                                   </>
                                 )}
                               </button>
@@ -1463,7 +1439,7 @@ export const ModuleEditor: React.FC<ModuleEditorProps> = ({ training, onBack }) 
                             
                             {/* Delete Button */}
                             <button
-                              onClick={() => handleDeleteSection(currentSection.id!)}
+                              onClick={() => handleDeleteSection(section.id!)}
                               className="p-2 text-red-600 hover:bg-red-50 rounded transition-colors"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -1471,23 +1447,23 @@ export const ModuleEditor: React.FC<ModuleEditorProps> = ({ training, onBack }) 
                           </div>
                         </div>
 
-                        {/* Content - Auto-display for documents and videos */}
+                        {/* Expanded Content */}
                         {isExpanded && (
                           <div className="px-4 pb-4 border-t border-gray-200 bg-white">
 
                             {/* Video Player */}
-                            {currentSection.type === 'video' && currentSection.content.file && (
+                            {section.type === 'video' && section.content.file && (
                               <div className="mt-4">
                                 <video
                                   controls
                                   className="w-full rounded-lg shadow-lg"
                                   style={{ maxHeight: '400px' }}
                                 >
-                                  <source src={currentSection.content.file.url} type="video/mp4" />
+                                  <source src={section.content.file.url} type="video/mp4" />
                                   Your browser does not support the video tag.
                                 </video>
                                 <a
-                                  href={currentSection.content.file.url}
+                                  href={section.content.file.url}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="text-xs text-blue-600 hover:underline mt-2 inline-block"
@@ -1498,20 +1474,20 @@ export const ModuleEditor: React.FC<ModuleEditorProps> = ({ training, onBack }) 
                             )}
 
                             {/* YouTube Player */}
-                            {currentSection.type === 'youtube' && youtubeId && (
+                            {section.type === 'youtube' && youtubeId && (
                               <div className="mt-4">
                                 <div className="relative" style={{ paddingBottom: '56.25%' }}>
                                   <iframe
                                     className="absolute top-0 left-0 w-full h-full rounded-lg shadow-lg"
                                     src={`https://www.youtube.com/embed/${youtubeId}`}
-                                    title={currentSection.title}
+                                    title={section.title}
                                     frameBorder="0"
                                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                                     allowFullScreen
                                   />
                                 </div>
                                 <a
-                                  href={currentSection.content.youtubeUrl}
+                                  href={section.content.youtubeUrl}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="text-xs text-blue-600 hover:underline mt-2 inline-block"
@@ -1522,19 +1498,19 @@ export const ModuleEditor: React.FC<ModuleEditorProps> = ({ training, onBack }) 
                             )}
 
                             {/* Document Viewer */}
-                            {currentSection.type === 'document' && currentSection.content.file && (
+                            {section.type === 'document' && section.content.file && (
                               <div className="mt-4">
                                 <div className="border border-gray-300 rounded-lg overflow-hidden">
                                   <iframe
-                                    src={`https://docs.google.com/viewer?url=${encodeURIComponent(currentSection.content.file.url)}&embedded=true`}
+                                    src={`https://docs.google.com/viewer?url=${encodeURIComponent(section.content.file.url)}&embedded=true`}
                                     className="w-full"
                                     style={{ height: '500px' }}
-                                    title={currentSection.title}
+                                    title={section.title}
                                   />
                                 </div>
                                 <div className="mt-2 flex items-center space-x-3">
                                   <a
-                                    href={currentSection.content.file.url}
+                                    href={section.content.file.url}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="text-xs text-blue-600 hover:underline"
@@ -1542,7 +1518,7 @@ export const ModuleEditor: React.FC<ModuleEditorProps> = ({ training, onBack }) 
                                     Open in new tab →
                                   </a>
                                   <a
-                                    href={currentSection.content.file.url}
+                                    href={section.content.file.url}
                                     download
                                     className="text-xs text-green-600 hover:underline"
                                   >
@@ -1553,7 +1529,7 @@ export const ModuleEditor: React.FC<ModuleEditorProps> = ({ training, onBack }) 
                             )}
 
                             {/* PowerPoint Viewer via Google Docs */}
-                            {currentSection.type === 'powerpoint' && currentSection.content.file && (
+                            {section.type === 'powerpoint' && section.content.file && (
                               <div className="mt-4">
                                 <div className="border-2 border-orange-300 rounded-xl overflow-hidden bg-gradient-to-br from-orange-50 via-yellow-50 to-orange-50">
                                   {/* Header with Title */}
@@ -1563,9 +1539,9 @@ export const ModuleEditor: React.FC<ModuleEditorProps> = ({ training, onBack }) 
                                         <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18.5,9H13V3.5L18.5,9M9.5,11C10.16,11 10.67,11.5 10.67,12.17V17.83C10.67,18.5 10.16,19 9.5,19C8.83,19 8.33,18.5 8.33,17.83V12.17C8.33,11.5 8.83,11 9.5,11M12.83,11H15.17C15.84,11 16.33,11.5 16.33,12.17V17.83C16.33,18.5 15.84,19 15.17,19H12.83C12.17,19 11.67,18.5 11.67,17.83V12.17C11.67,11.5 12.17,11 12.83,11Z"/>
                                       </svg>
                                       <div>
-                                        <h3 className="font-bold text-lg">{currentSection.content.file.name}</h3>
+                                        <h3 className="font-bold text-lg">{section.content.file.name}</h3>
                                         <p className="text-xs text-orange-100">
-                                          PowerPoint Presentation • {(currentSection.content.file.size / (1024 * 1024)).toFixed(2)} MB
+                                          PowerPoint Presentation • {(section.content.file.size / (1024 * 1024)).toFixed(2)} MB
                                         </p>
                                       </div>
                                     </div>
@@ -1589,14 +1565,14 @@ export const ModuleEditor: React.FC<ModuleEditorProps> = ({ training, onBack }) 
                                         📊 PowerPoint Presentation
                                       </h4>
                                       <p className="text-sm text-gray-600">
-                                        File ready to view • {(currentSection.content.file.size / (1024 * 1024)).toFixed(2)} MB
+                                        File ready to view • {(section.content.file.size / (1024 * 1024)).toFixed(2)} MB
                                       </p>
                                     </div>
                                     
                                     {/* Quick Actions */}
                                     <div className="space-y-3">
                                       <a
-                                        href={currentSection.content.file.url}
+                                        href={section.content.file.url}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="flex items-center justify-center w-full px-6 py-4 bg-gradient-to-r from-purple-600 via-blue-600 to-blue-700 hover:from-purple-700 hover:via-blue-700 hover:to-blue-800 text-white rounded-xl font-bold shadow-2xl hover:shadow-3xl transition-all transform hover:scale-105 hover:-translate-y-1"
@@ -1606,8 +1582,8 @@ export const ModuleEditor: React.FC<ModuleEditorProps> = ({ training, onBack }) 
                                       </a>
                                       
                                       <a
-                                        href={currentSection.content.file.url}
-                                        download={currentSection.content.file.name}
+                                        href={section.content.file.url}
+                                        download={section.content.file.name}
                                         className="flex items-center justify-center w-full px-6 py-4 bg-gradient-to-r from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800 text-white rounded-xl font-bold shadow-2xl hover:shadow-3xl transition-all transform hover:scale-105 hover:-translate-y-1"
                                       >
                                         <svg className="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1641,17 +1617,17 @@ export const ModuleEditor: React.FC<ModuleEditorProps> = ({ training, onBack }) 
                             )}
 
                             {/* Image Display */}
-                            {currentSection.type === 'image' && currentSection.content.file && (
+                            {section.type === 'image' && section.content.file && (
                               <div className="mt-4">
                                 <img
-                                  src={currentSection.content.file.url}
-                                  alt={currentSection.title}
+                                  src={section.content.file.url}
+                                  alt={section.title}
                                   className="w-full rounded-lg shadow-lg"
                                   style={{ maxHeight: '600px', objectFit: 'contain' }}
                                 />
                                 <div className="mt-2 flex items-center space-x-3">
                                   <a
-                                    href={currentSection.content.file.url}
+                                    href={section.content.file.url}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="text-xs text-blue-600 hover:underline"
@@ -1659,7 +1635,7 @@ export const ModuleEditor: React.FC<ModuleEditorProps> = ({ training, onBack }) 
                                     View full size →
                                   </a>
                                   <a
-                                    href={currentSection.content.file.url}
+                                    href={section.content.file.url}
                                     download
                                     className="text-xs text-green-600 hover:underline"
                                   >
@@ -1670,48 +1646,10 @@ export const ModuleEditor: React.FC<ModuleEditorProps> = ({ training, onBack }) 
                             )}
                           </div>
                         )}
-                      
-                      {/* Navigation Button - Single Next Button */}
-                      <div className="px-4 pb-4 pt-4 border-t border-gray-200 bg-white flex items-center justify-end">
-                        <button
-                          onClick={() => {
-                            const sortedSections = [...selectedModule.sections]
-                              .sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0));
-                            
-                            // If not on last section, go to next section
-                            if (currentSectionIndex < sortedSections.length - 1) {
-                              setCurrentSectionIndex(prev => prev + 1);
-                              setExpandedSections(new Set()); // Collapse when navigating
-                            } else {
-                              // On last section, check if there's a quiz
-                              const hasQuiz = quizzesCount.get(selectedModule.id!) && quizzesCount.get(selectedModule.id!)! > 0;
-                              if (hasQuiz) {
-                                setCurrentView('quiz');
-                              } else {
-                                // No quiz, go to next module or final exam
-                                const currentModuleIndex = modules.findIndex(m => m.id === selectedModule.id);
-                                if (currentModuleIndex < modules.length - 1) {
-                                  // Go to next module
-                                  setSelectedModule(modules[currentModuleIndex + 1]);
-                                  setCurrentSectionIndex(0);
-                                } else {
-                                  // Last module, check for final exam
-                                  if (finalExam) {
-                                    setCurrentView('finalExam');
-                                  }
-                                }
-                              }
-                            }
-                          }}
-                          className="flex items-center space-x-2 px-6 py-2.5 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-700 hover:via-purple-700 hover:to-pink-700 text-white rounded-lg font-medium transition-colors text-sm shadow-lg"
-                        >
-                          <span>Next</span>
-                          <ArrowRight className="w-4 h-4" />
-                        </button>
                       </div>
-                    </div>
-                  );
-                })() : (
+                    );
+                  })
+                ) : (
                   sectionCreationStep === 0 && (
                     <div className="flex flex-col items-center justify-center py-12">
                       <div className="w-24 h-24 rounded-full bg-gradient-to-br from-green-100 to-green-200 flex items-center justify-center mb-4">

@@ -532,21 +532,21 @@ export const AIContentOrganizer: React.FC<AIContentOrganizerProps> = ({
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-3 flex-1">
-                          {getFileIcon(file.type)}
+                        {getFileIcon(file.type)}
                           <div className="flex-1">
-                            <p className="font-medium text-gray-900">{file.name}</p>
-                            <p className="text-sm text-gray-500">
-                              {(file.size / 1024 / 1024).toFixed(2)} MB
-                            </p>
-                          </div>
+                          <p className="font-medium text-gray-900">{file.name}</p>
+                          <p className="text-sm text-gray-500">
+                            {(file.size / 1024 / 1024).toFixed(2)} MB
+                          </p>
                         </div>
-                        <button
-                          onClick={() => handleRemoveFile(file.id)}
-                          disabled={processing}
-                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
-                        >
-                          <X className="w-5 h-5" />
-                        </button>
+                      </div>
+                      <button
+                        onClick={() => handleRemoveFile(file.id)}
+                        disabled={processing}
+                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
                       </div>
 
                       {/* Analysis Results for Documents */}
@@ -1075,33 +1075,33 @@ export const AIContentOrganizer: React.FC<AIContentOrganizerProps> = ({
             </div>
           ) : (
             <>
-              <button
-                onClick={onSkip}
-                className="px-6 py-3 text-gray-600 hover:text-gray-800 transition-colors font-medium"
-                disabled={processing}
-              >
-                {aiAvailable === false ? 'Continue Manual Creation' : 'Skip AI & Create Manually'}
-              </button>
+          <button
+            onClick={onSkip}
+            className="px-6 py-3 text-gray-600 hover:text-gray-800 transition-colors font-medium"
+            disabled={processing}
+          >
+            {aiAvailable === false ? 'Continue Manual Creation' : 'Skip AI & Create Manually'}
+          </button>
 
-              {aiAvailable !== false && (
-                <button
-                  onClick={handleProcessWithAI}
-                  disabled={uploadedFiles.length === 0 || uploading || processing}
-                  className="px-8 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center font-semibold shadow-lg"
-                >
-                  {processing ? (
-                    <>
-                      <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                      Organizing with AI...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="w-5 h-5 mr-2" />
-                      Organize with AI
-                      <ArrowRight className="w-5 h-5 ml-2" />
-                    </>
-                  )}
-                </button>
+          {aiAvailable !== false && (
+            <button
+              onClick={handleProcessWithAI}
+              disabled={uploadedFiles.length === 0 || uploading || processing}
+              className="px-8 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center font-semibold shadow-lg"
+            >
+              {processing ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                  Organizing with AI...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-5 h-5 mr-2" />
+                  Organize with AI
+                  <ArrowRight className="w-5 h-5 ml-2" />
+                </>
+              )}
+            </button>
               )}
             </>
           )}

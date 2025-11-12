@@ -756,7 +756,7 @@ export default function ManualTrainingSimulator({
       checkAndShowCertification();
       if (!showCertification) {
         // If no certification yet, just show completion message
-        alert('🎉 Congratulations! You have completed all modules!');
+      alert('🎉 Congratulations! You have completed all modules!');
       }
     }
   };
@@ -1262,12 +1262,12 @@ export default function ManualTrainingSimulator({
                     <span>{questionTimeLeft}s</span>
                   </div>
                   {/* Elapsed time timer */}
-                  <div className={`flex items-center space-x-1 px-2 py-1 rounded font-mono font-bold ${
-                    isTimerWarning ? 'bg-orange-500 text-white animate-pulse' : 'bg-gray-100 text-gray-800'
-                  }`}>
-                    <Clock className="w-3 h-3" />
-                    <span>{formatQuestionTimer(questionTimer)}</span>
-                  </div>
+                <div className={`flex items-center space-x-1 px-2 py-1 rounded font-mono font-bold ${
+                  isTimerWarning ? 'bg-orange-500 text-white animate-pulse' : 'bg-gray-100 text-gray-800'
+                }`}>
+                  <Clock className="w-3 h-3" />
+                  <span>{formatQuestionTimer(questionTimer)}</span>
+                </div>
                 </>
               )}
             </div>
