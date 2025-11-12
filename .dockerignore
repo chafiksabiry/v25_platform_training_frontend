@@ -1,33 +1,11 @@
-# Git
+node_modules
+npm-debug.log
+dist
 .git
 .gitignore
-
-# Documentation
-*.md
-
-# Dependencies
-node_modules/
-
-# Build
-.next/
-dist/
-build/
-
-# Logs
-*.log
-
-# IDEs
-.vscode/
-.idea/
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Environment
 .env
 .env.local
-
-# Testing
-coverage/
-
+.env.*.local
+*.md
+.vscode
+.idea
