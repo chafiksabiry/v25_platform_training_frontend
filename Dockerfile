@@ -1,22 +1,27 @@
-FROM node:20-alpine
+# Use a lightweight Node.js base image
+FROM node:18-alpine
 
+# Set the working directory
 WORKDIR /app
 
-# Copy package files
+# Copy package.json and package-lock.json to install dependencies
 COPY package*.json ./
 
 # Install dependencies
 RUN npm install
 
-# Copy source code
+# Copy the source code and serve configuration
 COPY . .
 
-# Build the application
+# Build the app
 RUN npm run build
 
-# Expose port
+# Install a lightweight HTTP server to serve the build
+RUN npm install -g serve
+
+# Expose the port for the HTTP server
 EXPOSE 5190
 
-# Start the application
-CMD ["npm", "run", "preview"]
+# Command to serve the app with the correct path and configuration
+CMD ["serve", "-s", "dist", "-l", "5190"]
 
