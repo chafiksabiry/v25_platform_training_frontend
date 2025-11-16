@@ -553,12 +553,17 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
     }
   };
 
+  // Scroll to top when step changes
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [currentStep]);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 pt-4 pb-8">
         <div className="max-w-4xl mx-auto">
           {/* Header */}
-          <div className="text-center mb-12">
+          <div className="text-center mb-8">
             <div className="inline-flex items-center space-x-2 bg-white px-6 py-3 rounded-full shadow-sm border border-gray-200 mb-6">
               <Sparkles className="h-5 w-5 text-blue-500" />
               <span className="text-sm font-medium text-gray-700">AI-Powered Training Journey Builder</span>
@@ -572,7 +577,7 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
           </div>
 
           {/* Progress Steps */}
-          <div className="flex items-center justify-center mb-12">
+          <div className="flex items-center justify-center mb-8">
             <div className="flex items-center space-x-4">
               {steps.map((step, index) => {
                 const Icon = step.icon;

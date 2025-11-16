@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Target, ArrowLeft, ArrowRight } from 'lucide-react';
 
 interface TrainingDetailsFormProps {
@@ -10,7 +10,7 @@ interface TrainingDetailsFormProps {
 export default function TrainingDetailsForm({ onComplete, onBack, gigData }: TrainingDetailsFormProps) {
   const [trainingName, setTrainingName] = useState(gigData?.title || gigData?.name || '');
   const [trainingDescription, setTrainingDescription] = useState(gigData?.description || '');
-  const [estimatedDuration, setEstimatedDuration] = useState('2400'); // 1 week default
+  const [estimatedDuration, setEstimatedDuration] = useState('120'); // Quick Start default (1-2 hours = 120 min)
 
   const handleSubmit = () => {
     onComplete({
@@ -22,8 +22,13 @@ export default function TrainingDetailsForm({ onComplete, onBack, gigData }: Tra
 
   const canProceed = trainingName.trim() && estimatedDuration;
 
+  // Scroll to top on mount
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-pink-50 py-12">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-pink-50 pt-4 pb-12">
       <div className="container mx-auto px-4">
         <div className="max-w-3xl mx-auto">
           <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-8">
@@ -34,83 +39,62 @@ export default function TrainingDetailsForm({ onComplete, onBack, gigData }: Tra
             </div>
 
             <div className="space-y-6">
-              {/* Training Name */}
+              {/* Training Program Name */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Training Name *
+                  Training Program Name *
                 </label>
                 <input
                   type="text"
                   value={trainingName}
                   onChange={(e) => setTrainingName(e.target.value)}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-lg"
-                  placeholder="e.g., Sales Onboarding Program"
+                  placeholder="e.g., Customer Success Mastery Program"
                 />
               </div>
 
-              {/* Description */}
+              {/* Program Description */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Description (optional)
+                  Program Description
                 </label>
                 <textarea
                   value={trainingDescription}
                   onChange={(e) => setTrainingDescription(e.target.value)}
                   rows={4}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  placeholder="Describe what this training covers..."
+                  placeholder="Describe the goals, outcomes, and key benefits of this training program..."
                 />
               </div>
 
-              {/* Estimated Duration */}
+              {/* Expected Program Duration */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Estimated Duration (in minutes) *
+                  Expected Program Duration
                 </label>
-                <input
-                  type="number"
-                  value={estimatedDuration}
-                  onChange={(e) => setEstimatedDuration(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-lg"
-                  placeholder="e.g., 60, 120, 480..."
-                  min="1"
-                />
-                <p className="mt-2 text-sm text-gray-600 mb-3">
-                  Enter the duration in minutes
-                </p>
-                
-                {/* Duration Suggestions */}
-                <div className="space-y-2">
-                  <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">Quick Suggestions:</p>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                    {[
-                      { label: '30 minutes', value: '30' },
-                      { label: '1 hour (60 min)', value: '60' },
-                      { label: '2 hours (120 min)', value: '120' },
-                      { label: '3 hours (180 min)', value: '180' },
-                      { label: '4 hours (240 min)', value: '240' },
-                      { label: '1 day (480 min)', value: '480' },
-                      { label: '2 days (960 min)', value: '960' },
-                      { label: '3 days (1440 min)', value: '1440' },
-                      { label: '1 week (2400 min)', value: '2400' },
-                      { label: '2 weeks (4800 min)', value: '4800' },
-                      { label: '1 month (9600 min)', value: '9600' },
-                      { label: '3 months (28800 min)', value: '28800' },
-                    ].map((suggestion) => (
-                      <button
-                        key={suggestion.value}
-                        type="button"
-                        onClick={() => setEstimatedDuration(suggestion.value)}
-                        className={`px-3 py-2 text-sm rounded-lg border-2 transition-all ${
-                          estimatedDuration === suggestion.value
-                            ? 'border-purple-500 bg-purple-50 text-purple-700 font-semibold'
-                            : 'border-gray-300 hover:border-purple-300 text-gray-700'
-                        }`}
-                      >
-                        {suggestion.label}
-                      </button>
-                    ))}
-                  </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {[
+                    { value: '120', label: 'Quick Start', desc: '1-2 hours' },
+                    { value: '240', label: 'Half Day', desc: '3-4 hours' },
+                    { value: '480', label: 'Full Day', desc: '6-8 hours' },
+                    { value: '2400', label: 'One Week', desc: 'Multi-session' },
+                    { value: '4800', label: 'Two Weeks', desc: 'Comprehensive' },
+                    { value: '9600', label: 'One Month', desc: 'Deep Learning' },
+                  ].map((duration) => (
+                    <button
+                      key={duration.value}
+                      type="button"
+                      onClick={() => setEstimatedDuration(duration.value)}
+                      className={`p-3 border-2 rounded-lg text-center transition-all hover:shadow-md ${
+                        estimatedDuration === duration.value
+                          ? 'border-green-500 bg-green-50 text-green-700 shadow-md'
+                          : 'border-gray-300 hover:border-gray-400'
+                      }`}
+                    >
+                      <div className="font-semibold text-sm">{duration.label}</div>
+                      <div className="text-xs text-gray-600">{duration.desc}</div>
+                    </button>
+                  ))}
                 </div>
               </div>
             </div>
