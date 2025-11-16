@@ -1149,8 +1149,8 @@ export default function CurriculumDesigner({ uploads, methodology, onComplete, o
                             </div>
                             <div className="text-center p-3 bg-green-50 rounded-lg">
                               <CheckSquare className="h-5 w-5 text-green-600 mx-auto mb-1" />
-                              <div className="text-sm font-medium text-green-900">{module.content.length}</div>
-                              <div className="text-xs text-gray-600">Content Items</div>
+                              <div className="text-sm font-medium text-green-900">{(module as any).sections?.length || module.content.length}</div>
+                              <div className="text-xs text-gray-600">Sections</div>
                             </div>
                             <div className="text-center p-3 bg-purple-50 rounded-lg">
                               <Zap className="h-5 w-5 text-purple-600 mx-auto mb-1" />
@@ -1168,34 +1168,92 @@ export default function CurriculumDesigner({ uploads, methodology, onComplete, o
                       <div className="mb-4">
                         <h5 className="font-semibold text-gray-900 mb-3 flex items-center">
                           <FileText className="h-5 w-5 mr-2 text-indigo-600" />
-                          Module Content ({module.content.length} Sections)
+                          Module Content ({(module as any).sections?.length || module.content.length} Sections)
                         </h5>
                         <div className="space-y-3 bg-gray-50 rounded-lg p-4 border border-gray-200">
-                          {module.content.map((section, idx) => (
-                            <details key={idx} className="group bg-white rounded-lg border border-gray-300 overflow-hidden hover:shadow-md transition-shadow">
-                              <summary className="cursor-pointer px-4 py-3 font-medium text-gray-900 hover:bg-indigo-50 transition-colors flex items-center justify-between">
-                                <div className="flex items-center space-x-2">
-                                  <BookOpen className="h-4 w-4 text-indigo-600" />
-                                  <span>{section.title}</span>
-                                  <span className="text-xs text-gray-500">({section.duration} min)</span>
-                            </div>
-                                <ChevronRight className="h-4 w-4 text-gray-400 group-open:rotate-90 transition-transform" />
-                              </summary>
-                              <div className="px-4 py-3 bg-gray-50 border-t border-gray-200">
-                                <div className="text-sm text-gray-700 whitespace-pre-line leading-relaxed">
-                                  {typeof section.content === 'string' 
-                                    ? section.content.substring(0, 300) + (section.content.length > 300 ? '...' : '')
-                                    : JSON.stringify(section.content, null, 2).substring(0, 200)
-                                  }
-                                </div>
-                                {typeof section.content === 'string' && section.content.length > 300 && (
-                                  <div className="mt-2 text-xs text-indigo-600 font-medium">
-                                    + {section.content.length - 300} more characters
+                          {/* Afficher les sections réelles si disponibles */}
+                          {((module as any).sections && (module as any).sections.length > 0) ? (
+                            (module as any).sections.map((section: any, idx: number) => (
+                              <details key={section.id || idx} className="group bg-white rounded-lg border border-gray-300 overflow-hidden hover:shadow-md transition-shadow">
+                                <summary className="cursor-pointer px-4 py-3 font-medium text-gray-900 hover:bg-indigo-50 transition-colors flex items-center justify-between">
+                                  <div className="flex items-center space-x-2">
+                                    <FileText className="h-4 w-4 text-indigo-600" />
+                                    <span>{section.title}</span>
+                                    <span className="text-xs text-gray-500">({section.estimatedDuration || section.duration || 0} min)</span>
                                   </div>
-                                )}
-                              </div>
-                            </details>
-                          ))}
+                                  <ChevronRight className="h-4 w-4 text-gray-400 group-open:rotate-90 transition-transform" />
+                                </summary>
+                                <div className="px-4 py-3 bg-gray-50 border-t border-gray-200">
+                                  {/* Afficher la description AI */}
+                                  {section.content?.text && (
+                                    <div className="text-sm text-gray-700 whitespace-pre-line leading-relaxed mb-3">
+                                      {section.content.text.split('\n').slice(0, 5).join('\n')}
+                                      {section.content.text.split('\n').length > 5 && '...'}
+                                    </div>
+                                  )}
+                                  {/* Afficher le document */}
+                                  {section.content?.file && (
+                                    <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                                      <div className="flex items-center space-x-2 mb-2">
+                                        <FileText className="h-4 w-4 text-blue-600" />
+                                        <span className="text-sm font-medium text-blue-900">Document: {section.content.file.name}</span>
+                                      </div>
+                                      {section.content.file.url && (
+                                        <a
+                                          href={section.content.file.url}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="text-xs text-blue-600 hover:text-blue-800 underline"
+                                        >
+                                          Ouvrir le document
+                                        </a>
+                                      )}
+                                    </div>
+                                  )}
+                                  {/* Afficher les key points */}
+                                  {section.content?.keyPoints && section.content.keyPoints.length > 0 && (
+                                    <div className="mt-3">
+                                      <p className="text-xs font-medium text-gray-600 mb-1">Key Topics:</p>
+                                      <div className="flex flex-wrap gap-1">
+                                        {section.content.keyPoints.slice(0, 5).map((point: string, pIdx: number) => (
+                                          <span key={pIdx} className="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded">
+                                            {point}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              </details>
+                            ))
+                          ) : (
+                            // Fallback sur content si pas de sections
+                            module.content.map((section, idx) => (
+                              <details key={idx} className="group bg-white rounded-lg border border-gray-300 overflow-hidden hover:shadow-md transition-shadow">
+                                <summary className="cursor-pointer px-4 py-3 font-medium text-gray-900 hover:bg-indigo-50 transition-colors flex items-center justify-between">
+                                  <div className="flex items-center space-x-2">
+                                    <BookOpen className="h-4 w-4 text-indigo-600" />
+                                    <span>{section.title}</span>
+                                    <span className="text-xs text-gray-500">({section.duration} min)</span>
+                                  </div>
+                                  <ChevronRight className="h-4 w-4 text-gray-400 group-open:rotate-90 transition-transform" />
+                                </summary>
+                                <div className="px-4 py-3 bg-gray-50 border-t border-gray-200">
+                                  <div className="text-sm text-gray-700 whitespace-pre-line leading-relaxed">
+                                    {typeof section.content === 'string' 
+                                      ? section.content.substring(0, 300) + (section.content.length > 300 ? '...' : '')
+                                      : JSON.stringify(section.content, null, 2).substring(0, 200)
+                                    }
+                                  </div>
+                                  {typeof section.content === 'string' && section.content.length > 300 && (
+                                    <div className="mt-2 text-xs text-indigo-600 font-medium">
+                                      + {section.content.length - 300} more characters
+                                    </div>
+                                  )}
+                                </div>
+                              </details>
+                            ))
+                          )}
                         </div>
                       </div>
 
