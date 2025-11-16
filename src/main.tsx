@@ -31,7 +31,17 @@ const decodeToken = (token: string) => {
 
 const userId = Cookies.get('userId');
 const token = localStorage.getItem('token');
+
+// Set default companyId if not present (for testing)
+let companyId = Cookies.get('companyId');
+if (!companyId) {
+  companyId = '68cab073cfa9381f0ed56393'; // Default company ID
+  Cookies.set('companyId', companyId, { expires: 365 });
+  console.log('[Training] Set default companyId in cookie:', companyId);
+}
+
 console.log('[Training] Stored userId from cookie:', userId);
+console.log('[Training] Stored companyId from cookie:', companyId);
 console.log('[Training] Stored token from localStorage:', token);
 
 // Check authentication - redirect if not logged in (check both userId and token)

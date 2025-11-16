@@ -26,9 +26,6 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
   const [selectedGig, setSelectedGig] = useState<GigFromApi | null>(null);
   const [showGigSelector, setShowGigSelector] = useState(false);
 
-  // Default company ID for gig selection
-  const DEFAULT_COMPANY_ID = '68cab073cfa9381f0ed56393';
-
   useEffect(() => {
     const fetchIndustries = async () => {
       try {
@@ -306,7 +303,7 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
                   Select Your Gig *
                 </h3>
                 <GigSelector
-                  companyId={DEFAULT_COMPANY_ID}
+                  industryFilter={company.industry}
                   onGigSelect={handleGigSelect}
                   selectedGigId={selectedGig?._id}
                 />

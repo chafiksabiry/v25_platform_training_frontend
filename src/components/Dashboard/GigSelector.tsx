@@ -4,12 +4,13 @@ import { GigFromApi } from '../../types';
 import { OnboardingService } from '../../infrastructure/services/OnboardingService';
 
 interface GigSelectorProps {
-  companyId: string;
+  companyId?: string;  // Optional - will use cookie if not provided
+  industryFilter?: string;  // Optional industry filter
   onGigSelect: (gig: GigFromApi) => void;
   selectedGigId?: string;
 }
 
-export default function GigSelector({ companyId, onGigSelect, selectedGigId }: GigSelectorProps) {
+export default function GigSelector({ companyId, industryFilter, onGigSelect, selectedGigId }: GigSelectorProps) {
   const [gigs, setGigs] = useState<GigFromApi[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -19,8 +20,21 @@ export default function GigSelector({ companyId, onGigSelect, selectedGigId }: G
       try {
         setLoading(true);
         setError(null);
-        const response = await OnboardingService.fetchGigsByCompany(companyId);
+        
+        let response;
+        
+        // If industry filter is provided, use it
+        if (industryFilter) {
+          response = await OnboardingService.fetchGigsByIndustry(industryFilter, companyId);
+        } else {
+          response = await OnboardingService.fetchGigsByCompany(companyId);
+        }
+        
         setGigs(response.data || []);
+        
+        if (response.data.length === 0 && industryFilter) {
+          setError(`No gigs found for the "${industryFilter}" industry.`);
+        }
       } catch (err) {
         setError('Failed to load available gigs. Please try again later.');
         console.error('Error loading gigs:', err);
@@ -29,10 +43,8 @@ export default function GigSelector({ companyId, onGigSelect, selectedGigId }: G
       }
     };
 
-    if (companyId) {
-      fetchGigs();
-    }
-  }, [companyId]);
+    fetchGigs();
+  }, [companyId, industryFilter]);
 
   const getStatusBadgeColor = (status: string) => {
     switch (status.toLowerCase()) {

@@ -35,9 +35,6 @@ export const ManualTrainingSetup: React.FC<ManualTrainingSetupProps> = ({ onComp
   const [loadingGigs, setLoadingGigs] = useState(false);
   const [gigsError, setGigsError] = useState<string | null>(null);
 
-  // Default company ID for gig selection
-  const DEFAULT_COMPANY_ID = '68cab073cfa9381f0ed56393';
-
   useEffect(() => {
     const fetchIndustries = async () => {
       try {
@@ -56,26 +53,34 @@ export const ManualTrainingSetup: React.FC<ManualTrainingSetupProps> = ({ onComp
     fetchIndustries();
   }, []);
 
-  // Fetch gigs when reaching step 2
+  // Fetch gigs when reaching step 2 - filtered by selected industry
   useEffect(() => {
     const fetchGigs = async () => {
-      if (currentStep === 2) {
+      if (currentStep === 2 && setupData.industry) {
         try {
           setLoadingGigs(true);
           setGigsError(null);
-          const response = await OnboardingService.fetchGigsByCompany(DEFAULT_COMPANY_ID);
+          
+          // Fetch gigs filtered by industry (companyId will be retrieved from cookie)
+          const response = await OnboardingService.fetchGigsByIndustry(setupData.industry);
           setGigs(response.data || []);
+          
+          if (response.data.length === 0) {
+            setGigsError(`No gigs found for the "${setupData.industry}" industry.`);
+          }
         } catch (err) {
           setGigsError('Failed to load available gigs. Please try again later.');
           console.error('Error loading gigs:', err);
         } finally {
           setLoadingGigs(false);
         }
+      } else if (currentStep === 2 && !setupData.industry) {
+        setGigsError('Please select an industry first.');
       }
     };
 
     fetchGigs();
-  }, [currentStep, DEFAULT_COMPANY_ID]);
+  }, [currentStep, setupData.industry]);
 
   const steps = [
     { id: 1, title: 'Company Information', icon: Building2 },
