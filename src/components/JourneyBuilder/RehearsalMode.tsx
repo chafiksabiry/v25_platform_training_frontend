@@ -59,11 +59,33 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
 
   // Convert uploads to sections if modules don't have sections
   const modulesWithSections = useMemo(() => {
+    console.log('🔍 Building modulesWithSections:', {
+      modulesCount: updatedModules.length,
+      uploadsCount: uploads.length,
+      modulesWithSections: updatedModules.map(m => ({
+        id: m.id,
+        title: m.title,
+        hasSections: !!(m as any).sections,
+        sectionsCount: (m as any).sections?.length || 0,
+        firstSectionUrl: (m as any).sections?.[0]?.content?.file?.url || 'no URL'
+      }))
+    });
+    
     return updatedModules.map((module, moduleIndex) => {
       const moduleWithSections = module as ModuleWithSections;
       
       // If module already has sections, use them
       if (moduleWithSections.sections && moduleWithSections.sections.length > 0) {
+        console.log(`✅ Module ${moduleIndex} (${module.title}) already has ${moduleWithSections.sections.length} sections`);
+        // Check if sections have URLs
+        moduleWithSections.sections.forEach((section, idx) => {
+          const fileUrl = section.content?.file?.url;
+          if (!fileUrl) {
+            console.warn(`⚠️ Section ${idx} in module ${moduleIndex} has no file URL`);
+          } else {
+            console.log(`  📄 Section ${idx} URL:`, fileUrl);
+          }
+        });
         return moduleWithSections;
       }
       
@@ -100,13 +122,22 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
           : `Document: ${upload.name}`;
         
         // Create content file from upload
-        // Try to get URL from file object or use empty string (will be handled in renderSectionContent)
+        // Use Cloudinary URL if available (persistent), otherwise fallback to blob URL
         let fileUrl = '';
-        if (upload.file) {
+        let filePublicId = upload.id;
+        
+        if (upload.cloudinaryUrl) {
+          // Use Cloudinary URL (persistent)
+          fileUrl = upload.cloudinaryUrl;
+          filePublicId = upload.publicId || upload.id;
+          console.log(`✅ Using Cloudinary URL for ${upload.name}:`, fileUrl);
+        } else if (upload.file) {
+          // Fallback to blob URL (temporary, but works for now)
           try {
             fileUrl = URL.createObjectURL(upload.file);
+            console.log(`⚠️ Using blob URL for ${upload.name} (Cloudinary URL not available)`);
           } catch (e) {
-            console.warn('Could not create object URL for file:', upload.name);
+            console.warn('Could not create object URL for file:', upload.name, e);
           }
         }
         
@@ -116,8 +147,8 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
           type: upload.type === 'video' ? 'video' : 
                 upload.type === 'presentation' ? 'pdf' : 
                 upload.type === 'document' ? 'pdf' : 'pdf',
-          url: fileUrl,
-          publicId: upload.id,
+          url: fileUrl, // Cloudinary URL or blob URL
+          publicId: filePublicId, // Cloudinary public ID or upload ID
           size: upload.size || 0,
           mimeType: upload.type === 'video' ? 'video/mp4' : 
                    upload.type === 'document' ? 'application/pdf' : 
@@ -140,10 +171,18 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
         };
       });
       
-      return {
+      const result = {
         ...moduleWithSections,
         sections: sections.length > 0 ? sections : undefined
       };
+      
+      console.log(`📦 Module ${moduleIndex} (${module.title}) - Created ${sections.length} sections from uploads`);
+      sections.forEach((section, idx) => {
+        const fileUrl = section.content?.file?.url;
+        console.log(`  📄 Section ${idx} (${section.title}):`, fileUrl || 'NO URL');
+      });
+      
+      return result;
     });
   }, [updatedModules, uploads]);
 
