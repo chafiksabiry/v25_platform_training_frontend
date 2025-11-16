@@ -83,19 +83,26 @@ export const ManualTrainingSetup: React.FC<ManualTrainingSetupProps> = ({ onComp
           
           // Fetch gigs filtered by industry (companyId will be retrieved from cookie)
           const response = await OnboardingService.fetchGigsByIndustry(setupData.industry);
-          setGigs(response.data || []);
           
-          if (response.data.length === 0) {
-            setGigsError(`No gigs found for the "${setupData.industry}" industry.`);
+          if (!response.data || response.data.length === 0) {
+            setGigs([]);
+            setGigsError(`No gigs available for "${setupData.industry}" industry. Please try selecting a different industry or contact support.`);
+          } else {
+            setGigs(response.data);
+            setGigsError(null);
           }
-        } catch (err) {
-          setGigsError('Failed to load available gigs. Please try again later.');
+        } catch (err: any) {
+          setGigs([]);
+          const errorMessage = err?.message || 'Failed to load available gigs';
+          setGigsError(`${errorMessage}. Please try again later or contact support.`);
           console.error('Error loading gigs:', err);
         } finally {
           setLoadingGigs(false);
         }
       } else if (currentStep === 2 && !setupData.industry) {
+        setGigs([]);
         setGigsError('Please select an industry first.');
+        setLoadingGigs(false);
       }
     };
 

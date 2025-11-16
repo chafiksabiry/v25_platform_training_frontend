@@ -30,13 +30,21 @@ export default function GigSelector({ companyId, industryFilter, onGigSelect, se
           response = await OnboardingService.fetchGigsByCompany(companyId);
         }
         
-        setGigs(response.data || []);
-        
-        if (response.data.length === 0 && industryFilter) {
-          setError(`No gigs found for the "${industryFilter}" industry.`);
+        if (!response.data || response.data.length === 0) {
+          setGigs([]);
+          if (industryFilter) {
+            setError(`No gigs available for "${industryFilter}" industry. Please try selecting a different industry or contact support.`);
+          } else {
+            setError('No gigs available for this company. Please contact support.');
+          }
+        } else {
+          setGigs(response.data);
+          setError(null);
         }
-      } catch (err) {
-        setError('Failed to load available gigs. Please try again later.');
+      } catch (err: any) {
+        setGigs([]);
+        const errorMessage = err?.message || 'Failed to load available gigs';
+        setError(`${errorMessage}. Please try again later or contact support.`);
         console.error('Error loading gigs:', err);
       } finally {
         setLoading(false);
