@@ -10,6 +10,17 @@ interface DocumentViewerProps {
 export default function DocumentViewer({ fileUrl, fileName, mimeType }: DocumentViewerProps) {
   const [type, setType] = useState<string | null>(null);
 
+  // Debug log
+  useEffect(() => {
+    console.log('📄 DocumentViewer mounted/updated:', {
+      fileUrl,
+      fileName,
+      mimeType,
+      hasUrl: !!fileUrl,
+      urlType: fileUrl ? (fileUrl.startsWith('blob:') ? 'blob' : fileUrl.startsWith('http') ? 'http' : 'other') : 'none'
+    });
+  }, [fileUrl, fileName, mimeType]);
+
   // Scroll to top when document loads
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });

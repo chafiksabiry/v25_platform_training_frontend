@@ -190,6 +190,23 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
   const isLastModule = currentModuleIndex === updatedModules.length - 1;
   const hasSections = currentModule?.sections && currentModule.sections.length > 0;
   const currentSection = hasSections ? currentModule.sections[currentSectionIndex] : null;
+  
+  // Debug logs
+  useEffect(() => {
+    if (currentSection) {
+      console.log('📋 Current Section:', {
+        id: currentSection.id,
+        title: currentSection.title,
+        type: currentSection.type,
+        hasContent: !!currentSection.content,
+        hasFile: !!currentSection.content?.file,
+        fileUrl: currentSection.content?.file?.url,
+        fullSection: currentSection
+      });
+    } else {
+      console.warn('⚠️ No current section available');
+    }
+  }, [currentSection]);
   const progress = (completedModules.length / updatedModules.length) * 100;
   
   // Calculate section progress
@@ -696,9 +713,20 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
   const renderSectionContent = (section: TrainingSection) => {
     const content = section.content;
     
+    console.log('🎨 renderSectionContent called:', {
+      sectionType: section.type,
+      sectionTitle: section.title,
+      hasContent: !!content,
+      hasFile: !!content?.file,
+      fileUrl: content?.file?.url,
+      fileName: content?.file?.name,
+      mimeType: content?.file?.mimeType
+    });
+    
     switch (section.type) {
       case 'document':
         if (content?.file && content.file.url) {
+          console.log('✅ Rendering DocumentViewer with URL:', content.file.url);
           return (
             <div className="w-full h-full" style={{ minHeight: '400px' }}>
               <DocumentViewer
@@ -709,10 +737,16 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
             </div>
           );
         }
+        console.warn('⚠️ Document section has no file or URL:', {
+          hasContent: !!content,
+          hasFile: !!content?.file,
+          fileUrl: content?.file?.url
+        });
         return (
           <div className="text-center py-12 text-gray-500">
             <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
             <p>No document available for this section</p>
+            <p className="text-xs mt-2">Debug: {content?.file ? 'Has file but no URL' : 'No file object'}</p>
           </div>
         );
 
