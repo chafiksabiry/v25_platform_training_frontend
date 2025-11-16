@@ -1,15 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { Play, Pause, RotateCcw, CheckCircle, AlertTriangle, MessageSquare, Star, Eye, Users, Rocket, ArrowLeft, ArrowRight, Clock, BarChart3, Zap, Video, BookOpen, Edit3, Save, X as XIcon, Trash2, Plus, Download, FileQuestion } from 'lucide-react';
+import { Play, Pause, RotateCcw, CheckCircle, AlertTriangle, MessageSquare, Star, Eye, Users, Rocket, ArrowLeft, ArrowRight, Clock, BarChart3, Zap, Video, BookOpen, Edit3, Save, X as XIcon, Trash2, Plus, Download, FileQuestion, FileText, Image as ImageIcon, Youtube } from 'lucide-react';
 import { TrainingJourney, TrainingModule, RehearsalFeedback } from '../../types';
 import { TrainingMethodology } from '../../types/methodology';
 import ModuleContentViewer from '../Training/ModuleContentViewer';
 import QuizGenerator from '../Assessment/QuizGenerator';
+import { TrainingSection, SectionContent } from '../../types/manualTraining';
 
 interface SlideData {
   title: string;
   content: string;
   bgColor: string;
   textColor: string;
+}
+
+// Extended module interface to support sections
+interface ModuleWithSections extends TrainingModule {
+  sections?: TrainingSection[];
 }
 
 interface RehearsalModeProps {
@@ -35,16 +41,25 @@ export default function RehearsalMode({ journey, modules, methodology, onComplet
   const [rehearsalTime, setRehearsalTime] = useState(0);
   const [showContentViewer, setShowContentViewer] = useState(false);
   const [showQuiz, setShowQuiz] = useState(false);
-  const [activeTab, setActiveTab] = useState<'ppt' | 'quiz'>('ppt');
+  const [activeTab, setActiveTab] = useState<'sections' | 'quiz'>('sections');
   const [slideData, setSlideData] = useState<SlideData[]>([]);
   const [slideImages, setSlideImages] = useState<string[]>([]);
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [isEditMode, setIsEditMode] = useState(false);
   const [isGeneratingPPT, setIsGeneratingPPT] = useState(false);
   const [showPPTViewer, setShowPPTViewer] = useState(false);
+  const [currentSectionIndex, setCurrentSectionIndex] = useState(0);
+  const [completedSections, setCompletedSections] = useState<Set<string>>(new Set());
 
-  const currentModule = modules[currentModuleIndex];
+  const currentModule = modules[currentModuleIndex] as ModuleWithSections;
+  const hasSections = currentModule?.sections && currentModule.sections.length > 0;
+  const currentSection = hasSections ? currentModule.sections[currentSectionIndex] : null;
   const progress = (completedModules.length / modules.length) * 100;
+  
+  // Calculate section progress
+  const sectionProgress = hasSections && currentModule.sections.length > 0
+    ? (completedSections.size / currentModule.sections.length) * 100
+    : 0;
 
   // Auto-display content viewer on load
   useEffect(() => {
@@ -74,8 +89,49 @@ export default function RehearsalMode({ journey, modules, methodology, onComplet
     
     if (currentModuleIndex < modules.length - 1) {
       setCurrentModuleIndex(prev => prev + 1);
+      setCurrentSectionIndex(0);
     }
   };
+
+  const handleSectionComplete = () => {
+    if (currentSection?.id) {
+      setCompletedSections(prev => new Set(prev).add(currentSection.id!));
+    }
+    
+    if (hasSections && currentSectionIndex < currentModule.sections!.length - 1) {
+      setCurrentSectionIndex(prev => prev + 1);
+    } else {
+      handleModuleComplete();
+    }
+  };
+
+  const handlePreviousSection = () => {
+    if (currentSectionIndex > 0) {
+      setCurrentSectionIndex(prev => prev - 1);
+    } else if (currentModuleIndex > 0) {
+      const prevModule = modules[currentModuleIndex - 1] as ModuleWithSections;
+      if (prevModule.sections && prevModule.sections.length > 0) {
+        setCurrentModuleIndex(prev => prev - 1);
+        setCurrentSectionIndex(prevModule.sections.length - 1);
+      } else {
+        setCurrentModuleIndex(prev => prev - 1);
+      }
+    }
+  };
+
+  const handleNextSection = () => {
+    if (hasSections && currentSectionIndex < currentModule.sections!.length - 1) {
+      setCurrentSectionIndex(prev => prev + 1);
+    } else if (currentModuleIndex < modules.length - 1) {
+      setCurrentModuleIndex(prev => prev + 1);
+      setCurrentSectionIndex(0);
+    }
+  };
+
+  // Reset section index when module changes
+  useEffect(() => {
+    setCurrentSectionIndex(0);
+  }, [currentModuleIndex]);
 
   const handlePreviousModule = () => {
     if (currentModuleIndex > 0) {
@@ -356,6 +412,176 @@ export default function RehearsalMode({ journey, modules, methodology, onComplet
     URL.revokeObjectURL(url);
   };
 
+  const getSectionIcon = (type: string) => {
+    switch (type) {
+      case 'text':
+        return <FileText className="h-5 w-5 text-blue-500" />;
+      case 'video':
+        return <Video className="h-5 w-5 text-red-500" />;
+      case 'youtube':
+        return <Youtube className="h-5 w-5 text-red-500" />;
+      case 'document':
+        return <FileText className="h-5 w-5 text-purple-500" />;
+      case 'interactive':
+        return <Zap className="h-5 w-5 text-yellow-500" />;
+      default:
+        return <BookOpen className="h-5 w-5 text-gray-500" />;
+    }
+  };
+
+  const renderSectionContent = (section: TrainingSection) => {
+    const content = section.content;
+    
+    switch (section.type) {
+      case 'document':
+        if (content?.file) {
+          const file = content.file;
+          const isPDF = file.type === 'pdf' || file.mimeType?.includes('pdf');
+          const isWord = file.type === 'word' || file.mimeType?.includes('word') || file.mimeType?.includes('document');
+          
+          return (
+            <div className="relative w-full" style={{ minHeight: '600px' }}>
+              {isPDF ? (
+                <iframe
+                  key={`pdf-${section.id}`}
+                  src={`https://mozilla.github.io/pdf.js/web/viewer.html?file=${encodeURIComponent(file.url)}`}
+                  className="w-full border-0 rounded-lg"
+                  style={{ height: '800px' }}
+                  title={file.name || 'Document'}
+                  allow="autoplay"
+                  onLoad={() => {
+                    console.log('✅ PDF loaded successfully');
+                  }}
+                  onError={(e) => {
+                    console.error('❌ PDF load error:', e);
+                  }}
+                />
+              ) : isWord ? (
+                <div className="flex flex-col items-center justify-center h-full p-8 bg-gray-50 rounded-lg">
+                  <FileText className="w-16 h-16 text-blue-500 mb-4" />
+                  <h4 className="text-lg font-semibold text-gray-900 mb-2">{file.name}</h4>
+                  <p className="text-gray-600 mb-4">Word document preview not available in browser</p>
+                  <a
+                    href={file.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-lg font-medium transition-all"
+                  >
+                    <Download className="h-5 w-5" />
+                    <span>Download & Open Document</span>
+                  </a>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full p-8 bg-gray-50 rounded-lg">
+                  <FileText className="w-16 h-16 text-gray-400 mb-4" />
+                  <h4 className="text-lg font-semibold text-gray-900 mb-2">{file.name}</h4>
+                  <a
+                    href={file.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white rounded-lg font-medium transition-all"
+                  >
+                    <Download className="h-5 w-5" />
+                    <span>Open Document</span>
+                  </a>
+                </div>
+              )}
+            </div>
+          );
+        }
+        return (
+          <div className="text-center py-12 text-gray-500">
+            <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <p>No document available for this section</p>
+          </div>
+        );
+
+      case 'text':
+        return (
+          <div className="prose max-w-none">
+            {content?.text ? (
+              <div className="whitespace-pre-wrap text-gray-700 leading-relaxed">
+                {content.text}
+              </div>
+            ) : (
+              <p className="text-gray-500">No text content available</p>
+            )}
+            {content?.keyPoints && content.keyPoints.length > 0 && (
+              <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+                <h4 className="font-semibold text-blue-900 mb-2">Key Points:</h4>
+                <ul className="list-disc list-inside space-y-1 text-blue-800">
+                  {content.keyPoints.map((point, idx) => (
+                    <li key={idx}>{point}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        );
+
+      case 'video':
+        return (
+          <div className="w-full">
+            {content?.file?.url ? (
+              <video
+                controls
+                className="w-full rounded-lg"
+                src={content.file.url}
+                title={content.file.name || 'Video'}
+              >
+                Your browser does not support the video tag.
+              </video>
+            ) : (
+              <div className="text-center py-12 text-gray-500">
+                <Video className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                <p>No video available</p>
+              </div>
+            )}
+          </div>
+        );
+
+      case 'youtube':
+        return (
+          <div className="w-full aspect-video">
+            {content?.youtubeUrl ? (
+              <iframe
+                className="w-full h-full rounded-lg"
+                src={content.youtubeUrl.replace('watch?v=', 'embed/')}
+                title={section.title}
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            ) : (
+              <div className="flex items-center justify-center h-full text-gray-400">
+                <Youtube className="w-16 h-16" />
+              </div>
+            )}
+          </div>
+        );
+
+      case 'interactive':
+        return (
+          <div className="p-6 bg-gradient-to-br from-purple-50 to-blue-50 rounded-lg">
+            <h4 className="text-lg font-semibold text-gray-900 mb-4">Interactive Content</h4>
+            {content?.embedCode ? (
+              <div dangerouslySetInnerHTML={{ __html: content.embedCode }} />
+            ) : (
+              <p className="text-gray-600">Interactive content will be displayed here</p>
+            )}
+          </div>
+        );
+
+      default:
+        return (
+          <div className="text-center py-12 text-gray-500">
+            <BookOpen className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <p>Content type not supported: {section.type}</p>
+          </div>
+        );
+    }
+  };
+
   const getFeedbackIcon = (type: RehearsalFeedback['type']) => {
     switch (type) {
       case 'content':
@@ -482,7 +708,10 @@ export default function RehearsalMode({ journey, modules, methodology, onComplet
                   {modules.map((module, index) => (
                     <button
                       key={module.id}
-                      onClick={() => setCurrentModuleIndex(index)}
+                      onClick={() => {
+                        setCurrentModuleIndex(index);
+                        setCurrentSectionIndex(0);
+                      }}
                       className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                         index === currentModuleIndex
                           ? 'bg-purple-600 text-white'
@@ -520,19 +749,66 @@ export default function RehearsalMode({ journey, modules, methodology, onComplet
                     </div>
                   </div>
 
+                  {/* Sections Navigation (if module has sections) */}
+                  {hasSections && (
+                    <div className="mb-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-semibold text-gray-900">
+                          Section {currentSectionIndex + 1} of {currentModule.sections!.length}
+                        </h3>
+                        <div className="flex items-center space-x-2">
+                          <button
+                            onClick={handlePreviousSection}
+                            disabled={currentSectionIndex === 0 && currentModuleIndex === 0}
+                            className="px-3 py-1 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                          >
+                            Previous
+                          </button>
+                          <button
+                            onClick={handleNextSection}
+                            disabled={currentSectionIndex === currentModule.sections!.length - 1 && currentModuleIndex === modules.length - 1}
+                            className="px-3 py-1 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                          >
+                            Next
+                          </button>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {currentModule.sections!.map((section, index) => (
+                          <button
+                            key={section.id || index}
+                            onClick={() => setCurrentSectionIndex(index)}
+                            className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                              index === currentSectionIndex
+                                ? 'bg-purple-600 text-white'
+                                : completedSections.has(section.id || '')
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            }`}
+                          >
+                            {index + 1}. {section.title}
+                            {completedSections.has(section.id || '') && (
+                              <CheckCircle className="h-4 w-4 inline ml-1" />
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Tab Navigation */}
                   <div className="mb-6">
                     <div className="flex gap-2 border-b border-gray-200">
                       <button
-                        onClick={() => setActiveTab('ppt')}
+                        onClick={() => setActiveTab('sections')}
                         className={`px-6 py-3 font-medium transition-colors ${
-                          activeTab === 'ppt'
+                          activeTab === 'sections'
                             ? 'text-indigo-600 border-b-2 border-indigo-600'
                             : 'text-gray-600 hover:text-gray-900'
                         }`}
                       >
-                        <Download className="h-4 w-4 inline mr-2" />
-                        PowerPoint
+                        <BookOpen className="h-4 w-4 inline mr-2" />
+                        Sections
                       </button>
                       <button
                         onClick={() => setActiveTab('quiz')}
@@ -551,11 +827,32 @@ export default function RehearsalMode({ journey, modules, methodology, onComplet
                   {/* Content based on active tab */}
                   <div className="mb-6">
                     {activeTab === 'quiz' ? (
-              <QuizGenerator
-                      moduleTitle={currentModule.title}
-                      moduleDescription={currentModule.description}
-                moduleContent={currentModule.content.map(c => c.title).join('. ')}
-              />
+                      <QuizGenerator
+                        moduleTitle={currentModule.title}
+                        moduleDescription={currentModule.description}
+                        moduleContent={currentModule.content.map(c => c.title).join('. ')}
+                      />
+                    ) : hasSections && currentSection ? (
+                      <div className="bg-gray-50 rounded-xl p-6">
+                        {/* Section Header */}
+                        <div className="mb-6">
+                          <div className="flex items-center space-x-3 mb-4">
+                            {getSectionIcon(currentSection.type)}
+                            <h3 className="text-2xl font-bold text-gray-900">{currentSection.title}</h3>
+                          </div>
+                          {currentSection.estimatedDuration && (
+                            <div className="flex items-center text-gray-600">
+                              <Clock className="h-4 w-4 mr-2" />
+                              <span>{currentSection.estimatedDuration} minutes</span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Section Content */}
+                        <div className="bg-white rounded-lg p-6 shadow-sm">
+                          {renderSectionContent(currentSection)}
+                        </div>
+                      </div>
                     ) : showPPTViewer && slideImages.length > 0 ? (
                       <div className="bg-gray-100 rounded-xl overflow-hidden">
                         {/* Éditeur PPT Visuel */}
