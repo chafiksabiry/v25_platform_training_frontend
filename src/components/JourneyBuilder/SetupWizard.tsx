@@ -512,19 +512,19 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
                   <Sparkles className="h-5 w-5 mr-2 text-orange-600" />
                   360° Methodology Components:
                 </h5>
-                <div className="space-y-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                   {selectedMethodology.components?.slice(0, 6).map((component: any, idx: number) => (
                     <div key={idx} className="text-sm text-gray-700 flex items-center">
-                      <span className="mr-2">•</span>
+                      <CheckCircle className="h-4 w-4 text-green-500 mr-2 flex-shrink-0" />
                       <span>{component.title} ({component.estimatedDuration || 0}h)</span>
                     </div>
                   ))}
-                  {selectedMethodology.components && selectedMethodology.components.length > 6 && (
-                    <div className="text-sm text-gray-600 font-medium mt-2">
-                      +{selectedMethodology.components.length - 6} more components
-                    </div>
-                  )}
                 </div>
+                {selectedMethodology.components && selectedMethodology.components.length > 6 && (
+                  <div className="text-sm text-gray-600 font-medium mt-2">
+                    +{selectedMethodology.components.length - 6} more components
+                  </div>
+                )}
               </div>
             )}
 

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { BookOpen, Clock, ChevronLeft, ChevronRight, CheckCircle, FileText, List, Download } from 'lucide-react';
+import DocumentViewer from '../DocumentViewer/DocumentViewer';
 import { TrainingModule, ModuleContent } from '../../types/core';
 import { TrainingSection } from '../../types/manualTraining';
 
@@ -291,59 +292,19 @@ export default function ModuleContentViewer({ modules, onComplete }: ModuleConte
                     Document: {currentSection.content.file.name}
                   </p>
                   {currentSection.content.file.url && (
-                    <div className="mt-4">
-                      {/* PDF Viewer */}
-                      {currentSection.content.file.type === 'pdf' || currentSection.content.file.mimeType?.includes('pdf') ? (
-                        // For blob URLs, show download link instead of iframe (CORS issue with PDF.js)
-                        currentSection.content.file.url.startsWith('blob:') ? (
-                          <div className="flex flex-col items-center justify-center p-8 bg-gray-50 rounded-lg border border-gray-200">
-                            <FileText className="w-16 h-16 text-blue-500 mb-4" />
-                            <h4 className="text-lg font-semibold text-gray-900 mb-2">{currentSection.content.file.name}</h4>
-                            <p className="text-gray-600 mb-4 text-center">PDF Document</p>
-                            <a
-                              href={currentSection.content.file.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              download={currentSection.content.file.name}
-                              className="inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-lg font-medium transition-all"
-                            >
-                              <Download className="h-5 w-5" />
-                              <span>Open PDF Document</span>
-                            </a>
-                          </div>
-                        ) : (
-                          <div className="relative w-full bg-gray-100 rounded-lg border border-gray-200" style={{ minHeight: '300px' }}>
-                            <iframe
-                              key={`pdf-${currentSection.id}`}
-                              src={`https://mozilla.github.io/pdf.js/web/viewer.html?file=${encodeURIComponent(currentSection.content.file.url)}`}
-                              className="w-full border-0 rounded-lg"
-                              style={{ height: '400px' }}
-                              title={currentSection.content.file.name || 'Document'}
-                              allow="autoplay"
-                              onLoad={() => {
-                                console.log('✅ PDF loaded successfully');
-                              }}
-                              onError={(e) => {
-                                console.error('❌ PDF load error:', e);
-                              }}
-                            />
-                          </div>
-                        )
-                      ) : (
-                        <div className="flex flex-col items-center justify-center p-8 bg-gray-50 rounded-lg">
-                          <FileText className="w-16 h-16 text-gray-400 mb-4" />
-                          <h4 className="text-lg font-semibold text-gray-900 mb-2">{currentSection.content.file.name}</h4>
-                          <a
-                            href={currentSection.content.file.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-lg font-medium transition-all mt-4"
-                          >
-                            <FileText className="h-5 w-5" />
-                            <span>Ouvrir le document</span>
-                          </a>
-                        </div>
-                      )}
+                    <div className="mt-4" style={{ minHeight: '400px' }}>
+                      <DocumentViewer
+                        fileUrl={currentSection.content.file.url}
+                        fileName={currentSection.content.file.name}
+                        mimeType={currentSection.content.file.mimeType}
+                      />
+                    </div>
+                  )}
+                  {!currentSection.content.file.url && (
+                    <div className="flex flex-col items-center justify-center p-8 bg-gray-50 rounded-lg">
+                      <FileText className="w-16 h-16 text-gray-400 mb-4" />
+                      <h4 className="text-lg font-semibold text-gray-900 mb-2">{currentSection.content.file.name}</h4>
+                      <p className="text-gray-500 text-center">Document file not available</p>
                     </div>
                   )}
                 </div>

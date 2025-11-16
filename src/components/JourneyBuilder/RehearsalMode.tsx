@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Play, Pause, RotateCcw, CheckCircle, AlertTriangle, MessageSquare, Star, Eye, Users, Rocket, ArrowLeft, ArrowRight, Clock, BarChart3, Zap, Video, BookOpen, Edit3, Save, X as XIcon, Trash2, Plus, Download, FileQuestion, FileText, Image as ImageIcon, Youtube, Sparkles } from 'lucide-react';
+import DocumentViewer from '../DocumentViewer/DocumentViewer';
 import { TrainingJourney, TrainingModule, RehearsalFeedback, ContentUpload } from '../../types';
 import { TrainingMethodology } from '../../types/methodology';
 import ModuleContentViewer from '../Training/ModuleContentViewer';
@@ -525,109 +526,14 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
     
     switch (section.type) {
       case 'document':
-        if (content?.file) {
-          const file = content.file;
-          const isPDF = file.type === 'pdf' || file.mimeType?.includes('pdf');
-          const isWord = file.type === 'word' || file.mimeType?.includes('word') || file.mimeType?.includes('document');
-          
+        if (content?.file && content.file.url) {
           return (
-            <div className="space-y-6">
-              {/* AI Description */}
-              {content.text && (
-                <div className="bg-gradient-to-br from-purple-50 to-blue-50 rounded-lg p-6 border border-purple-200">
-                  <div className="flex items-center mb-3">
-                    <Sparkles className="h-5 w-5 text-purple-600 mr-2" />
-                    <h4 className="font-semibold text-purple-900">AI-Generated Description</h4>
-                  </div>
-                  <div className="whitespace-pre-wrap text-gray-700 leading-relaxed">
-                    {content.text.split('\n').map((line, idx) => {
-                      if (line.startsWith('📚') || line.startsWith('🎯') || line.startsWith('⏱️') || line.startsWith('📊')) {
-                        return <div key={idx} className="font-semibold text-gray-900 mt-3 mb-2">{line}</div>;
-                      } else if (line.startsWith('•')) {
-                        return <div key={idx} className="ml-4 text-gray-700">{line}</div>;
-                      } else if (line.trim() === '') {
-                        return <br key={idx} />;
-                      } else {
-                        return <div key={idx} className="text-gray-700">{line}</div>;
-                      }
-                    })}
-                  </div>
-                </div>
-              )}
-              
-              {/* Document Viewer */}
-              <div className="relative w-full bg-gray-50 rounded-lg border border-gray-200" style={{ minHeight: '300px' }}>
-                {file.url && isPDF ? (
-                  // For blob URLs, show download link instead of iframe (CORS issue with PDF.js)
-                  file.url.startsWith('blob:') ? (
-                    <div className="flex flex-col items-center justify-center h-full p-8">
-                      <FileText className="w-16 h-16 text-blue-500 mb-4" />
-                      <h4 className="text-lg font-semibold text-gray-900 mb-2">{file.name}</h4>
-                      <p className="text-gray-600 mb-4 text-center">PDF Document</p>
-                      <a
-                        href={file.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        download={file.name}
-                        className="inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-lg font-medium transition-all"
-                      >
-                        <Download className="h-5 w-5" />
-                        <span>Open PDF Document</span>
-                      </a>
-                    </div>
-                  ) : (
-                    <iframe
-                      key={`pdf-${section.id}`}
-                      src={`https://mozilla.github.io/pdf.js/web/viewer.html?file=${encodeURIComponent(file.url)}`}
-                      className="w-full border-0 rounded-lg"
-                      style={{ height: '400px' }}
-                      title={file.name || 'Document'}
-                      allow="autoplay"
-                      onLoad={() => {
-                        console.log('✅ PDF loaded successfully');
-                      }}
-                      onError={(e) => {
-                        console.error('❌ PDF load error:', e);
-                      }}
-                    />
-                  )
-                ) : file.url && isWord ? (
-                  <div className="flex flex-col items-center justify-center h-full p-8">
-                    <FileText className="w-16 h-16 text-blue-500 mb-4" />
-                    <h4 className="text-lg font-semibold text-gray-900 mb-2">{file.name}</h4>
-                    <p className="text-gray-600 mb-4 text-center">Word document preview not available in browser</p>
-                    <a
-                      href={file.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-lg font-medium transition-all"
-                    >
-                      <Download className="h-5 w-5" />
-                      <span>Download & Open Document</span>
-                    </a>
-                  </div>
-                ) : file.url ? (
-                  <div className="flex flex-col items-center justify-center h-full p-8">
-                    <FileText className="w-16 h-16 text-gray-400 mb-4" />
-                    <h4 className="text-lg font-semibold text-gray-900 mb-2">{file.name}</h4>
-                    <a
-                      href={file.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white rounded-lg font-medium transition-all"
-                    >
-                      <Download className="h-5 w-5" />
-                      <span>Open Document</span>
-                    </a>
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center h-full p-8">
-                    <FileText className="w-16 h-16 text-gray-300 mb-4" />
-                    <h4 className="text-lg font-semibold text-gray-900 mb-2">{file.name}</h4>
-                    <p className="text-gray-500 text-center">Document file not available for preview</p>
-                  </div>
-                )}
-              </div>
+            <div className="w-full h-full" style={{ minHeight: '400px' }}>
+              <DocumentViewer
+                fileUrl={content.file.url}
+                fileName={content.file.name}
+                mimeType={content.file.mimeType}
+              />
             </div>
           );
         }
@@ -678,43 +584,41 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
         );
 
       case 'video':
+        const videoUrl = content?.file?.url || content?.url;
+        if (videoUrl) {
+          return (
+            <div className="w-full h-full" style={{ minHeight: '400px' }}>
+              <DocumentViewer
+                fileUrl={videoUrl}
+                fileName={content?.file?.name}
+                mimeType={content?.file?.mimeType || 'video/mp4'}
+              />
+            </div>
+          );
+        }
         return (
-          <div className="w-full">
-            {content?.file?.url ? (
-              <video
-                controls
-                className="w-full rounded-lg"
-                src={content.file.url}
-                title={content.file.name || 'Video'}
-              >
-                Your browser does not support the video tag.
-              </video>
-            ) : (
-              <div className="text-center py-12 text-gray-500">
-                <Video className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <p>No video available</p>
-              </div>
-            )}
+          <div className="text-center py-12 text-gray-500">
+            <Video className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <p>No video available</p>
           </div>
         );
 
       case 'youtube':
-    return (
-          <div className="w-full aspect-video">
-            {content?.youtubeUrl ? (
-              <iframe
-                className="w-full h-full rounded-lg"
-                src={content.youtubeUrl.replace('watch?v=', 'embed/')}
-                title={section.title}
-                frameBorder="0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
+        const youtubeUrl = content?.youtubeUrl || content?.url || content?.file?.url;
+        if (youtubeUrl) {
+          return (
+            <div className="w-full h-full" style={{ minHeight: '400px' }}>
+              <DocumentViewer
+                fileUrl={youtubeUrl}
+                fileName={content?.file?.name}
+                mimeType={content?.file?.mimeType}
               />
-            ) : (
-              <div className="flex items-center justify-center h-full text-gray-400">
-                <Youtube className="w-16 h-16" />
-              </div>
-            )}
+            </div>
+          );
+        }
+        return (
+          <div className="flex items-center justify-center h-full text-gray-400">
+            <Youtube className="w-16 h-16" />
           </div>
         );
 
@@ -992,21 +896,7 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
                       />
                     ) : hasSections && currentSection ? (
                       <div className="bg-gray-50 rounded-xl p-6">
-                        {/* Section Header */}
-                        <div className="mb-6">
-                          <div className="flex items-center space-x-3 mb-4">
-                            {getSectionIcon(currentSection.type)}
-                            <h3 className="text-2xl font-bold text-gray-900">{currentSection.title}</h3>
-                          </div>
-                          {currentSection.estimatedDuration && (
-                            <div className="flex items-center text-gray-600">
-                              <Clock className="h-4 w-4 mr-2" />
-                              <span>{currentSection.estimatedDuration} minutes</span>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Section Content */}
+                        {/* Section Content - Display document directly without header */}
                         <div className="bg-white rounded-lg p-6 shadow-sm">
                           {renderSectionContent(currentSection)}
                         </div>
