@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
-import { CheckCircle, AlertTriangle, MessageSquare, Star, Users, Rocket, ArrowLeft, Clock, BarChart3, Eye, Play, Zap, Video, ChevronDown, ChevronUp } from 'lucide-react';
-import { TrainingJourney, TrainingModule, RehearsalFeedback, Rep } from '../../types';
+import { CheckCircle, AlertTriangle, MessageSquare, Star, Users, Rocket, ArrowLeft, Clock, BarChart3, Eye, Play, Zap, Video, ChevronDown, ChevronUp, FileQuestion, Loader2 } from 'lucide-react';
+import { TrainingJourney, TrainingModule, RehearsalFeedback, Rep, Assessment, Question } from '../../types';
 import VideoScriptViewer from '../MediaGenerator/VideoScriptViewer';
 import { JourneyService } from '../../infrastructure/services/JourneyService';
+import { AIService } from '../../infrastructure/services/AIService';
+import axios from 'axios';
 
 interface LaunchApprovalProps {
   journey: TrainingJourney;
   modules: TrainingModule[];
   rehearsalFeedback: RehearsalFeedback[];
   rehearsalRating: number;
-  onLaunch: (journey: TrainingJourney, enrolledReps: Rep[]) => void;
+  onLaunch: (journey: TrainingJourney, modules: TrainingModule[], enrolledReps: Rep[]) => void;
   onBackToRehearsal: () => void;
   onBack: () => void;
 }
@@ -35,6 +37,109 @@ export default function LaunchApproval({
     recordSessions: true,
     aiTutorEnabled: true
   });
+  const [updatedModules, setUpdatedModules] = useState<TrainingModule[]>(modules);
+  const [generatingQuizForModule, setGeneratingQuizForModule] = useState<string | null>(null);
+  const [generatingFinalExam, setGeneratingFinalExam] = useState(false);
+
+  // Get API base URL
+  const getApiBaseUrl = () => {
+    if (import.meta.env.VITE_API_BASE_URL) {
+      return import.meta.env.VITE_API_BASE_URL;
+    }
+    return 'https://api-training.harx.ai';
+  };
+  const API_BASE = getApiBaseUrl();
+
+  // Generate quiz for a module
+  const generateModuleQuiz = async (module: TrainingModule, isFinalExam: boolean = false) => {
+    const moduleId = module.id;
+    setGeneratingQuizForModule(moduleId);
+    if (isFinalExam) {
+      setGeneratingFinalExam(true);
+    }
+
+    try {
+      // Prepare module content for quiz generation
+      const moduleContent = `${module.title}\n\n${module.description}\n\n${
+        module.learningObjectives?.join('\n') || ''
+      }`;
+
+      // Calculate number of questions (10-15 for modules, 20-30 for final exam)
+      const questionCount = isFinalExam ? 25 : 12;
+
+      console.log(`📝 Generating ${isFinalExam ? 'final exam' : 'quiz'} for module: ${module.title}`);
+
+      // Generate quiz using AI service
+      const questions = await AIService.generateQuiz(moduleContent, questionCount);
+
+      // Convert to Assessment format
+      const assessmentQuestions: Question[] = questions.map((q: any, index: number) => ({
+        id: `q${index + 1}`,
+        text: q.text || q.question,
+        type: 'multiple-choice' as const,
+        options: q.options || [],
+        correctAnswer: q.correctAnswer,
+        explanation: q.explanation || '',
+        points: q.points || 10
+      }));
+
+      // Calculate passing score (70% of total points)
+      const totalPoints = assessmentQuestions.reduce((sum, q) => sum + (q.points || 10), 0);
+      const passingScore = Math.floor(totalPoints * 0.7);
+
+      // Create assessment
+      const assessment: Assessment = {
+        id: isFinalExam 
+          ? `final-exam-${journey.id}` 
+          : `assessment-${moduleId}-${Date.now()}`,
+        title: isFinalExam 
+          ? `Examen Final - ${journey.name}` 
+          : `Quiz - ${module.title}`,
+        type: 'quiz',
+        questions: assessmentQuestions,
+        passingScore: passingScore,
+        timeLimit: assessmentQuestions.length * 2 // 2 minutes per question
+      };
+
+      // Update module with new assessment
+      const updatedModulesList = updatedModules.map(m => {
+        if (m.id === moduleId) {
+          return {
+            ...m,
+            assessments: [...(m.assessments || []), assessment]
+          };
+        }
+        return m;
+      });
+
+      setUpdatedModules(updatedModulesList);
+
+      // Save to server
+      try {
+        const saveData = {
+          moduleId: moduleId,
+          journeyId: journey.id,
+          assessment: assessment,
+          isFinalExam: isFinalExam
+        };
+
+        // Try to save to server
+        await axios.post(`${API_BASE}/api/training-journeys/${journey.id}/modules/${moduleId}/assessments`, saveData);
+        console.log(`✅ ${isFinalExam ? 'Final exam' : 'Quiz'} saved to server`);
+      } catch (saveError) {
+        console.warn('⚠️ Could not save to server, but quiz is generated locally:', saveError);
+        // Continue even if save fails - quiz is still available locally
+      }
+
+      console.log(`✅ ${isFinalExam ? 'Final exam' : 'Quiz'} generated successfully`);
+    } catch (error) {
+      console.error(`❌ Error generating ${isFinalExam ? 'final exam' : 'quiz'}:`, error);
+      alert(`Erreur lors de la génération du ${isFinalExam ? 'examen final' : 'quiz'}. Veuillez réessayer.`);
+    } finally {
+      setGeneratingQuizForModule(null);
+      setGeneratingFinalExam(false);
+    }
+  };
 
   // Mock REPs data
   const availableReps: Rep[] = [
@@ -105,19 +210,19 @@ export default function LaunchApproval({
       // ✅ Sauvegarder dans MongoDB
       const launchResponse = await JourneyService.launchJourney({
         journey: updatedJourney,
-        modules: modules,
+        modules: updatedModules, // Use updated modules with quizzes
         enrolledRepIds: enrolledReps.map(r => r.id),
         launchSettings: launchSettings,
         rehearsalData: {
           rating: rehearsalRating,
-          modulesCompleted: modules.length,
+          modulesCompleted: updatedModules.length,
           feedback: rehearsalFeedback.map(f => f.message)
         }
       });
       
       console.log('✅ Journey saved to MongoDB:', launchResponse);
       
-      onLaunch(updatedJourney, enrolledReps);
+      onLaunch(updatedJourney, updatedModules, enrolledReps);
     } catch (error) {
       console.error('❌ Failed to save journey to MongoDB:', error);
       alert('Erreur lors de la sauvegarde du training. Veuillez réessayer.');
@@ -335,7 +440,9 @@ export default function LaunchApproval({
 
                 {showModulePreviews && (
                   <div className="space-y-4">
-                    {modules.map((module, index) => (
+                    {updatedModules.map((module, index) => {
+                      const isLastModule = index === updatedModules.length - 1;
+                      return (
                       <div key={module.id} className="border-2 border-gray-200 rounded-xl overflow-hidden">
                         {/* Module Header */}
                         <button
@@ -376,7 +483,7 @@ export default function LaunchApproval({
                             </div>
 
                             {/* AI-Generated Video Script */}
-                            <div>
+                            <div className="mb-6">
                               <h5 className="font-semibold text-gray-700 mb-3 flex items-center space-x-2">
                                 <Video className="h-5 w-5 text-purple-600" />
                                 <span>AI-Generated Video Script</span>
@@ -387,10 +494,86 @@ export default function LaunchApproval({
                                 learningObjectives={module.learningObjectives}
                               />
                             </div>
+
+                            {/* Quiz Generation Section */}
+                            <div className="border-t border-gray-200 pt-6">
+                              <div className="flex items-center justify-between mb-4">
+                                <h5 className="font-semibold text-gray-700 flex items-center space-x-2">
+                                  <FileQuestion className="h-5 w-5 text-purple-600" />
+                                  <span>Assessments & Quizzes</span>
+                                </h5>
+                                <div className="flex items-center space-x-2">
+                                  <button
+                                    onClick={() => generateModuleQuiz(module, false)}
+                                    disabled={generatingQuizForModule === module.id}
+                                    className="flex items-center space-x-2 px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
+                                  >
+                                    {generatingQuizForModule === module.id ? (
+                                      <>
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                        <span>Génération...</span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <FileQuestion className="h-4 w-4" />
+                                        <span>Générer Quiz</span>
+                                      </>
+                                    )}
+                                  </button>
+                                  {isLastModule && (
+                                    <button
+                                      onClick={() => generateModuleQuiz(module, true)}
+                                      disabled={generatingFinalExam}
+                                      className="flex items-center space-x-2 px-3 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
+                                    >
+                                      {generatingFinalExam ? (
+                                        <>
+                                          <Loader2 className="h-4 w-4 animate-spin" />
+                                          <span>Génération...</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <FileQuestion className="h-4 w-4" />
+                                          <span>Examen Final</span>
+                                        </>
+                                      )}
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Display existing assessments */}
+                              {module.assessments && module.assessments.length > 0 ? (
+                                <div className="space-y-2">
+                                  {module.assessments.map((assessment, idx) => (
+                                    <div key={idx} className="bg-purple-50 rounded-lg p-3 border border-purple-200 flex items-center justify-between">
+                                      <div className="flex-1">
+                                        <h6 className="font-medium text-gray-900 text-sm mb-1">{assessment.title}</h6>
+                                        <div className="flex items-center space-x-3 text-xs text-gray-600">
+                                          <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded-full">
+                                            {assessment.questions?.length || 0} questions
+                                          </span>
+                                          <span>Type: {assessment.type || 'quiz'}</span>
+                                          <span>Passing Score: {assessment.passingScore || 80}%</span>
+                                        </div>
+                                      </div>
+                                      <CheckCircle className="h-4 w-4 text-purple-600" />
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <div className="text-center py-4 text-gray-500 text-sm">
+                                  <FileQuestion className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                                  <p>Aucun quiz généré pour ce module</p>
+                                  <p className="text-xs mt-1">Cliquez sur "Générer Quiz" pour créer un quiz avec l'IA</p>
+                                </div>
+                              )}
+                            </div>
                           </div>
                         )}
                       </div>
-                    ))}
+                    );
+                    })}
                   </div>
                 )}
 

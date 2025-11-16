@@ -17,8 +17,8 @@ export default function JourneySuccess({
   onViewDashboard, 
   onCreateAnother 
 }: JourneySuccessProps) {
-  const totalDuration = modules.reduce((sum, module) => sum + module.duration, 0);
-  const totalAssessments = modules.reduce((sum, module) => sum + module.assessments.length, 0);
+  const totalDuration = modules.reduce((sum, module) => sum + (module.duration || 0), 0);
+  const totalAssessments = modules.reduce((sum, module) => sum + (module.assessments?.length || 0), 0);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50 flex items-center justify-center p-4">

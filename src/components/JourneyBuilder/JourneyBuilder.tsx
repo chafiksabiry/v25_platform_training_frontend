@@ -107,8 +107,8 @@ export default function JourneyBuilder({ onComplete }: JourneyBuilderProps) {
     setShowLaunchApproval(true);
   };
 
-  const handleLaunch = (finalJourney: TrainingJourney, enrolledReps: Rep[]) => {
-    onComplete(finalJourney, modules, enrolledReps);
+  const handleLaunch = (finalJourney: TrainingJourney, finalModules: TrainingModule[], enrolledReps: Rep[]) => {
+    onComplete(finalJourney, finalModules, enrolledReps);
   };
 
   const renderCurrentStep = () => {
