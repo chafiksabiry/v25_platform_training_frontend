@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { CheckCircle, Clock, ArrowRight, Sparkles, Upload, Brain, Wand2, Rocket, Target } from 'lucide-react';
 import SetupWizard from './SetupWizard';
 import ContentUploader from './ContentUploader';
-import TrainingDetailsForm from './TrainingDetailsForm';
+import { AIContentOrganizer } from '../ManualTraining/AIContentOrganizer';
 import CurriculumDesigner from './CurriculumDesigner';
 import RehearsalMode from './RehearsalMode';
 import LaunchApproval from './LaunchApproval';
@@ -40,10 +40,10 @@ export default function JourneyBuilder({ onComplete }: JourneyBuilderProps) {
       color: 'from-indigo-500 to-purple-500'
     },
     { 
-      title: 'Training Details', 
-      component: 'details',
+      title: 'Training Organization', 
+      component: 'organize',
       icon: Target,
-      description: 'Define training name and objectives',
+      description: 'Organize content into modules and sections',
       color: 'from-purple-500 to-pink-500'
     },
     { 
@@ -73,18 +73,7 @@ export default function JourneyBuilder({ onComplete }: JourneyBuilderProps) {
 
   const handleUploadComplete = (newUploads: ContentUpload[]) => {
     setUploads(newUploads);
-    setCurrentStep(2); // Go to Training Details
-  };
-
-  const handleTrainingDetailsComplete = (trainingData: any) => {
-    // Update journey with training details
-    setJourney(prev => ({
-      ...prev,
-      name: trainingData.trainingName,
-      description: trainingData.trainingDescription,
-      estimatedDuration: trainingData.estimatedDuration
-    }));
-    setCurrentStep(3); // Go to Curriculum Design
+    setCurrentStep(2); // Go to AI Content Organization
   };
 
   const handleCurriculumComplete = (newModules: TrainingModule[]) => {
@@ -142,13 +131,20 @@ export default function JourneyBuilder({ onComplete }: JourneyBuilderProps) {
           />
         );
       case 2:
-        return (
-          <TrainingDetailsForm
-            onComplete={handleTrainingDetailsComplete}
-            onBack={() => setCurrentStep(1)}
-            gigData={journey}
+        return journey ? (
+          <AIContentOrganizer
+            trainingId={journey.id}
+            trainingTitle={journey.name || 'Training'}
+            onComplete={() => {
+              console.log('AI Organization complete, moving to Curriculum Design');
+              setCurrentStep(3); // Go to Curriculum Design
+            }}
+            onSkip={() => {
+              console.log('Skipped AI Organization, moving to Curriculum Design');
+              setCurrentStep(3); // Go to Curriculum Design
+            }}
           />
-        );
+        ) : null;
       case 3:
         return (
           <CurriculumDesigner
