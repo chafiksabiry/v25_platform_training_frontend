@@ -4,7 +4,7 @@ import { OnboardingService } from '../../infrastructure/services/OnboardingServi
 import { Industry, GigFromApi } from '../../types';
 
 interface ManualTrainingSetupData {
-  companyName: string;
+  companyData: any;
   industry: string;
   gig: GigFromApi | null;
   trainingName: string;
@@ -20,7 +20,7 @@ interface ManualTrainingSetupProps {
 export const ManualTrainingSetup: React.FC<ManualTrainingSetupProps> = ({ onComplete, onBack }) => {
   const [currentStep, setCurrentStep] = useState(1);
   const [setupData, setSetupData] = useState<ManualTrainingSetupData>({
-    companyName: '',
+    companyData: null,
     industry: '',
     gig: null,
     trainingName: '',
@@ -31,9 +31,29 @@ export const ManualTrainingSetup: React.FC<ManualTrainingSetupProps> = ({ onComp
   // Industries and Gigs state
   const [industries, setIndustries] = useState<Industry[]>([]);
   const [loadingIndustries, setLoadingIndustries] = useState(true);
+  const [loadingCompany, setLoadingCompany] = useState(true);
   const [gigs, setGigs] = useState<GigFromApi[]>([]);
   const [loadingGigs, setLoadingGigs] = useState(false);
   const [gigsError, setGigsError] = useState<string | null>(null);
+
+  // Fetch company data on mount
+  useEffect(() => {
+    const fetchCompanyData = async () => {
+      try {
+        setLoadingCompany(true);
+        const response = await OnboardingService.fetchCompanyData();
+        if (response.success && response.data) {
+          setSetupData(prev => ({ ...prev, companyData: response.data }));
+        }
+      } catch (error) {
+        console.error('Error fetching company data:', error);
+      } finally {
+        setLoadingCompany(false);
+      }
+    };
+
+    fetchCompanyData();
+  }, []);
 
   useEffect(() => {
     const fetchIndustries = async () => {
@@ -123,7 +143,7 @@ export const ManualTrainingSetup: React.FC<ManualTrainingSetupProps> = ({ onComp
   const canProceed = () => {
     switch (currentStep) {
       case 1:
-        return setupData.companyName.trim() && setupData.industry;
+        return setupData.industry && setupData.companyData;
       case 2:
         return setupData.gig !== null;
       case 3:
@@ -141,48 +161,66 @@ export const ManualTrainingSetup: React.FC<ManualTrainingSetupProps> = ({ onComp
             <div className="text-center mb-8">
               <Building2 className="h-16 w-16 text-green-500 mx-auto mb-4" />
               <h3 className="text-2xl font-bold text-gray-900 mb-2">Company Information</h3>
-              <p className="text-gray-600">Tell us about your organization</p>
+              <p className="text-gray-600">Select your industry</p>
             </div>
 
-            <div className="space-y-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Company Name *
-                </label>
-                <input
-                  type="text"
-                  value={setupData.companyName}
-                  onChange={(e) => setSetupData({ ...setupData, companyName: e.target.value })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-lg"
-                  placeholder="Enter your company name"
-                />
+            {loadingCompany ? (
+              <div className="flex flex-col items-center justify-center py-12">
+                <Loader2 className="h-12 w-12 text-green-500 animate-spin mb-4" />
+                <p className="text-gray-600">Loading company information...</p>
               </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Industry *
-                </label>
-                {loadingIndustries ? (
-                  <div className="w-full px-4 py-3 border border-gray-300 rounded-lg flex items-center justify-center">
-                    <Loader2 className="h-5 w-5 text-green-500 animate-spin mr-2" />
-                    <span className="text-gray-600">Loading industries...</span>
+            ) : setupData.companyData ? (
+              <div className="space-y-6">
+                {/* Display Company Info */}
+                <div className="bg-gradient-to-r from-green-50 to-blue-50 border-2 border-green-200 rounded-xl p-6">
+                  <div className="flex items-start gap-4">
+                    {setupData.companyData.logo && (
+                      <img 
+                        src={setupData.companyData.logo} 
+                        alt={setupData.companyData.name}
+                        className="w-16 h-16 rounded-lg object-cover"
+                      />
+                    )}
+                    <div className="flex-1">
+                      <h4 className="text-2xl font-bold text-gray-900 mb-2">{setupData.companyData.name}</h4>
+                      <p className="text-sm text-gray-600 mb-2">{setupData.companyData.industry}</p>
+                      <p className="text-gray-700 leading-relaxed">{setupData.companyData.overview}</p>
+                    </div>
                   </div>
-                ) : (
-                  <select
-                    value={setupData.industry}
-                    onChange={(e) => setSetupData({ ...setupData, industry: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-lg"
-                  >
-                    <option value="">Select your industry</option>
-                    {industries.map((industry) => (
-                      <option key={industry._id} value={industry.name}>
-                        {industry.name}
-                      </option>
-                    ))}
-                  </select>
-                )}
+                </div>
+
+                {/* Industry Selector */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Select Training Industry *
+                  </label>
+                  {loadingIndustries ? (
+                    <div className="w-full px-4 py-3 border border-gray-300 rounded-lg flex items-center justify-center">
+                      <Loader2 className="h-5 w-5 text-green-500 animate-spin mr-2" />
+                      <span className="text-gray-600">Loading industries...</span>
+                    </div>
+                  ) : (
+                    <select
+                      value={setupData.industry}
+                      onChange={(e) => setSetupData({ ...setupData, industry: e.target.value })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-lg"
+                    >
+                      <option value="">Select the industry for training</option>
+                      {industries.map((industry) => (
+                        <option key={industry._id} value={industry.name}>
+                          {industry.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="text-center py-12">
+                <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+                <p className="text-red-600">Failed to load company information</p>
+              </div>
+            )}
           </div>
         );
 

@@ -4,6 +4,7 @@ import { IndustryApiResponse, GigApiResponse, GigFromApi } from '../../types';
 
 const INDUSTRIES_API_URL = 'https://api-repcreationwizard.harx.ai/api/industries';
 const GIGS_API_URL = 'https://api-gigsmanual.harx.ai/api/gigs/company';
+const COMPANY_API_URL = 'https://api-companysearchwizard.harx.ai/api/companies';
 
 export const OnboardingService = {
   /**
@@ -71,6 +72,27 @@ export const OnboardingService = {
     } catch (error) {
       console.error(`Error fetching gigs for industry ${industryName}:`, error);
       throw new Error('Failed to fetch gigs for industry');
+    }
+  },
+
+  /**
+   * Fetch company data by company ID
+   * @param companyId - The company ID (optional, will use cookie if not provided)
+   */
+  async fetchCompanyData(companyId?: string): Promise<any> {
+    try {
+      // Use provided companyId or get from cookie
+      const effectiveCompanyId = companyId || this.getCompanyIdFromCookie();
+      
+      if (!effectiveCompanyId) {
+        throw new Error('No company ID provided or found in cookies');
+      }
+
+      const response = await axios.get(`${COMPANY_API_URL}/${effectiveCompanyId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching company data:', error);
+      throw new Error('Failed to fetch company data');
     }
   },
 };

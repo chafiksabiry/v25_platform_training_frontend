@@ -15,6 +15,7 @@ interface SetupWizardProps {
 export default function SetupWizard({ onComplete }: SetupWizardProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [company, setCompany] = useState<Partial<Company>>({});
+  const [companyData, setCompanyData] = useState<any>(null);
   const [journey, setJourney] = useState<Partial<TrainingJourney>>({});
   const [selectedMethodology, setSelectedMethodology] = useState<TrainingMethodology | null>(null);
   const [showMethodologySelector, setShowMethodologySelector] = useState(false);
@@ -23,8 +24,34 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
   // Industries and Gigs state
   const [industries, setIndustries] = useState<Industry[]>([]);
   const [loadingIndustries, setLoadingIndustries] = useState(true);
+  const [loadingCompany, setLoadingCompany] = useState(true);
   const [selectedGig, setSelectedGig] = useState<GigFromApi | null>(null);
   const [showGigSelector, setShowGigSelector] = useState(false);
+
+  // Fetch company data on mount
+  useEffect(() => {
+    const fetchCompanyData = async () => {
+      try {
+        setLoadingCompany(true);
+        const response = await OnboardingService.fetchCompanyData();
+        if (response.success && response.data) {
+          setCompanyData(response.data);
+          // Set company name and industry from API
+          setCompany(prev => ({ 
+            ...prev, 
+            name: response.data.name,
+            industry: response.data.industry 
+          }));
+        }
+      } catch (error) {
+        console.error('Error fetching company data:', error);
+      } finally {
+        setLoadingCompany(false);
+      }
+    };
+
+    fetchCompanyData();
+  }, []);
 
   useEffect(() => {
     const fetchIndustries = async () => {
@@ -217,7 +244,7 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
             <div className="text-center mb-8">
               <Building2 className="h-16 w-16 text-blue-500 mx-auto mb-4" />
               <h3 className="text-2xl font-bold text-gray-900 mb-2">Welcome to Your Training Journey</h3>
-              <p className="text-gray-600">Let's start by learning about your organization</p>
+              <p className="text-gray-600">Select your training industry</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
@@ -229,44 +256,65 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
               ))}
             </div>
 
-            <div className="space-y-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Company Name *
-                </label>
-                <input
-                  type="text"
-                  value={company.name || ''}
-                  onChange={(e) => setCompany({ ...company, name: e.target.value })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg"
-                  placeholder="Enter your company name"
-                />
+            {loadingCompany ? (
+              <div className="flex flex-col items-center justify-center py-12">
+                <Loader2 className="h-12 w-12 text-blue-500 animate-spin mb-4" />
+                <p className="text-gray-600">Loading company information...</p>
               </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Industry *
-                </label>
-                {loadingIndustries ? (
-                  <div className="w-full px-4 py-3 border border-gray-300 rounded-lg flex items-center justify-center">
-                    <Loader2 className="h-5 w-5 text-blue-500 animate-spin mr-2" />
-                    <span className="text-gray-600">Loading industries...</span>
+            ) : companyData ? (
+              <div className="space-y-6">
+                {/* Display Company Info */}
+                <div className="bg-gradient-to-r from-blue-50 to-purple-50 border-2 border-blue-200 rounded-xl p-6">
+                  <div className="flex items-start gap-4">
+                    {companyData.logo && (
+                      <img 
+                        src={companyData.logo} 
+                        alt={companyData.name}
+                        className="w-16 h-16 rounded-lg object-cover"
+                      />
+                    )}
+                    <div className="flex-1">
+                      <h4 className="text-2xl font-bold text-gray-900 mb-2">{companyData.name}</h4>
+                      <p className="text-sm text-gray-600 mb-2">{companyData.industry}</p>
+                      <p className="text-gray-700 leading-relaxed">{companyData.overview}</p>
+                    </div>
                   </div>
-                ) : (
-                  <select
-                    value={company.industry || ''}
-                    onChange={(e) => setCompany({ ...company, industry: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg"
-                  >
-                    <option value="">Select your industry</option>
-                    {industries.map((industry) => (
-                      <option key={industry._id} value={industry.name}>
-                        {industry.name}
-                      </option>
-                    ))}
-                  </select>
-                )}
+                </div>
+
+                {/* Industry Selector */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Select Training Industry *
+                  </label>
+                  {loadingIndustries ? (
+                    <div className="w-full px-4 py-3 border border-gray-300 rounded-lg flex items-center justify-center">
+                      <Loader2 className="h-5 w-5 text-blue-500 animate-spin mr-2" />
+                      <span className="text-gray-600">Loading industries...</span>
+                    </div>
+                  ) : (
+                    <select
+                      value={company.industry || ''}
+                      onChange={(e) => setCompany({ ...company, industry: e.target.value })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg"
+                    >
+                      <option value="">Select the industry for training</option>
+                      {industries.map((industry) => (
+                        <option key={industry._id} value={industry.name}>
+                          {industry.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
               </div>
+            ) : (
+              <div className="text-center py-12">
+                <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+                <p className="text-red-600">Failed to load company information</p>
+              </div>
+            )}
+
+            <div className="space-y-6">
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -567,7 +615,7 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
   const isStepValid = () => {
     switch (currentStep) {
       case 1:
-        return company.name && company.industry && company.size && selectedGig !== null;
+        return companyData && company.industry && company.size && selectedGig !== null;
       case 2:
         return journey.name && journey.estimatedDuration;
       case 3:
