@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { BookOpen, Clock, ChevronLeft, ChevronRight, CheckCircle, FileText, List } from 'lucide-react';
 import { TrainingModule, ModuleContent } from '../../types/core';
+import { TrainingSection } from '../../types/manualTraining';
 
 interface ModuleContentViewerProps {
   modules: TrainingModule[];
@@ -14,11 +15,16 @@ export default function ModuleContentViewer({ modules, onComplete }: ModuleConte
   const [showOutline, setShowOutline] = useState(false);
 
   const currentModule = modules[currentModuleIndex];
-  const currentSection = currentModule?.content[currentSectionIndex];
-  const totalSections = currentModule?.content.length || 0;
+  // Utiliser les sections réelles si disponibles, sinon fallback sur content
+  const moduleSections = (currentModule as any)?.sections || currentModule?.content || [];
+  const currentSection = moduleSections[currentSectionIndex];
+  const totalSections = moduleSections.length || 0;
 
   const progress = Math.round(
-    ((completedSections.size) / modules.reduce((sum, m) => sum + m.content.length, 0)) * 100
+    ((completedSections.size) / modules.reduce((sum, m) => {
+      const sections = (m as any)?.sections || m.content || [];
+      return sum + sections.length;
+    }, 0)) * 100
   );
 
   const goToNextSection = () => {
@@ -45,8 +51,10 @@ export default function ModuleContentViewer({ modules, onComplete }: ModuleConte
       setCurrentSectionIndex(prev => prev - 1);
     } else if (currentModuleIndex > 0) {
       // Move to previous module
+      const prevModule = modules[currentModuleIndex - 1];
+      const prevModuleSections = (prevModule as any)?.sections || prevModule.content || [];
       setCurrentModuleIndex(prev => prev - 1);
-      setCurrentSectionIndex(modules[currentModuleIndex - 1].content.length - 1);
+      setCurrentSectionIndex(prevModuleSections.length - 1);
     }
   };
 
@@ -133,12 +141,14 @@ export default function ModuleContentViewer({ modules, onComplete }: ModuleConte
                   {module.title}
                 </div>
                 <div className="ml-8 space-y-1">
-                  {module.content.map((section, sIdx) => {
-                    const isCompleted = isSectionCompleted(module.id, section.id);
+                  {((module as any)?.sections || module.content || []).map((section: any, sIdx: number) => {
+                    const sectionId = section.id || `${module.id}-${sIdx}`;
+                    const isCompleted = isSectionCompleted(module.id, sectionId);
                     const isCurrent = mIdx === currentModuleIndex && sIdx === currentSectionIndex;
+                    const sectionDuration = section.estimatedDuration || section.duration || 0;
                     return (
                       <button
-                        key={section.id}
+                        key={sectionId}
                         onClick={() => jumpToSection(mIdx, sIdx)}
                         className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all duration-300 flex items-center justify-between transform hover:scale-102 hover:shadow-sm ${
                           isCurrent
@@ -150,7 +160,7 @@ export default function ModuleContentViewer({ modules, onComplete }: ModuleConte
                       >
                         <span className="flex-1">{section.title}</span>
                         <div className="flex items-center space-x-2">
-                          <span className="text-xs opacity-70">{section.duration} min</span>
+                          <span className="text-xs opacity-70">{sectionDuration} min</span>
                           {isCompleted && <CheckCircle className="h-4 w-4 text-green-600" />}
                         </div>
                       </button>
@@ -182,18 +192,25 @@ export default function ModuleContentViewer({ modules, onComplete }: ModuleConte
                 </span>
               </div>
               <h1 className="text-4xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-3 animate-slide-in-right">{currentSection.title}</h1>
+              {/* Afficher la description du module */}
+              {currentModule.description && (
+                <p className="text-gray-600 mb-4 text-lg">{currentModule.description}</p>
+              )}
+              {/* Afficher la description de la section si disponible */}
+              {currentSection.content?.text && typeof currentSection.content.text === 'string' && (
+                <p className="text-gray-700 mb-4">{currentSection.content.text.split('\n')[0]}</p>
+              )}
               <div className="flex items-center space-x-4 text-gray-600">
                 <div className="flex items-center space-x-2">
                   <Clock className="h-5 w-5" />
-                  <span className="text-sm font-medium">{currentSection.duration} minutes</span>
+                  <span className="text-sm font-medium">{currentSection.estimatedDuration || currentSection.duration || 0} minutes</span>
                 </div>
                 <div className="flex items-center space-x-2">
                   <FileText className="h-5 w-5" />
                   <span className="text-sm font-medium">
-                    {typeof currentSection.content === 'string' 
-                      ? `${Math.ceil(currentSection.content.split(' ').length / 200)} min read`
-                      : 'Interactive content'
-                    }
+                    {currentSection.type === 'document' ? 'Document' :
+                     currentSection.type === 'video' ? 'Video' :
+                     'Content'}
                   </span>
                 </div>
               </div>
@@ -204,8 +221,9 @@ export default function ModuleContentViewer({ modules, onComplete }: ModuleConte
         {/* Content Body */}
         <div className="prose prose-lg max-w-none mb-12">
           <div className="text-gray-800 leading-relaxed space-y-6 animate-fade-in">
-            {typeof currentSection.content === 'string' ? (
-              currentSection.content.split('\n\n').map((paragraph, idx) => {
+            {/* Afficher le contenu réel de la section */}
+            {currentSection.content?.text && typeof currentSection.content.text === 'string' ? (
+              currentSection.content.text.split('\n\n').map((paragraph, idx) => {
                 // Check if it's a bullet list
                 if (paragraph.includes('•') || paragraph.match(/^\d+\./)) {
                   return (
@@ -264,6 +282,28 @@ export default function ModuleContentViewer({ modules, onComplete }: ModuleConte
                   </p>
                 );
               })
+            ) : currentSection.content?.file ? (
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-6 shadow-md hover:shadow-lg transition-all duration-300">
+                <p className="text-blue-900 font-bold text-lg flex items-center mb-2">
+                  <FileText className="h-5 w-5 mr-2" />
+                  Document: {currentSection.content.file.name}
+                </p>
+                {currentSection.content.file.url && (
+                  <a
+                    href={currentSection.content.file.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-lg font-medium transition-all mt-4"
+                  >
+                    <FileText className="h-5 w-5" />
+                    <span>Ouvrir le document</span>
+                  </a>
+                )}
+              </div>
+            ) : typeof currentSection.content === 'string' ? (
+              <div className="text-gray-700 leading-relaxed">
+                {currentSection.content}
+              </div>
             ) : (
               <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-6 shadow-md hover:shadow-lg transition-all duration-300">
                 <p className="text-blue-900 font-bold text-lg flex items-center mb-2">
@@ -333,7 +373,10 @@ export default function ModuleContentViewer({ modules, onComplete }: ModuleConte
           <span className="flex items-center space-x-2 bg-white px-4 py-2 rounded-full shadow-sm">
             <CheckCircle className="h-4 w-4 text-green-600" />
             <span className="font-semibold text-gray-700">
-              {completedSections.size} / {modules.reduce((sum, m) => sum + m.content.length, 0)} completed
+              {completedSections.size} / {modules.reduce((sum, m) => {
+                const sections = (m as any)?.sections || m.content || [];
+                return sum + sections.length;
+              }, 0)} completed
             </span>
           </span>
         </div>
