@@ -1,9 +1,7 @@
 import React, { useState } from 'react';
-import { CheckCircle, Clock, ArrowRight, Sparkles, Upload, Brain, Wand2, Rocket, Target } from 'lucide-react';
+import { CheckCircle, Clock, ArrowRight, Sparkles, Upload, Wand2, Rocket } from 'lucide-react';
 import SetupWizard from './SetupWizard';
 import ContentUploader from './ContentUploader';
-import { AIContentOrganizer } from '../ManualTraining/AIContentOrganizer';
-import TrainingDetailsForm from './TrainingDetailsForm';
 import CurriculumDesigner from './CurriculumDesigner';
 import RehearsalMode from './RehearsalMode';
 import LaunchApproval from './LaunchApproval';
@@ -41,32 +39,18 @@ export default function JourneyBuilder({ onComplete }: JourneyBuilderProps) {
       color: 'from-indigo-500 to-purple-500'
     },
     { 
-      title: 'Training Organization', 
-      component: 'organize',
-      icon: Brain,
-      description: 'Organize content into modules and sections',
-      color: 'from-purple-500 to-pink-500'
-    },
-    { 
-      title: 'Training Details', 
-      component: 'details',
-      icon: Target,
-      description: 'Define training name and objectives',
-      color: 'from-pink-500 to-red-500'
-    },
-    { 
       title: 'Curriculum Design', 
       component: 'design',
       icon: Wand2,
       description: 'AI creates multimedia training modules',
-      color: 'from-red-500 to-orange-500'
+      color: 'from-purple-500 to-pink-500'
     },
     { 
       title: 'Test & Launch', 
       component: 'rehearsal',
       icon: Rocket,
       description: 'Rehearse, approve, and deploy to your team',
-      color: 'from-orange-500 to-yellow-500'
+      color: 'from-pink-500 to-red-500'
     }
   ];
 
@@ -81,23 +65,7 @@ export default function JourneyBuilder({ onComplete }: JourneyBuilderProps) {
 
   const handleUploadComplete = (newUploads: ContentUpload[]) => {
     setUploads(newUploads);
-    setCurrentStep(2); // Go to Training Details
-  };
-
-  const handleOrganizationComplete = () => {
-    // After organizing modules, go to Training Details
-    setCurrentStep(3);
-  };
-
-  const handleTrainingDetailsComplete = (trainingData: any) => {
-    // Update journey with training details
-    setJourney(prev => ({
-      ...prev,
-      name: trainingData.trainingName,
-      description: trainingData.trainingDescription,
-      estimatedDuration: trainingData.estimatedDuration
-    }));
-    setCurrentStep(4); // Go to Curriculum Design
+    setCurrentStep(2); // Go directly to Curriculum Design
   };
 
   const handleCurriculumComplete = (newModules: TrainingModule[]) => {
@@ -109,7 +77,7 @@ export default function JourneyBuilder({ onComplete }: JourneyBuilderProps) {
       setModules(newModules);
     }
     setModules(newModules);
-    setCurrentStep(5); // Go to Test & Launch
+    setCurrentStep(3); // Go to Test & Launch
   };
 
   const enhanceModulesWithMethodology = (modules: TrainingModule[], methodology: TrainingMethodology): TrainingModule[] => {
@@ -155,34 +123,15 @@ export default function JourneyBuilder({ onComplete }: JourneyBuilderProps) {
           />
         );
       case 2:
-        return journey ? (
-          <AIContentOrganizer
-            trainingId={journey.id}
-            trainingTitle={journey.name || 'Training'}
-            existingUploads={uploads}
-            onComplete={handleOrganizationComplete}
-            onSkip={handleOrganizationComplete}
-            onBack={() => setCurrentStep(1)}
-          />
-        ) : null;
-      case 3:
-        return (
-          <TrainingDetailsForm
-            onComplete={handleTrainingDetailsComplete}
-            onBack={() => setCurrentStep(2)}
-            gigData={journey}
-          />
-        );
-      case 4:
         return (
           <CurriculumDesigner
             uploads={uploads}
             methodology={methodology}
             onComplete={handleCurriculumComplete}
-            onBack={() => setCurrentStep(3)}
+            onBack={() => setCurrentStep(1)}
           />
         );
-      case 5:
+      case 3:
         if (!showLaunchApproval) {
           return journey ? (
             <RehearsalMode
@@ -190,7 +139,7 @@ export default function JourneyBuilder({ onComplete }: JourneyBuilderProps) {
               modules={modules}
               methodology={methodology}
               onComplete={handleRehearsalComplete}
-              onBack={() => setCurrentStep(4)}
+              onBack={() => setCurrentStep(2)}
             />
           ) : null;
         } else {
@@ -202,7 +151,7 @@ export default function JourneyBuilder({ onComplete }: JourneyBuilderProps) {
               rehearsalRating={rehearsalRating}
               onLaunch={handleLaunch}
               onBackToRehearsal={() => setShowLaunchApproval(false)}
-              onBack={() => setCurrentStep(4)}
+              onBack={() => setCurrentStep(2)}
             />
           ) : null;
         }
