@@ -32,10 +32,17 @@ export default function TrainingDetailsForm({ onComplete, onBack, gigData }: Tra
       <div className="container mx-auto px-4">
         <div className="max-w-3xl mx-auto">
           <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-8">
-            <div className="text-center mb-8">
-              <Target className="h-16 w-16 text-purple-500 mx-auto mb-4" />
-              <h3 className="text-2xl font-bold text-gray-900 mb-2">Training Details</h3>
-              <p className="text-gray-600">Define your training program</p>
+            {/* Navigation Labels */}
+            <div className="flex items-center justify-center gap-2 mb-6">
+              <div className="px-4 py-2 bg-green-100 text-green-700 rounded-lg text-sm font-medium">
+                AI-suggested goals
+              </div>
+              <div className="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg text-sm font-medium">
+                Success metrics
+              </div>
+              <div className="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg text-sm font-medium">
+                Timeline planning
+              </div>
             </div>
 
             <div className="space-y-6">
@@ -99,14 +106,33 @@ export default function TrainingDetailsForm({ onComplete, onBack, gigData }: Tra
               </div>
             </div>
 
+            {/* Progress Bar */}
+            <div className="mt-8 mb-6">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-gray-700">Step 2 of 4</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div className="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full" style={{ width: '50%' }}></div>
+              </div>
+            </div>
+
             {/* Navigation Buttons */}
-            <div className="flex justify-start items-center mt-8 pt-6 border-t border-gray-200">
+            <div className="flex justify-between items-center mt-6 pt-6 border-t border-gray-200">
               <button
                 onClick={onBack}
                 className="px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-all font-medium flex items-center space-x-2"
               >
                 <ArrowLeft className="h-5 w-5" />
                 <span>Back</span>
+              </button>
+
+              <button
+                onClick={handleSubmit}
+                disabled={!canProceed}
+                className="px-8 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium shadow-lg flex items-center space-x-2"
+              >
+                <span>Continue</span>
+                <ArrowRight className="h-5 w-5" />
               </button>
             </div>
           </div>

@@ -645,8 +645,8 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
             </div>
           )}
 
-          {/* Navigation Buttons - Hide for step 4 (MethodologySelector handles its own navigation) */}
-          {currentStep !== 4 && (
+          {/* Navigation Buttons - Hide for step 2 and 4 (TrainingDetailsForm and MethodologySelector handle their own navigation) */}
+          {currentStep !== 2 && currentStep !== 4 && (
           <div className="flex justify-between items-center">
             <button
               onClick={() => {
