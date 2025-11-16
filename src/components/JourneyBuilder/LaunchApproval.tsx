@@ -59,10 +59,18 @@ export default function LaunchApproval({
     }
 
     try {
-      // Prepare module content for quiz generation
-      const moduleContent = `${module.title}\n\n${module.description}\n\n${
-        module.learningObjectives?.join('\n') || ''
-      }`;
+      // Prepare module content in the format expected by the backend
+      const moduleContent = {
+        title: module.title,
+        description: module.description || '',
+        learningObjectives: module.learningObjectives || [],
+        sections: (module as any).sections?.map((section: any) => ({
+          title: section.title || '',
+          content: {
+            text: section.content?.text || section.description || section.aiDescription || ''
+          }
+        })) || []
+      };
 
       // Calculate number of questions (10-15 for modules, 20-30 for final exam)
       const questionCount = isFinalExam ? 25 : 12;

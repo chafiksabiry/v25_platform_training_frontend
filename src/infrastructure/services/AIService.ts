@@ -99,14 +99,37 @@ export class AIService {
   /**
    * Génère des questions de quiz avec l'IA
    */
-  static async generateQuiz(content: string, count: number = 5): Promise<QuizQuestion[]> {
-    const response = await ApiClient.post('/api/ai/generate-quiz', { content, count });
-    
-    if (!response.data.success) {
-      throw new Error(response.data.error || 'Quiz generation failed');
+  static async generateQuiz(content: string | object, count: number = 5): Promise<QuizQuestion[]> {
+    // If content is a string, convert it to the expected format
+    let moduleContent: any;
+    if (typeof content === 'string') {
+      // For simple string content, create a basic structure
+      moduleContent = {
+        title: 'Training Module',
+        description: content,
+        sections: []
+      };
+    } else {
+      // If it's already an object, use it as is
+      moduleContent = content;
     }
 
-    return response.data.questions;
+    const response = await ApiClient.post('/api/ai/generate-quiz', { 
+      moduleContent: moduleContent,
+      numberOfQuestions: count,
+      difficulty: 'medium',
+      questionTypes: {
+        multipleChoice: true,
+        trueFalse: true,
+        shortAnswer: false
+      }
+    });
+    
+    if (!response.data.success) {
+      throw new Error(response.data.error || response.data.message || 'Quiz generation failed');
+    }
+
+    return response.data.data?.questions || response.data.questions || [];
   }
 
   /**
