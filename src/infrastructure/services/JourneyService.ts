@@ -73,7 +73,9 @@ export class JourneyService {
         learningObjectives: m.learningObjectives,
         prerequisites: m.prerequisites,
         topics: m.topics,
-        content: m.content
+        content: m.content,
+        sections: (m as any).sections || [], // Include sections with documents
+        assessments: m.assessments || [] // Include assessments/quizzes
       }))
     };
 
@@ -95,17 +97,42 @@ export class JourneyService {
         vision: request.journey.vision,
         launchSettings: request.launchSettings,
         rehearsalData: request.rehearsalData,
-        modules: request.modules.map(m => ({
-          id: m.id,
-          title: m.title,
-          description: m.description,
-          duration: m.duration,
-          difficulty: m.difficulty,
-          learningObjectives: m.learningObjectives,
-          prerequisites: m.prerequisites,
-          topics: m.topics,
-          content: m.content
-        }))
+        modules: request.modules.map(m => {
+          // Convert sections to content format for backend compatibility
+          const sections = (m as any).sections || [];
+          const contentFromSections = sections.map((section: any, index: number) => ({
+            id: section.id || `content-${m.id}-${index}`,
+            type: section.type || 'document',
+            title: section.title || `Section ${index + 1}`,
+            content: {
+              text: section.content?.text || '',
+              file: section.content?.file || null,
+              youtubeUrl: section.content?.youtubeUrl || null,
+              keyPoints: section.content?.keyPoints || []
+            },
+            duration: section.estimatedDuration || 10
+          }));
+          
+          // Combine existing content with sections
+          const combinedContent = [
+            ...(m.content || []),
+            ...contentFromSections
+          ];
+          
+          return {
+            id: m.id,
+            title: m.title,
+            description: m.description,
+            duration: m.duration,
+            difficulty: m.difficulty,
+            learningObjectives: m.learningObjectives,
+            prerequisites: m.prerequisites,
+            topics: m.topics,
+            content: combinedContent, // Include sections converted to content
+            sections: sections, // Also include sections for frontend compatibility
+            assessments: m.assessments || [] // Include assessments/quizzes
+          };
+        })
       },
       enrolledRepIds: request.enrolledRepIds
     };

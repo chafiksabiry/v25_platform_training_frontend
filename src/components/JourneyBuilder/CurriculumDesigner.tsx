@@ -36,7 +36,7 @@ export default function CurriculumDesigner({ uploads, methodology, onComplete, o
   // ÉTAPE 1 : Générer le plan de formation (structure seulement)
   const generateTrainingPlan = async () => {
     setIsGenerating(true);
-        setEnhancementProgress({ 'plan': 10 });
+    setEnhancementProgress({ 'plan': 10 });
     
     try {
       // ✅ SUPPORT DE PLUSIEURS FICHIERS : Combiner les analyses de tous les uploads
@@ -276,15 +276,15 @@ export default function CurriculumDesigner({ uploads, methodology, onComplete, o
             return {
               id: `ai-module-${moduleIndex + 1}`,
               title: aiModule.title, // ✅ Titre généré par l'IA
-              description: aiModule.description,
+            description: aiModule.description,
               order: moduleIndex + 1,
               content: [],
               sections: moduleSections, // ✅ Sections basées sur les documents
               duration: totalDuration || aiModule.duration,
-              difficulty: aiModule.difficulty,
-              prerequisites: combinedAnalysis.prerequisites,
-              learningObjectives: aiModule.learningObjectives,
-              topics: combinedAnalysis.keyTopics || [],
+            difficulty: aiModule.difficulty,
+            prerequisites: combinedAnalysis.prerequisites,
+            learningObjectives: aiModule.learningObjectives,
+            topics: combinedAnalysis.keyTopics || [],
               assessments: assessments,
               completionCriteria: {
                 minimumScore: 70,
@@ -315,9 +315,16 @@ export default function CurriculumDesigner({ uploads, methodology, onComplete, o
             sectionTitle = `${aiModule.title} - ${upload.name.replace(/\.[^/.]+$/, '')}`;
           }
           
-          // Créer l'URL du fichier
+          // Créer l'URL du fichier - utiliser Cloudinary URL si disponible, sinon blob URL
           let fileUrl = '';
-          if (upload.file) {
+          let filePublicId = upload.id;
+          
+          if (upload.cloudinaryUrl) {
+            // Use Cloudinary URL (persistent)
+            fileUrl = upload.cloudinaryUrl;
+            filePublicId = upload.publicId || upload.id;
+          } else if (upload.file) {
+            // Fallback to blob URL (temporary, but works for now)
             try {
               fileUrl = URL.createObjectURL(upload.file);
             } catch (e) {
@@ -339,8 +346,8 @@ export default function CurriculumDesigner({ uploads, methodology, onComplete, o
                 type: upload.type === 'video' ? 'video' : 
                       upload.type === 'presentation' ? 'pdf' : 
                       upload.type === 'document' ? 'pdf' : 'pdf',
-                url: fileUrl,
-                publicId: upload.id,
+                url: fileUrl, // Cloudinary URL or blob URL
+                publicId: filePublicId, // Cloudinary public ID or upload ID
                 size: upload.size || 0,
                 mimeType: upload.type === 'video' ? 'video/mp4' : 
                          upload.type === 'document' ? 'application/pdf' : 
@@ -461,9 +468,16 @@ export default function CurriculumDesigner({ uploads, methodology, onComplete, o
       sectionTitle = upload.aiAnalysis.keyTopics[0];
     }
     
-    // Créer l'URL du fichier
+    // Créer l'URL du fichier - utiliser Cloudinary URL si disponible, sinon blob URL
     let fileUrl = '';
-    if (upload.file) {
+    let filePublicId = upload.id;
+    
+    if (upload.cloudinaryUrl) {
+      // Use Cloudinary URL (persistent)
+      fileUrl = upload.cloudinaryUrl;
+      filePublicId = upload.publicId || upload.id;
+    } else if (upload.file) {
+      // Fallback to blob URL (temporary, but works for now)
       try {
         fileUrl = URL.createObjectURL(upload.file);
       } catch (e) {
@@ -485,8 +499,8 @@ export default function CurriculumDesigner({ uploads, methodology, onComplete, o
           type: upload.type === 'video' ? 'video' : 
                 upload.type === 'presentation' ? 'pdf' : 
                 upload.type === 'document' ? 'pdf' : 'pdf',
-          url: fileUrl,
-          publicId: upload.id,
+          url: fileUrl, // Cloudinary URL or blob URL
+          publicId: filePublicId, // Cloudinary public ID or upload ID
           size: upload.size || 0,
           mimeType: upload.type === 'video' ? 'video/mp4' : 
                    upload.type === 'document' ? 'application/pdf' : 
@@ -1351,29 +1365,29 @@ export default function CurriculumDesigner({ uploads, methodology, onComplete, o
                           ) : (
                             // Fallback sur content si pas de sections
                             module.content.map((section, idx) => (
-                              <details key={idx} className="group bg-white rounded-lg border border-gray-300 overflow-hidden hover:shadow-md transition-shadow">
-                                <summary className="cursor-pointer px-4 py-3 font-medium text-gray-900 hover:bg-indigo-50 transition-colors flex items-center justify-between">
-                                  <div className="flex items-center space-x-2">
-                                    <BookOpen className="h-4 w-4 text-indigo-600" />
-                                    <span>{section.title}</span>
-                                    <span className="text-xs text-gray-500">({section.duration} min)</span>
-                                  </div>
-                                  <ChevronRight className="h-4 w-4 text-gray-400 group-open:rotate-90 transition-transform" />
-                                </summary>
-                                <div className="px-4 py-3 bg-gray-50 border-t border-gray-200">
-                                  <div className="text-sm text-gray-700 whitespace-pre-line leading-relaxed">
-                                    {typeof section.content === 'string' 
-                                      ? section.content.substring(0, 300) + (section.content.length > 300 ? '...' : '')
-                                      : JSON.stringify(section.content, null, 2).substring(0, 200)
-                                    }
-                                  </div>
-                                  {typeof section.content === 'string' && section.content.length > 300 && (
-                                    <div className="mt-2 text-xs text-indigo-600 font-medium">
-                                      + {section.content.length - 300} more characters
-                                    </div>
-                                  )}
+                            <details key={idx} className="group bg-white rounded-lg border border-gray-300 overflow-hidden hover:shadow-md transition-shadow">
+                              <summary className="cursor-pointer px-4 py-3 font-medium text-gray-900 hover:bg-indigo-50 transition-colors flex items-center justify-between">
+                                <div className="flex items-center space-x-2">
+                                  <BookOpen className="h-4 w-4 text-indigo-600" />
+                                  <span>{section.title}</span>
+                                  <span className="text-xs text-gray-500">({section.duration} min)</span>
+                            </div>
+                                <ChevronRight className="h-4 w-4 text-gray-400 group-open:rotate-90 transition-transform" />
+                              </summary>
+                              <div className="px-4 py-3 bg-gray-50 border-t border-gray-200">
+                                <div className="text-sm text-gray-700 whitespace-pre-line leading-relaxed">
+                                  {typeof section.content === 'string' 
+                                    ? section.content.substring(0, 300) + (section.content.length > 300 ? '...' : '')
+                                    : JSON.stringify(section.content, null, 2).substring(0, 200)
+                                  }
                                 </div>
-                              </details>
+                                {typeof section.content === 'string' && section.content.length > 300 && (
+                                  <div className="mt-2 text-xs text-indigo-600 font-medium">
+                                    + {section.content.length - 300} more characters
+                                  </div>
+                                )}
+                              </div>
+                            </details>
                             ))
                           )}
                         </div>

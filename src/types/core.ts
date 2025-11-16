@@ -41,6 +41,8 @@ export interface ContentUpload {
   file: File;  // ✅ Ajout du fichier original pour l'analyse AI
   aiAnalysis?: ContentAnalysis;
   error?: string;  // Error message if analysis fails
+  cloudinaryUrl?: string;  // Cloudinary URL after upload
+  publicId?: string;  // Cloudinary public ID
 }
 
 export interface ContentAnalysis {

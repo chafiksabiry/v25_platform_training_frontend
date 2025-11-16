@@ -2,6 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { Upload, FileText, Video, Music, Image, File, CheckCircle, Clock, AlertCircle, AlertTriangle, X, Sparkles, Zap, BarChart3, Eye, Wand2 } from 'lucide-react';
 import { ContentUpload, ContentAnalysis } from '../../types/core';
 import { AIService } from '../../infrastructure/services/AIService';
+import { cloudinaryService } from '../../lib/cloudinaryService';
 
 interface ContentUploaderProps {
   onComplete: (uploads: ContentUpload[]) => void;
@@ -72,12 +73,44 @@ export default function ContentUploader({ onComplete, onBack }: ContentUploaderP
       ));
 
       try {
+        // ✅ Upload file to Cloudinary first
+        setUploads(prev => prev.map(u => 
+          u.id === upload.id ? { ...u, status: 'uploading' } : u
+        ));
+
+        let cloudinaryUrl = '';
+        let publicId = '';
+        
+        try {
+          const uploadFolder = `trainings/documents`;
+          const uploadResult = await cloudinaryService.uploadDocument(
+            upload.file, 
+            uploadFolder,
+            (progress) => {
+              // Update progress if needed
+              console.log(`Upload progress for ${upload.name}: ${progress.percentage}%`);
+            }
+          );
+          cloudinaryUrl = uploadResult.secureUrl;
+          publicId = uploadResult.publicId;
+          console.log(`✅ File uploaded to Cloudinary: ${upload.name}`, cloudinaryUrl);
+        } catch (uploadError) {
+          console.warn('⚠️ Cloudinary upload failed, continuing with local file:', uploadError);
+          // Continue even if upload fails - we'll use blob URL as fallback
+        }
+
         // ✅ Vraie analyse avec OpenAI au lieu de simulation
         const analysis = await AIService.analyzeDocument(upload.file);
         
         setUploads(prev => prev.map(u => 
           u.id === upload.id 
-            ? { ...u, status: 'analyzed', aiAnalysis: analysis }
+            ? { 
+                ...u, 
+                status: 'analyzed', 
+                aiAnalysis: analysis,
+                cloudinaryUrl: cloudinaryUrl, // Store Cloudinary URL
+                publicId: publicId // Store public ID
+              }
             : u
         ));
       } catch (error: any) {
