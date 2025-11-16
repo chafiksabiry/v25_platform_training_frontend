@@ -294,12 +294,12 @@ export default function ModuleContentViewer({ modules, onComplete }: ModuleConte
                     <div className="mt-4">
                       {/* PDF Viewer */}
                       {currentSection.content.file.type === 'pdf' || currentSection.content.file.mimeType?.includes('pdf') ? (
-                        <div className="relative w-full bg-gray-100 rounded-lg border border-gray-200" style={{ minHeight: '600px' }}>
+                        <div className="relative w-full bg-gray-100 rounded-lg border border-gray-200" style={{ minHeight: '300px' }}>
                           <iframe
                             key={`pdf-${currentSection.id}`}
                             src={`https://mozilla.github.io/pdf.js/web/viewer.html?file=${encodeURIComponent(currentSection.content.file.url)}`}
                             className="w-full border-0 rounded-lg"
-                            style={{ height: '800px' }}
+                            style={{ height: '400px' }}
                             title={currentSection.content.file.name || 'Document'}
                             allow="autoplay"
                             onLoad={() => {

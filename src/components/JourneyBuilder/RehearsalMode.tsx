@@ -556,13 +556,13 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
               )}
               
               {/* Document Viewer */}
-              <div className="relative w-full bg-gray-50 rounded-lg border border-gray-200" style={{ minHeight: '600px' }}>
+              <div className="relative w-full bg-gray-50 rounded-lg border border-gray-200" style={{ minHeight: '300px' }}>
                 {file.url && isPDF ? (
                   <iframe
                     key={`pdf-${section.id}`}
                     src={`https://mozilla.github.io/pdf.js/web/viewer.html?file=${encodeURIComponent(file.url)}`}
                     className="w-full border-0 rounded-lg"
-                    style={{ height: '800px' }}
+                    style={{ height: '400px' }}
                     title={file.name || 'Document'}
                     allow="autoplay"
                     onLoad={() => {

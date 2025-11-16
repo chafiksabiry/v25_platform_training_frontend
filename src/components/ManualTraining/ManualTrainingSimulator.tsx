@@ -905,7 +905,7 @@ export default function ManualTrainingSimulator({
               </div>
             )}
             {content?.file?.url ? (
-              <div className="flex-1 w-full relative bg-gray-100">
+              <div className="flex-1 w-full relative bg-gray-100" style={{ height: '400px' }}>
                 <iframe
                   key={`iframe-${currentSection?.id}-${iframeKey}`}
                   src={`https://mozilla.github.io/pdf.js/web/viewer.html?file=${encodeURIComponent(content.file.url)}`}

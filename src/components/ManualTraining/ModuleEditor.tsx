@@ -1504,7 +1504,7 @@ export const ModuleEditor: React.FC<ModuleEditorProps> = ({ training, onBack }) 
                                   <iframe
                                     src={`https://docs.google.com/viewer?url=${encodeURIComponent(section.content.file.url)}&embedded=true`}
                                     className="w-full"
-                                    style={{ height: '500px' }}
+                                    style={{ height: '300px' }}
                                     title={section.title}
                                   />
                                 </div>
