@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { User, Sparkles, Zap, Upload, Wand2, Rocket, Eye, Target } from 'lucide-react';
 // import { useAuth } from './hooks/useAuth';
 import JourneyBuilder from './components/JourneyBuilder/JourneyBuilder';
@@ -146,11 +146,26 @@ function App() {
     setShowTraineePortal(false);
     setSelectedTrainee(null);
   };
+
+  // Track if we've scrolled for welcome screen
+  const welcomeScrolledRef = useRef(false);
+
+  // Scroll to top when welcome screen is shown
+  useEffect(() => {
+    if (!hasCompletedSetup && showWelcome && !showJourneyBuilder && !showManualTraining && !welcomeScrolledRef.current) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      welcomeScrolledRef.current = true;
+    } else if (hasCompletedSetup || !showWelcome || showJourneyBuilder || showManualTraining) {
+      welcomeScrolledRef.current = false;
+    }
+  }, [hasCompletedSetup, showWelcome, showJourneyBuilder, showManualTraining]);
+
   // Show welcome screen for first-time users
   if (!hasCompletedSetup && showWelcome && !showJourneyBuilder && !showManualTraining) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-        <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full p-8 text-center">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 pt-4 pb-8">
+        <div className="container mx-auto px-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full mx-auto p-8 text-center">
           <Sparkles className="h-16 w-16 text-blue-500 mx-auto mb-6" />
           <h1 className="text-3xl font-bold text-gray-900 mb-4">
             Welcome to Your Training Platform
@@ -233,6 +248,7 @@ function App() {
               Skip setup and explore the platform
             </button>
           </div>
+        </div>
         </div>
       </div>
     );
