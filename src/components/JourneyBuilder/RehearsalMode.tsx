@@ -220,10 +220,16 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
     }
   };
 
-  // Reset section index when module changes
+  // Reset section index when module changes and scroll to top
   useEffect(() => {
     setCurrentSectionIndex(0);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [currentModuleIndex]);
+
+  // Scroll to top when section changes
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [currentSectionIndex]);
 
   const handlePreviousModule = () => {
     if (currentModuleIndex > 0) {

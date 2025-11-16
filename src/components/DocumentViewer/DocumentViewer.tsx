@@ -10,6 +10,11 @@ interface DocumentViewerProps {
 export default function DocumentViewer({ fileUrl, fileName, mimeType }: DocumentViewerProps) {
   const [type, setType] = useState<string | null>(null);
 
+  // Scroll to top when document loads
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [fileUrl]);
+
   // Detect file type from URL, mimeType, or fileName
   useEffect(() => {
     if (!fileUrl) {
@@ -75,6 +80,10 @@ export default function DocumentViewer({ fileUrl, fileName, mimeType }: Document
               type="application/pdf"
               className="w-full h-full rounded-lg shadow"
               style={{ minHeight: '400px' }}
+              onLoad={() => {
+                // Scroll to top when embed loads
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
             />
           ) : (
             <iframe
@@ -82,6 +91,19 @@ export default function DocumentViewer({ fileUrl, fileName, mimeType }: Document
               className="w-full h-full border-0 rounded-lg shadow"
               title="PDF Viewer"
               style={{ minHeight: '400px' }}
+              onLoad={() => {
+                // Scroll to top when iframe loads
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                // Also try to scroll the iframe content to top
+                try {
+                  const iframe = document.querySelector('iframe[title="PDF Viewer"]') as HTMLIFrameElement;
+                  if (iframe?.contentWindow) {
+                    iframe.contentWindow.scrollTo(0, 0);
+                  }
+                } catch (e) {
+                  // CORS may prevent accessing iframe content
+                }
+              }}
             />
           )}
         </>
