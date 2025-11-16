@@ -118,8 +118,11 @@ function App() {
       modules: modules.length,
       enrolledReps: enrolledReps.length
     });
-    setLaunchedJourney({ journey, modules, enrolledReps });
+    // Hide welcome screen and journey builder
+    setShowWelcome(false);
     setShowJourneyBuilder(false);
+    // Set journey data and show success page
+    setLaunchedJourney({ journey, modules, enrolledReps });
     setShowJourneySuccess(true);
     // Scroll to top when redirecting
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -156,13 +159,13 @@ function App() {
 
   // Scroll to top when welcome screen is shown
   useEffect(() => {
-    if (!hasCompletedSetup && showWelcome && !showJourneyBuilder && !showManualTraining) {
+    if (!hasCompletedSetup && showWelcome && !showJourneyBuilder && !showManualTraining && !showJourneySuccess) {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
-  }, [hasCompletedSetup, showWelcome, showJourneyBuilder, showManualTraining]);
+  }, [hasCompletedSetup, showWelcome, showJourneyBuilder, showManualTraining, showJourneySuccess]);
 
-  // Show welcome screen for first-time users
-  if (!hasCompletedSetup && showWelcome && !showJourneyBuilder && !showManualTraining) {
+  // Show welcome screen for first-time users (but not if showing success page)
+  if (!hasCompletedSetup && showWelcome && !showJourneyBuilder && !showManualTraining && !showJourneySuccess) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 pt-4 pb-8">
         <div className="container mx-auto px-4">
