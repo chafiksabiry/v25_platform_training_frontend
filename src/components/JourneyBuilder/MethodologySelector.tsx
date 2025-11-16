@@ -11,6 +11,7 @@ import {
   TrendingUp,
   Users,
   ArrowRight,
+  ArrowLeft,
   CheckCircle,
   Clock,
   Award,
@@ -26,9 +27,10 @@ import { healthInsuranceMethodology } from '../../data/healthInsuranceMethodolog
 interface MethodologySelectorProps {
   onMethodologySelect: (methodology: TrainingMethodology) => void;
   onCustomMethodology: () => void;
+  onBack?: () => void;
 }
 
-export default function MethodologySelector({ onMethodologySelect, onCustomMethodology }: MethodologySelectorProps) {
+export default function MethodologySelector({ onMethodologySelect, onCustomMethodology, onBack }: MethodologySelectorProps) {
   const [selectedIndustry, setSelectedIndustry] = useState<string | null>(null);
 
   const industries = [
@@ -158,18 +160,29 @@ export default function MethodologySelector({ onMethodologySelect, onCustomMetho
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
-          <div className="text-center mb-12">
-            <div className="inline-flex items-center space-x-2 bg-white px-6 py-3 rounded-full shadow-sm border border-gray-200 mb-6">
-              <Brain className="h-5 w-5 text-purple-500" />
-              <span className="text-sm font-medium text-gray-700">360° Training Methodology</span>
+          <div className="mb-12">
+            {onBack && (
+              <button
+                onClick={onBack}
+                className="mb-6 flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition-colors"
+              >
+                <ArrowLeft className="h-5 w-5" />
+                <span>Back</span>
+              </button>
+            )}
+            <div className="text-center">
+              <div className="inline-flex items-center space-x-2 bg-white px-6 py-3 rounded-full shadow-sm border border-gray-200 mb-6">
+                <Brain className="h-5 w-5 text-purple-500" />
+                <span className="text-sm font-medium text-gray-700">360° Training Methodology</span>
+              </div>
+              <h1 className="text-4xl font-bold text-gray-900 mb-4">
+                Choose Your Industry Training Methodology
+              </h1>
+              <p className="text-xl text-gray-600 max-w-4xl mx-auto">
+                Select from our comprehensive, industry-specific training methodologies that cover all aspects 
+                of professional development from foundational knowledge to expert-level competency.
+              </p>
             </div>
-            <h1 className="text-4xl font-bold text-gray-900 mb-4">
-              Choose Your Industry Training Methodology
-            </h1>
-            <p className="text-xl text-gray-600 max-w-4xl mx-auto">
-              Select from our comprehensive, industry-specific training methodologies that cover all aspects 
-              of professional development from foundational knowledge to expert-level competency.
-            </p>
           </div>
 
           {/* Methodology Features */}

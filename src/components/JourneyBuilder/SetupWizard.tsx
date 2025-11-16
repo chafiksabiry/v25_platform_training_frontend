@@ -76,29 +76,36 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
   const steps = [
     { 
       id: 1, 
-      title: 'Company Information', 
+      title: 'Company Setup', 
       icon: Building2, 
-      description: 'Select your industry',
-      features: ['Auto-load company data', 'Industry-specific templates', 'Smart defaults']
+      description: 'Tell us about your organization',
+      features: ['Industry-specific templates', 'Smart defaults', 'Compliance settings']
     },
     { 
       id: 2, 
-      title: 'Select Gig/Role', 
-      icon: Briefcase, 
-      description: 'Choose the position this training is for',
-      features: ['Filtered by industry', 'Role-based paths', 'Skill assessments']
+      title: 'Training Vision', 
+      icon: Target, 
+      description: 'Define your learning objectives',
+      features: ['AI-suggested goals', 'Success metrics', 'Timeline planning']
     },
     { 
       id: 3, 
-      title: 'Training Details', 
-      icon: Target, 
-      description: 'Define your training program',
-      features: ['Training name', 'Description', 'Duration']
+      title: 'Team & Roles', 
+      icon: Users, 
+      description: 'Identify your learners',
+      features: ['Role-based paths', 'Skill assessments', 'Personalization']
+    },
+    {
+      id: 4,
+      title: 'Training Methodology',
+      icon: Sparkles,
+      description: 'Choose comprehensive training approach',
+      features: ['360° methodology', 'Industry-specific', 'Compliance-ready']
     }
   ];
 
   const handleNext = () => {
-    if (currentStep === 3) {
+    if (currentStep === 5) {
       // Complete setup and move to content upload
       const completeCompany: Company = {
         id: Date.now().toString(),
@@ -177,6 +184,9 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
       };
 
       onComplete(completeCompany, completeJourney, selectedMethodology || undefined);
+    } else if (currentStep === 3) {
+      // Move to methodology selector
+      setShowMethodologySelector(true);
     } else if (currentStep < steps.length) {
       setCurrentStep(currentStep + 1);
     }
@@ -184,7 +194,7 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
 
   const handleTrainingDetailsComplete = (details: { trainingName: string; trainingDescription: string; estimatedDuration: string }) => {
     setTrainingDetails(details);
-    handleNext(); // Continue to next step
+    setCurrentStep(3); // Move to Team & Roles
   };
 
   const handleGigSelect = (gig: GigFromApi) => {
@@ -194,21 +204,21 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
   const handleMethodologySelect = (methodology: TrainingMethodology) => {
     setSelectedMethodology(methodology);
     setShowMethodologySelector(false);
-    // Move to next step after methodology selection
-    setCurrentStep(4);
+    // Move to setup complete step (step 5)
+    setCurrentStep(5);
   };
 
   const handleMethodologyApply = (methodology: TrainingMethodology) => {
     setSelectedMethodology(methodology);
     setShowMethodologyBuilder(false);
-    // Move to next step after methodology application
-    setCurrentStep(4);
+    // Move to setup complete step (step 5)
+    setCurrentStep(5);
   };
 
   const handleCustomMethodology = () => {
     setShowMethodologySelector(false);
-    // Continue without methodology
-    setCurrentStep(4);
+    // Continue without methodology, move to setup complete
+    setCurrentStep(5);
   };
 
   if (showMethodologySelector) {
@@ -216,6 +226,10 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
       <MethodologySelector
         onMethodologySelect={handleMethodologySelect}
         onCustomMethodology={handleCustomMethodology}
+        onBack={() => {
+          setShowMethodologySelector(false);
+          setCurrentStep(3);
+        }}
       />
     );
   }
@@ -242,7 +256,7 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
             <div className="text-center mb-8">
               <Building2 className="h-16 w-16 text-blue-500 mx-auto mb-4" />
               <h3 className="text-2xl font-bold text-gray-900 mb-2">Welcome to Your Training Journey</h3>
-              <p className="text-gray-600">Select your training industry</p>
+              <p className="text-gray-600">Let's start by learning about your organization</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
@@ -360,37 +374,161 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
 
       case 2:
         return (
-          <div className="space-y-6">
-            <div className="text-center mb-8">
-              <Briefcase className="h-16 w-16 text-green-500 mx-auto mb-4" />
-              <h3 className="text-2xl font-bold text-gray-900 mb-2">Select Your Gig/Role</h3>
-              <p className="text-gray-600">Choose the position this training is for</p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-              {steps[1].features.map((feature, index) => (
-                <div key={index} className="text-center p-4 bg-green-50 rounded-lg">
-                  <Briefcase className="h-6 w-6 text-green-500 mx-auto mb-2" />
-                  <p className="text-sm text-green-700 font-medium">{feature}</p>
-                </div>
-              ))}
-            </div>
-
-            <GigSelector
-              industryFilter={company.industry}
-              onGigSelect={handleGigSelect}
-              selectedGigId={selectedGig?._id}
-            />
-          </div>
+          <TrainingDetailsForm
+            onComplete={handleTrainingDetailsComplete}
+            onBack={() => setCurrentStep(1)}
+            gigData={selectedGig}
+          />
         );
 
       case 3:
         return (
-          <TrainingDetailsForm
-            onComplete={handleTrainingDetailsComplete}
-            onBack={() => setCurrentStep(2)}
-            gigData={selectedGig}
-          />
+          <div className="space-y-6">
+            <div className="text-center mb-8">
+              <Users className="h-16 w-16 text-purple-500 mx-auto mb-4" />
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">Identify Your Learners</h3>
+              <p className="text-gray-600">Who will be participating in this training program?</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+              {steps[2].features.map((feature, index) => (
+                <div key={index} className="text-center p-4 bg-purple-50 rounded-lg">
+                  <Users className="h-6 w-6 text-purple-500 mx-auto mb-2" />
+                  <p className="text-sm text-purple-700 font-medium">{feature}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="space-y-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-4">
+                  Target Roles & Departments *
+                </label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {[
+                    { role: 'Customer Success Representatives', dept: 'Customer Success', icon: '🎯' },
+                    { role: 'Sales Representatives', dept: 'Sales', icon: '💼' },
+                    { role: 'Support Agents', dept: 'Customer Support', icon: '🛟' },
+                    { role: 'Account Managers', dept: 'Sales', icon: '🤝' },
+                    { role: 'Product Specialists', dept: 'Product', icon: '⚙️' },
+                    { role: 'New Hires', dept: 'All Departments', icon: '🌟' },
+                    { role: 'Team Leaders', dept: 'Management', icon: '👥' },
+                    { role: 'All Employees', dept: 'Company-wide', icon: '🏢' },
+                  ].map((item) => (
+                    <label key={item.role} className="flex items-center p-4 border-2 border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 cursor-pointer transition-all">
+                      <input
+                        type="checkbox"
+                        checked={journey.targetRoles?.includes(item.role) || false}
+                        onChange={(e) => {
+                          const currentRoles = journey.targetRoles || [];
+                          if (e.target.checked) {
+                            setJourney({ ...journey, targetRoles: [...currentRoles, item.role] });
+                          } else {
+                            setJourney({ ...journey, targetRoles: currentRoles.filter(r => r !== item.role) });
+                          }
+                        }}
+                        className="mr-4 h-5 w-5 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
+                      />
+                      <div className="flex items-center space-x-3">
+                        <span className="text-2xl">{item.icon}</span>
+                        <div>
+                          <div className="font-medium text-gray-900">{item.role}</div>
+                          <div className="text-sm text-gray-600">{item.dept}</div>
+                        </div>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 4:
+        // This step is handled by MethodologySelector component
+        return null;
+
+      case 5:
+        // Setup Complete - Summary page
+        return (
+          <div className="space-y-6">
+            <div className="text-center mb-8">
+              <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">Setup Complete!</h3>
+              <p className="text-gray-600">Your 360° training methodology is configured. Ready to transform your content!</p>
+            </div>
+
+            <div className="bg-gradient-to-r from-green-50 to-blue-50 border-2 border-green-200 rounded-xl p-6 mb-6">
+              <div className="flex items-center mb-4">
+                <Sparkles className="h-6 w-6 text-green-600 mr-2" />
+                <h4 className="text-lg font-bold text-gray-900">360° Methodology Applied Successfully</h4>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+              {/* Company Setup Summary */}
+              <div className="bg-white border-2 border-gray-200 rounded-xl p-6">
+                <h5 className="font-bold text-gray-900 mb-4 flex items-center">
+                  <Building2 className="h-5 w-5 mr-2 text-blue-600" />
+                  Company Setup
+                </h5>
+                <ul className="space-y-2 text-sm text-gray-700">
+                  <li>• {companyData?.name || company.name || 'N/A'}</li>
+                  <li>• {company.industry || 'N/A'}</li>
+                  <li>• {company.size || 'N/A'} company</li>
+                </ul>
+              </div>
+
+              {/* Training Program Summary */}
+              <div className="bg-white border-2 border-gray-200 rounded-xl p-6">
+                <h5 className="font-bold text-gray-900 mb-4 flex items-center">
+                  <Target className="h-5 w-5 mr-2 text-purple-600" />
+                  Training Program
+                </h5>
+                <ul className="space-y-2 text-sm text-gray-700">
+                  <li>• {trainingDetails?.trainingName || selectedGig?.title || 'N/A'}</li>
+                  <li>• {trainingDetails?.estimatedDuration 
+                    ? (() => {
+                        const minutes = parseInt(trainingDetails.estimatedDuration);
+                        if (minutes >= 1440) return `${Math.round(minutes / 1440)} day(s)`;
+                        if (minutes >= 60) return `${Math.round(minutes / 60)} hour(s)`;
+                        return `${minutes} minute(s)`;
+                      })()
+                    : journey.estimatedDuration || 'N/A'}</li>
+                  <li>• {journey.targetRoles?.length || 0} target roles</li>
+                </ul>
+              </div>
+            </div>
+
+            {/* Methodology Components */}
+            {selectedMethodology && (
+              <div className="bg-white border-2 border-gray-200 rounded-xl p-6">
+                <h5 className="font-bold text-gray-900 mb-4 flex items-center">
+                  <Sparkles className="h-5 w-5 mr-2 text-orange-600" />
+                  360° Methodology Components:
+                </h5>
+                <div className="space-y-2">
+                  {selectedMethodology.components?.slice(0, 6).map((component: any, idx: number) => (
+                    <div key={idx} className="text-sm text-gray-700 flex items-center">
+                      <span className="mr-2">•</span>
+                      <span>{component.title} ({component.estimatedDuration || 0}h)</span>
+                    </div>
+                  ))}
+                  {selectedMethodology.components && selectedMethodology.components.length > 6 && (
+                    <div className="text-sm text-gray-600 font-medium mt-2">
+                      +{selectedMethodology.components.length - 6} more components
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
+              <p className="text-blue-900 font-medium text-center">
+                Next: Upload your content and AI will enhance it with 360° methodology components
+              </p>
+            </div>
+          </div>
         );
 
       default:
@@ -401,11 +539,15 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
   const isStepValid = () => {
     switch (currentStep) {
       case 1:
-        return companyData && company.industry && selectedGig !== null;
+        return companyData && company.industry && selectedGig !== null && company.size;
       case 2:
-        return selectedGig !== null; // Gig must be selected
-      case 3:
         return trainingDetails !== null; // Training details must be completed
+      case 3:
+        return journey.targetRoles && journey.targetRoles.length > 0; // At least one role selected
+      case 4:
+        return selectedMethodology !== null; // Methodology must be selected
+      case 5:
+        return true; // Setup complete, can proceed
       default:
         return true;
     }
@@ -472,18 +614,43 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
                   </div>
                 );
               })}
+              {/* Setup Complete Step */}
+              {currentStep === 5 && (
+                <>
+                  <div className={`w-16 h-1 mx-4 rounded-full bg-green-500 transition-all duration-300`} />
+                  <div className="flex flex-col items-center">
+                    <div className="flex items-center justify-center w-16 h-16 rounded-full border-4 bg-green-500 border-green-500 text-white shadow-lg">
+                      <CheckCircle className="h-8 w-8" />
+                    </div>
+                    <div className="mt-3 text-center">
+                      <div className="text-sm font-semibold text-green-600">
+                        Setup Complete!
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
           {/* Step Content */}
-          <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-8 mb-8">
-            {renderStepContent()}
-          </div>
+          {currentStep !== 4 && (
+            <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-8 mb-8">
+              {renderStepContent()}
+            </div>
+          )}
 
-          {/* Navigation Buttons */}
+          {/* Navigation Buttons - Hide for step 4 (MethodologySelector handles its own navigation) */}
+          {currentStep !== 4 && (
           <div className="flex justify-between items-center">
             <button
-              onClick={() => currentStep > 1 ? setCurrentStep(currentStep - 1) : null}
+              onClick={() => {
+                if (currentStep === 5) {
+                  setCurrentStep(4);
+                } else if (currentStep > 1) {
+                  setCurrentStep(currentStep - 1);
+                }
+              }}
               className={`px-6 py-3 rounded-xl transition-all font-medium flex items-center space-x-2 ${
                 currentStep === 1
                   ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
@@ -496,13 +663,13 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
 
             <div className="flex items-center space-x-4">
               <div className="text-sm text-gray-600">
-                Step {currentStep} of {steps.length}
+                Step {currentStep === 5 ? steps.length : currentStep} of {steps.length}
               </div>
 
               <div className="w-64 bg-gray-200 rounded-full h-2 overflow-hidden">
                 <div
                   className="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full transition-all duration-500"
-                  style={{ width: `${(currentStep / steps.length) * 100}%` }}
+                  style={{ width: `${(currentStep === 5 ? steps.length : currentStep) / steps.length * 100}%` }}
                 />
               </div>
             </div>
@@ -512,10 +679,11 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
               disabled={!isStepValid()}
               className="px-8 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium shadow-lg flex items-center space-x-2"
             >
-              <span>{currentStep === 3 ? 'Start Building' : 'Continue'}</span>
+              <span>{currentStep === 5 ? 'Start Building' : 'Continue'}</span>
               <ArrowRight className="h-5 w-5" />
             </button>
           </div>
+          )}
         </div>
       </div>
     </div>
