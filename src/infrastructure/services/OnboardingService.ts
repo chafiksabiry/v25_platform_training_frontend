@@ -58,12 +58,31 @@ export const OnboardingService = {
       // First fetch all gigs for the company
       const response = await this.fetchGigsByCompany(companyId);
       
+      console.log('[OnboardingService] Total gigs fetched:', response.data.length);
+      console.log('[OnboardingService] Filtering by industry:', industryName);
+      
       // Filter gigs by industry
       const filteredGigs = response.data.filter((gig: GigFromApi) => {
-        return gig.industries && gig.industries.some(
-          industry => industry.name.toLowerCase() === industryName.toLowerCase()
+        if (!gig.industries || gig.industries.length === 0) {
+          console.log('[OnboardingService] Gig has no industries:', gig.title);
+          return false;
+        }
+        
+        const hasMatchingIndustry = gig.industries.some(
+          industry => {
+            const match = industry.name.toLowerCase().trim() === industryName.toLowerCase().trim();
+            if (!match) {
+              console.log('[OnboardingService] Industry mismatch:', industry.name, 'vs', industryName);
+            }
+            return match;
+          }
         );
+        
+        console.log('[OnboardingService] Gig:', gig.title, '- Match:', hasMatchingIndustry, '- Industries:', gig.industries.map(i => i.name).join(', '));
+        return hasMatchingIndustry;
       });
+
+      console.log('[OnboardingService] Filtered gigs count:', filteredGigs.length);
 
       return {
         ...response,
