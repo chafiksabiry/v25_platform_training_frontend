@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User, Sparkles, Zap, Upload, Wand2, Rocket, Eye, Target } from 'lucide-react';
 // import { useAuth } from './hooks/useAuth';
 import JourneyBuilder from './components/JourneyBuilder/JourneyBuilder';
@@ -147,16 +147,10 @@ function App() {
     setSelectedTrainee(null);
   };
 
-  // Track if we've scrolled for welcome screen
-  const welcomeScrolledRef = useRef(false);
-
   // Scroll to top when welcome screen is shown
   useEffect(() => {
-    if (!hasCompletedSetup && showWelcome && !showJourneyBuilder && !showManualTraining && !welcomeScrolledRef.current) {
+    if (!hasCompletedSetup && showWelcome && !showJourneyBuilder && !showManualTraining) {
       window.scrollTo({ top: 0, behavior: 'smooth' });
-      welcomeScrolledRef.current = true;
-    } else if (hasCompletedSetup || !showWelcome || showJourneyBuilder || showManualTraining) {
-      welcomeScrolledRef.current = false;
     }
   }, [hasCompletedSetup, showWelcome, showJourneyBuilder, showManualTraining]);
 
