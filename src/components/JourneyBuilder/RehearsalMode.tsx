@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Play, Pause, RotateCcw, CheckCircle, AlertTriangle, MessageSquare, Star, Eye, Users, Rocket, ArrowLeft, ArrowRight, Clock, BarChart3, Zap, Video, BookOpen, Edit3, Save, X as XIcon, Trash2, Plus, Download, FileQuestion, FileText, Image as ImageIcon, Youtube, Sparkles } from 'lucide-react';
+import { Play, Pause, RotateCcw, CheckCircle, AlertTriangle, MessageSquare, Star, Eye, Users, Rocket, ArrowLeft, ArrowRight, Clock, BarChart3, Zap, Video, BookOpen, Edit3, Save, X as XIcon, Trash2, Plus, Download, FileText, Image as ImageIcon, Youtube, Sparkles } from 'lucide-react';
 import DocumentViewer from '../DocumentViewer/DocumentViewer';
 import { TrainingJourney, TrainingModule, RehearsalFeedback, ContentUpload } from '../../types';
 import { TrainingMethodology } from '../../types/methodology';
 import ModuleContentViewer from '../Training/ModuleContentViewer';
-import QuizGenerator from '../Assessment/QuizGenerator';
 import { TrainingSection, SectionContent, ContentFile } from '../../types/manualTraining';
 
 interface SlideData {
@@ -43,7 +42,7 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
   const [rehearsalTime, setRehearsalTime] = useState(0);
   const [showContentViewer, setShowContentViewer] = useState(false);
   const [showQuiz, setShowQuiz] = useState(false);
-  const [activeTab, setActiveTab] = useState<'sections' | 'quiz'>('sections');
+  // Removed activeTab state - only sections tab now
   const [slideData, setSlideData] = useState<SlideData[]>([]);
   const [slideImages, setSlideImages] = useState<string[]>([]);
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
@@ -175,6 +174,9 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
   };
 
   const handleModuleComplete = () => {
+    // Don't scroll when marking complete
+    shouldScrollRef.current = false;
+    
     if (currentModule && !completedModules.includes(currentModule.id)) {
       setCompletedModules(prev => [...prev, currentModule.id]);
     }
@@ -186,6 +188,9 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
   };
 
   const handleSectionComplete = () => {
+    // Don't scroll when marking complete
+    shouldScrollRef.current = false;
+    
     if (currentSection?.id) {
       setCompletedSections(prev => new Set(prev).add(currentSection.id!));
     }
@@ -220,15 +225,24 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
     }
   };
 
+  // Track if we should scroll (don't scroll when marking complete)
+  const shouldScrollRef = React.useRef(true);
+
   // Reset section index when module changes and scroll to top
   useEffect(() => {
     setCurrentSectionIndex(0);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (shouldScrollRef.current) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    shouldScrollRef.current = true; // Reset for next time
   }, [currentModuleIndex]);
 
-  // Scroll to top when section changes
+  // Scroll to top when section changes (only if shouldScroll is true)
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (shouldScrollRef.current) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    shouldScrollRef.current = true; // Reset for next time
   }, [currentSectionIndex]);
 
   const handlePreviousModule = () => {
@@ -396,17 +410,16 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
     return slides;
   };
 
-  // Initialize slides when module changes
-  useEffect(() => {
-    if (currentModule && activeTab === 'ppt') {
-      const slides = generateSlides();
-      setSlideData(slides);
-      // Generate preview images (simplified - in real implementation, use PowerPointService)
-      setSlideImages(slides.map(() => 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAwIiBoZWlnaHQ9IjYwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iODAwIiBoZWlnaHQ9IjYwMCIgZmlsbD0iIzYzNjZGMSIvPjx0ZXh0IHg9IjQwMCIgeT0iMzAwIiBmb250LXNpemU9IjQ4IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+U2xpZGUgUHJldmlldzwvdGV4dD48L3N2Zz4='));
-      setCurrentSlideIndex(0);
-      setShowPPTViewer(true);
-    }
-  }, [currentModule, activeTab]);
+  // Initialize slides when module changes (removed - no longer using PowerPoint viewer)
+  // useEffect(() => {
+  //   if (currentModule && activeTab === 'ppt') {
+  //     const slides = generateSlides();
+  //     setSlideData(slides);
+  //     setSlideImages(slides.map(() => 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAwIiBoZWlnaHQ9IjYwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iODAwIiBoZWlnaHQ9IjYwMCIgZmlsbD0iIzYzNjZGMSIvPjx0ZXh0IHg9IjQwMCIgeT0iMzAwIiBmb250LXNpemU9IjQ4IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+U2xpZGUgUHJldmlldzwvdGV4dD48L3N2Zz4='));
+  //     setCurrentSlideIndex(0);
+  //     setShowPPTViewer(true);
+  //   }
+  // }, [currentModule, activeTab]);
 
   const updateCurrentSlide = (field: keyof SlideData, value: string) => {
     const newSlideData = [...slideData];
@@ -864,43 +877,9 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
                     </div>
                   )}
 
-                  {/* Tab Navigation */}
-            <div className="mb-6">
-              <div className="flex gap-2 border-b border-gray-200">
-                    <button
-                        onClick={() => setActiveTab('sections')}
-                        className={`px-6 py-3 font-medium transition-colors ${
-                          activeTab === 'sections'
-                            ? 'text-indigo-600 border-b-2 border-indigo-600'
-                            : 'text-gray-600 hover:text-gray-900'
-                        }`}
-                      >
-                        <BookOpen className="h-4 w-4 inline mr-2" />
-                        Sections
-                    </button>
-                    <button
-                  onClick={() => setActiveTab('quiz')}
-                        className={`px-6 py-3 font-medium transition-colors ${
-                          activeTab === 'quiz'
-                            ? 'text-indigo-600 border-b-2 border-indigo-600'
-                            : 'text-gray-600 hover:text-gray-900'
-                        }`}
-                      >
-                        <FileQuestion className="h-4 w-4 inline mr-2" />
-                        Quiz / QCM
-                    </button>
-                  </div>
-                </div>
-
-                  {/* Content based on active tab */}
+                  {/* Content */}
                   <div className="mb-6">
-                    {activeTab === 'quiz' ? (
-              <QuizGenerator
-                      moduleTitle={currentModule.title}
-                      moduleDescription={currentModule.description}
-                        moduleContent={currentModule.content?.map(c => c.title).join('. ') || ''}
-                      />
-                    ) : hasSections && currentSection ? (
+                    {hasSections && currentSection ? (
                       <div className="bg-gray-50 rounded-xl p-6">
                         {/* Section Content - Display document directly without header */}
                         <div className="bg-white rounded-lg p-6 shadow-sm">
@@ -937,23 +916,71 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
                     </button>
                   </div>
 
-                  {/* Module Details */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="text-center p-4 bg-blue-50 rounded-xl">
-                      <Clock className="h-6 w-6 text-blue-600 mx-auto mb-2" />
-                      <div className="text-lg font-bold text-blue-600">{currentModule.duration || 0}</div>
-                      <div className="text-sm text-gray-600">Duration (min)</div>
+                  {/* Module Statistics - Bottom Section */}
+                  <div className="mt-8 space-y-6">
+                    {/* Summary Statistics */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className="text-center p-4 bg-blue-50 rounded-xl">
+                        <Clock className="h-6 w-6 text-blue-600 mx-auto mb-2" />
+                        <div className="text-lg font-bold text-blue-600">{currentModule.duration || 0}</div>
+                        <div className="text-sm text-gray-600">Duration (min)</div>
+                      </div>
+                      <div className="text-center p-4 bg-green-50 rounded-xl">
+                        <BookOpen className="h-6 w-6 text-green-600 mx-auto mb-2" />
+                        <div className="text-lg font-bold text-green-600">{hasSections ? (currentModule.sections?.length || 0) : (currentModule.content?.length || 0)}</div>
+                        <div className="text-sm text-gray-600">{hasSections ? 'Sections' : 'Content Items'}</div>
+                      </div>
+                      <div className="text-center p-4 bg-purple-50 rounded-xl">
+                        <BarChart3 className="h-6 w-6 text-purple-600 mx-auto mb-2" />
+                        <div className="text-lg font-bold text-purple-600">{currentModule.assessments?.length || 0}</div>
+                        <div className="text-sm text-gray-600">Assessments</div>
+                      </div>
                     </div>
-                    <div className="text-center p-4 bg-green-50 rounded-xl">
-                      <BookOpen className="h-6 w-6 text-green-600 mx-auto mb-2" />
-                      <div className="text-lg font-bold text-green-600">{hasSections ? (currentModule.sections?.length || 0) : (currentModule.content?.length || 0)}</div>
-                      <div className="text-sm text-gray-600">{hasSections ? 'Sections' : 'Content Items'}</div>
-                    </div>
-                    <div className="text-center p-4 bg-purple-50 rounded-xl">
-                      <BarChart3 className="h-6 w-6 text-purple-600 mx-auto mb-2" />
-                      <div className="text-lg font-bold text-purple-600">{currentModule.assessments?.length || 0}</div>
-                      <div className="text-sm text-gray-600">Assessments</div>
-                    </div>
+
+                    {/* AI-Generated Assessments */}
+                    {currentModule.assessments && currentModule.assessments.length > 0 && (
+                      <div className="bg-purple-50 rounded-xl p-6 border border-purple-200">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                          <BarChart3 className="h-5 w-5 mr-2 text-purple-600" />
+                          AI-Generated Assessments ({currentModule.assessments.length})
+                        </h3>
+                        <div className="space-y-3">
+                          {currentModule.assessments.map((assessment, idx) => (
+                            <div key={idx} className="bg-white rounded-lg p-4 border border-purple-200 flex items-center justify-between">
+                              <div className="flex-1">
+                                <h4 className="font-medium text-gray-900 mb-1">{assessment.title}</h4>
+                                <div className="flex items-center space-x-4 text-sm text-gray-600">
+                                  <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs">
+                                    {assessment.questions?.length || 0} questions
+                                  </span>
+                                  <span>Type: {assessment.type || 'quiz'}</span>
+                                  <span>Passing Score: {assessment.passingScore || 80}%</span>
+                                </div>
+                              </div>
+                              <CheckCircle className="h-5 w-5 text-purple-600" />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Prerequisites */}
+                    {currentModule.prerequisites && currentModule.prerequisites.length > 0 && (
+                      <div className="bg-orange-50 rounded-xl p-6 border border-orange-200">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                          <AlertTriangle className="h-5 w-5 mr-2 text-orange-600" />
+                          Prerequisites
+                        </h3>
+                        <ul className="space-y-2">
+                          {currentModule.prerequisites.map((prerequisite, idx) => (
+                            <li key={idx} className="flex items-start">
+                              <span className="text-orange-600 mr-2">•</span>
+                              <span className="text-gray-700">{prerequisite}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
