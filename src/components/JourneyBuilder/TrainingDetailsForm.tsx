@@ -8,7 +8,7 @@ interface TrainingDetailsFormProps {
 }
 
 export default function TrainingDetailsForm({ onComplete, onBack, gigData }: TrainingDetailsFormProps) {
-  const [trainingName, setTrainingName] = useState(gigData?.name || '');
+  const [trainingName, setTrainingName] = useState(gigData?.title || gigData?.name || '');
   const [trainingDescription, setTrainingDescription] = useState(gigData?.description || '');
   const [estimatedDuration, setEstimatedDuration] = useState('2400'); // 1 week default
 

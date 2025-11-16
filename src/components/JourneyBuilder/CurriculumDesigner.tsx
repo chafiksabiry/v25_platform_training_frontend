@@ -196,18 +196,61 @@ export default function CurriculumDesigner({ uploads, methodology, onComplete, o
             assessments: []
           }];
         } else {
-          // PLUSIEURS DOCUMENTS : Organiser par l'IA
-          // L'IA a déjà organisé les modules, maintenant on assigne les documents aux modules
+          // PLUSIEURS DOCUMENTS : Organiser intelligemment par l'IA
+          // Analyser les documents pour regrouper ceux qui ont des topics similaires
+          console.log('📊 Analyzing documents to organize them intelligently...');
+          
+          // Créer un mapping des documents vers les modules basé sur la similarité des topics
+          const documentModuleMapping: number[] = [];
+          const moduleDocumentCounts: number[] = new Array(modulesToUse.length).fill(0);
+          
+          // Pour chaque document, trouver le module le plus approprié basé sur les key topics
+          uploads.forEach((upload, uploadIndex) => {
+            if (upload.aiAnalysis?.keyTopics && upload.aiAnalysis.keyTopics.length > 0) {
+              // Trouver le module avec les topics les plus similaires
+              let bestModuleIndex = 0;
+              let maxSimilarity = 0;
+              
+              modulesToUse.forEach((aiModule, moduleIdx) => {
+                // Calculer la similarité basée sur les topics communs
+                const moduleTopics = (aiModule.learningObjectives || []).join(' ').toLowerCase();
+                const uploadTopics = upload.aiAnalysis.keyTopics.join(' ').toLowerCase();
+                
+                // Compter les mots communs
+                const moduleWords = new Set(moduleTopics.split(/\s+/));
+                const uploadWords = new Set(uploadTopics.split(/\s+/));
+                const commonWords = [...moduleWords].filter(w => uploadWords.has(w));
+                const similarity = commonWords.length / Math.max(moduleWords.size, uploadWords.size, 1);
+                
+                if (similarity > maxSimilarity) {
+                  maxSimilarity = similarity;
+                  bestModuleIndex = moduleIdx;
+                }
+              });
+              
+              documentModuleMapping[uploadIndex] = bestModuleIndex;
+              moduleDocumentCounts[bestModuleIndex]++;
+            } else {
+              // Si pas d'analyse, distribuer équitablement
+              const moduleIndex = uploadIndex % modulesToUse.length;
+              documentModuleMapping[uploadIndex] = moduleIndex;
+              moduleDocumentCounts[moduleIndex]++;
+            }
+          });
+          
+          console.log('📊 Document organization:', {
+            mapping: documentModuleMapping,
+            counts: moduleDocumentCounts
+          });
+          
+          // Créer les modules avec leurs documents assignés
           fullModules = modulesToUse.map((aiModule, moduleIndex) => {
             console.log(`📚 Module ${moduleIndex + 1}/${modulesToUse.length}: "${aiModule.title}"`);
             
-            // Calculer combien de documents par module
-            // Distribuer équitablement ou selon la logique de l'IA
-            const totalModules = modulesToUse.length;
-            const documentsPerModule = Math.ceil(uploads.length / totalModules);
-            const startIndex = moduleIndex * documentsPerModule;
-            const endIndex = Math.min(startIndex + documentsPerModule, uploads.length);
-            const moduleUploads = uploads.slice(startIndex, endIndex);
+            // Récupérer les documents assignés à ce module
+            const moduleUploads = uploads.filter((_, uploadIndex) => 
+              documentModuleMapping[uploadIndex] === moduleIndex
+            );
             
             // Créer les sections pour ce module
             const moduleSections: TrainingSection[] = moduleUploads.map((upload, uploadIdx) => {
@@ -288,10 +331,7 @@ export default function CurriculumDesigner({ uploads, methodology, onComplete, o
             title: sectionTitle, // ✅ Titre intelligent basé sur l'analyse AI
             content: {
               text: upload.aiAnalysis 
-                ? `📚 **Key Topics:**\n${upload.aiAnalysis.keyTopics?.map(topic => `• ${topic}`).join('\n') || 'N/A'}\n\n` +
-                  `🎯 **Learning Objectives:**\n${upload.aiAnalysis.learningObjectives?.map(obj => `• ${obj}`).join('\n') || 'N/A'}\n\n` +
-                  `⏱️ **Estimated Duration:** ${upload.aiAnalysis.estimatedReadTime || 0} minutes\n\n` +
-                  `📊 **Difficulty Level:** ${upload.aiAnalysis.difficulty || 'N/A'}/10`
+                ? `This section covers the key concepts and topics from ${upload.name}.\n\nEstimated duration: ${upload.aiAnalysis.estimatedReadTime || 0} minutes.`
                 : `Document: ${upload.name}`,
               file: {
                 id: upload.id,
@@ -437,10 +477,7 @@ export default function CurriculumDesigner({ uploads, methodology, onComplete, o
       title: sectionTitle, // ✅ Titre intelligent basé sur l'analyse AI
       content: {
         text: upload.aiAnalysis 
-          ? `📚 **Key Topics:**\n${upload.aiAnalysis.keyTopics?.map(topic => `• ${topic}`).join('\n') || 'N/A'}\n\n` +
-            `🎯 **Learning Objectives:**\n${upload.aiAnalysis.learningObjectives?.map(obj => `• ${obj}`).join('\n') || 'N/A'}\n\n` +
-            `⏱️ **Estimated Duration:** ${upload.aiAnalysis.estimatedReadTime || 0} minutes\n\n` +
-            `📊 **Difficulty Level:** ${upload.aiAnalysis.difficulty || 'N/A'}/10`
+          ? `This section covers the key concepts and topics from ${upload.name}.\n\nEstimated duration: ${upload.aiAnalysis.estimatedReadTime || 0} minutes.`
           : `Document: ${upload.name}`,
         file: {
           id: upload.id,
@@ -1286,43 +1323,26 @@ export default function CurriculumDesigner({ uploads, methodology, onComplete, o
                                   <ChevronRight className="h-4 w-4 text-gray-400 group-open:rotate-90 transition-transform" />
                                 </summary>
                                 <div className="px-4 py-3 bg-gray-50 border-t border-gray-200">
-                                  {/* Afficher la description AI */}
-                                  {section.content?.text && (
-                                    <div className="text-sm text-gray-700 whitespace-pre-line leading-relaxed mb-3">
-                                      {section.content.text.split('\n').slice(0, 5).join('\n')}
-                                      {section.content.text.split('\n').length > 5 && '...'}
-                                    </div>
-                                  )}
-                                  {/* Afficher le document */}
+                                  {/* Afficher uniquement le document */}
                                   {section.content?.file && (
-                                    <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                                      <div className="flex items-center space-x-2 mb-2">
-                                        <FileText className="h-4 w-4 text-blue-600" />
-                                        <span className="text-sm font-medium text-blue-900">Document: {section.content.file.name}</span>
+                                    <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                                      <div className="flex items-center space-x-2">
+                                        <FileText className="h-5 w-5 text-blue-600" />
+                                        <span className="text-sm font-medium text-blue-900">{section.content.file.name}</span>
+                                        {section.estimatedDuration && (
+                                          <span className="text-xs text-gray-500 ml-auto">({section.estimatedDuration} min)</span>
+                                        )}
                                       </div>
                                       {section.content.file.url && (
                                         <a
                                           href={section.content.file.url}
                                           target="_blank"
                                           rel="noopener noreferrer"
-                                          className="text-xs text-blue-600 hover:text-blue-800 underline"
+                                          className="text-xs text-blue-600 hover:text-blue-800 underline mt-2 inline-block"
                                         >
                                           Ouvrir le document
                                         </a>
                                       )}
-                                    </div>
-                                  )}
-                                  {/* Afficher les key points */}
-                                  {section.content?.keyPoints && section.content.keyPoints.length > 0 && (
-                                    <div className="mt-3">
-                                      <p className="text-xs font-medium text-gray-600 mb-1">Key Topics:</p>
-                                      <div className="flex flex-wrap gap-1">
-                                        {section.content.keyPoints.slice(0, 5).map((point: string, pIdx: number) => (
-                                          <span key={pIdx} className="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded">
-                                            {point}
-                                          </span>
-                                        ))}
-                                      </div>
                                     </div>
                                   )}
                                 </div>

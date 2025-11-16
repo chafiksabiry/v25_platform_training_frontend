@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Building2, Users, Target, ArrowRight, CheckCircle, Sparkles, Zap, Video, FileText, Loader2, Briefcase } from 'lucide-react';
+import { Building2, Users, Target, ArrowRight, CheckCircle, Sparkles, Zap, Video, FileText, Loader2, Briefcase, AlertCircle } from 'lucide-react';
 import { Company, TrainingJourney } from '../../types/core';
 import { Industry, GigFromApi } from '../../types';
 import { TrainingMethodology } from '../../types/methodology';
@@ -7,6 +7,7 @@ import MethodologySelector from './MethodologySelector';
 import MethodologyBuilder from '../Methodology/MethodologyBuilder';
 import { OnboardingService } from '../../infrastructure/services/OnboardingService';
 import GigSelector from '../Dashboard/GigSelector';
+import TrainingDetailsForm from './TrainingDetailsForm';
 
 interface SetupWizardProps {
   onComplete: (company: Company, journey: TrainingJourney, methodology?: TrainingMethodology) => void;
@@ -27,6 +28,7 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
   const [loadingCompany, setLoadingCompany] = useState(true);
   const [selectedGig, setSelectedGig] = useState<GigFromApi | null>(null);
   const [showGigSelector, setShowGigSelector] = useState(false);
+  const [trainingDetails, setTrainingDetails] = useState<{ trainingName: string; trainingDescription: string; estimatedDuration: string } | null>(null);
 
   // Fetch company data on mount
   useEffect(() => {
@@ -85,11 +87,18 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
       icon: Briefcase, 
       description: 'Choose the position this training is for',
       features: ['Filtered by industry', 'Role-based paths', 'Skill assessments']
+    },
+    { 
+      id: 3, 
+      title: 'Training Details', 
+      icon: Target, 
+      description: 'Define your training program',
+      features: ['Training name', 'Description', 'Duration']
     }
   ];
 
   const handleNext = () => {
-    if (currentStep === 2) {
+    if (currentStep === 3) {
       // Complete setup and move to content upload
       const completeCompany: Company = {
         id: Date.now().toString(),
@@ -102,8 +111,8 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
       const completeJourney: TrainingJourney = {
         id: Date.now().toString(),
         companyId: completeCompany.id,
-        name: selectedGig?.title || 'New Training Journey',
-        description: selectedGig?.description || '',
+        name: trainingDetails?.trainingName || selectedGig?.title || 'New Training Journey',
+        description: trainingDetails?.trainingDescription || selectedGig?.description || '',
         status: 'draft',
         steps: [
           {
@@ -163,16 +172,19 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
           }
         ],
         createdAt: new Date().toISOString(),
-        estimatedDuration: journey.estimatedDuration || '1 hour total setup',
+        estimatedDuration: trainingDetails?.estimatedDuration || journey.estimatedDuration || '1 hour total setup',
         targetRoles: journey.targetRoles || [],
       };
 
       onComplete(completeCompany, completeJourney, selectedMethodology || undefined);
-    } else if (currentStep === 3) {
-      setShowMethodologySelector(true);
     } else if (currentStep < steps.length) {
       setCurrentStep(currentStep + 1);
     }
+  };
+
+  const handleTrainingDetailsComplete = (details: { trainingName: string; trainingDescription: string; estimatedDuration: string }) => {
+    setTrainingDetails(details);
+    handleNext(); // Continue to next step
   };
 
   const handleGigSelect = (gig: GigFromApi) => {
@@ -372,6 +384,15 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
           </div>
         );
 
+      case 3:
+        return (
+          <TrainingDetailsForm
+            onComplete={handleTrainingDetailsComplete}
+            onBack={() => setCurrentStep(2)}
+            gigData={selectedGig}
+          />
+        );
+
       default:
         return null;
     }
@@ -382,7 +403,9 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
       case 1:
         return companyData && company.industry && selectedGig !== null;
       case 2:
-        return true; // Gig selected, can proceed
+        return selectedGig !== null; // Gig must be selected
+      case 3:
+        return trainingDetails !== null; // Training details must be completed
       default:
         return true;
     }
@@ -489,7 +512,7 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
               disabled={!isStepValid()}
               className="px-8 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium shadow-lg flex items-center space-x-2"
             >
-              <span>{currentStep === 2 ? 'Start Building' : 'Continue'}</span>
+              <span>{currentStep === 3 ? 'Start Building' : 'Continue'}</span>
               <ArrowRight className="h-5 w-5" />
             </button>
           </div>
