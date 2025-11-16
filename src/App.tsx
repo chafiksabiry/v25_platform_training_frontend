@@ -283,6 +283,19 @@ function App() {
     );
   }
 
+  // Check for JourneySuccess first (after launch)
+  if (showJourneySuccess && launchedJourney) {
+    return (
+      <JourneySuccess
+        journey={launchedJourney.journey}
+        modules={launchedJourney.modules}
+        enrolledReps={launchedJourney.enrolledReps}
+        onViewDashboard={handleViewDashboard}
+        onCreateAnother={handleCreateAnotherJourney}
+      />
+    );
+  }
+
   if (showJourneyBuilder) {
     return <JourneyBuilder onComplete={handleJourneyComplete} />;
   }
@@ -298,18 +311,6 @@ function App() {
         onModuleComplete={(moduleId) => updateModuleProgress(moduleId, 100)}
         onAssessmentComplete={(assessmentId, score) => updateAssessmentResult(assessmentId, score, score >= 80 ? 'passed' : 'failed')}
         onBack={handleBackFromTraineePortal}
-      />
-    );
-  }
-
-  if (showJourneySuccess && launchedJourney) {
-    return (
-      <JourneySuccess
-        journey={launchedJourney.journey}
-        modules={launchedJourney.modules}
-        enrolledReps={launchedJourney.enrolledReps}
-        onViewDashboard={handleViewDashboard}
-        onCreateAnother={handleCreateAnotherJourney}
       />
     );
   }
