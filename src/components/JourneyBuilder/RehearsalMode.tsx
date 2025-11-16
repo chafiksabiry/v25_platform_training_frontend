@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Play, Pause, RotateCcw, CheckCircle, AlertTriangle, MessageSquare, Star, Eye, Users, Rocket, ArrowLeft, ArrowRight, Clock, BarChart3, Zap, Video, BookOpen, Edit3, Save, X as XIcon, Trash2, Plus, Download, FileText, Image as ImageIcon, Youtube, Sparkles } from 'lucide-react';
+import { Play, Pause, RotateCcw, CheckCircle, AlertTriangle, MessageSquare, Star, Eye, Users, Rocket, ArrowLeft, ArrowRight, Clock, BarChart3, Zap, Video, BookOpen, Edit3, Save, X as XIcon, Trash2, Plus, Download, FileText, Image as ImageIcon, Youtube, Sparkles, Loader2, FileQuestion } from 'lucide-react';
 import DocumentViewer from '../DocumentViewer/DocumentViewer';
-import { TrainingJourney, TrainingModule, RehearsalFeedback, ContentUpload } from '../../types';
+import { TrainingJourney, TrainingModule, RehearsalFeedback, ContentUpload, Assessment, Question } from '../../types';
 import { TrainingMethodology } from '../../types/methodology';
 import ModuleContentViewer from '../Training/ModuleContentViewer';
 import { TrainingSection, SectionContent, ContentFile } from '../../types/manualTraining';
+import { AIService } from '../../infrastructure/services/AIService';
+import axios from 'axios';
 
 interface SlideData {
   title: string;
@@ -51,10 +53,13 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
   const [showPPTViewer, setShowPPTViewer] = useState(false);
   const [currentSectionIndex, setCurrentSectionIndex] = useState(0);
   const [completedSections, setCompletedSections] = useState<Set<string>>(new Set());
+  const [generatingQuizForModule, setGeneratingQuizForModule] = useState<string | null>(null);
+  const [generatingFinalExam, setGeneratingFinalExam] = useState(false);
+  const [updatedModules, setUpdatedModules] = useState<TrainingModule[]>(modules);
 
   // Convert uploads to sections if modules don't have sections
   const modulesWithSections = useMemo(() => {
-    return modules.map((module, moduleIndex) => {
+    return updatedModules.map((module, moduleIndex) => {
       const moduleWithSections = module as ModuleWithSections;
       
       // If module already has sections, use them
@@ -140,12 +145,13 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
         sections: sections.length > 0 ? sections : undefined
       };
     });
-  }, [modules, uploads]);
+  }, [updatedModules, uploads]);
 
   const currentModule = modulesWithSections[currentModuleIndex];
+  const isLastModule = currentModuleIndex === updatedModules.length - 1;
   const hasSections = currentModule?.sections && currentModule.sections.length > 0;
   const currentSection = hasSections ? currentModule.sections[currentSectionIndex] : null;
-  const progress = (completedModules.length / modules.length) * 100;
+  const progress = (completedModules.length / updatedModules.length) * 100;
   
   // Calculate section progress
   const sectionProgress = hasSections && currentModule.sections.length > 0
@@ -181,7 +187,7 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
       setCompletedModules(prev => [...prev, currentModule.id]);
     }
     
-    if (currentModuleIndex < modules.length - 1) {
+    if (currentModuleIndex < updatedModules.length - 1) {
       setCurrentModuleIndex(prev => prev + 1);
       setCurrentSectionIndex(0);
     }
@@ -252,8 +258,108 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
   };
 
   const handleNextModule = () => {
-    if (currentModuleIndex < modules.length - 1) {
+    if (currentModuleIndex < updatedModules.length - 1) {
       setCurrentModuleIndex(prev => prev + 1);
+    }
+  };
+
+  // Get API base URL
+  const getApiBaseUrl = () => {
+    if (import.meta.env.VITE_API_BASE_URL) {
+      return import.meta.env.VITE_API_BASE_URL;
+    }
+    return 'https://api-training.harx.ai';
+  };
+  const API_BASE = getApiBaseUrl();
+
+  // Generate quiz for a module
+  const generateModuleQuiz = async (module: TrainingModule, isFinalExam: boolean = false) => {
+    const moduleId = module.id;
+    setGeneratingQuizForModule(moduleId);
+    if (isFinalExam) {
+      setGeneratingFinalExam(true);
+    }
+
+    try {
+      // Prepare module content for quiz generation
+      const moduleContent = `${module.title}\n\n${module.description}\n\n${
+        module.learningObjectives?.join('\n') || ''
+      }`;
+
+      // Calculate number of questions (10-15 for modules, 20-30 for final exam)
+      const questionCount = isFinalExam ? 25 : 12;
+
+      console.log(`📝 Generating ${isFinalExam ? 'final exam' : 'quiz'} for module: ${module.title}`);
+
+      // Generate quiz using AI service
+      const questions = await AIService.generateQuiz(moduleContent, questionCount);
+
+      // Convert to Assessment format
+      const assessmentQuestions: Question[] = questions.map((q: any, index: number) => ({
+        id: `q${index + 1}`,
+        text: q.text || q.question,
+        type: 'multiple-choice' as const,
+        options: q.options || [],
+        correctAnswer: q.correctAnswer,
+        explanation: q.explanation || '',
+        points: q.points || 10
+      }));
+
+      // Calculate passing score (70% of total points)
+      const totalPoints = assessmentQuestions.reduce((sum, q) => sum + (q.points || 10), 0);
+      const passingScore = Math.floor(totalPoints * 0.7);
+
+      // Create assessment
+      const assessment: Assessment = {
+        id: isFinalExam 
+          ? `final-exam-${journey.id}` 
+          : `assessment-${moduleId}-${Date.now()}`,
+        title: isFinalExam 
+          ? `Examen Final - ${journey.name}` 
+          : `Quiz - ${module.title}`,
+        type: 'quiz',
+        questions: assessmentQuestions,
+        passingScore: passingScore,
+        timeLimit: assessmentQuestions.length * 2 // 2 minutes per question
+      };
+
+      // Update module with new assessment
+      const updatedModulesList = updatedModules.map(m => {
+        if (m.id === moduleId) {
+          return {
+            ...m,
+            assessments: [...(m.assessments || []), assessment]
+          };
+        }
+        return m;
+      });
+
+      setUpdatedModules(updatedModulesList);
+
+      // Save to server
+      try {
+        const saveData = {
+          moduleId: moduleId,
+          journeyId: journey.id,
+          assessment: assessment,
+          isFinalExam: isFinalExam
+        };
+
+        // Try to save to server (adjust endpoint based on your API structure)
+        await axios.post(`${API_BASE}/api/training-journeys/${journey.id}/modules/${moduleId}/assessments`, saveData);
+        console.log(`✅ ${isFinalExam ? 'Final exam' : 'Quiz'} saved to server`);
+      } catch (saveError) {
+        console.warn('⚠️ Could not save to server, but quiz is generated locally:', saveError);
+        // Continue even if save fails - quiz is still available locally
+      }
+
+      console.log(`✅ ${isFinalExam ? 'Final exam' : 'Quiz'} generated successfully`);
+    } catch (error) {
+      console.error(`❌ Error generating ${isFinalExam ? 'final exam' : 'quiz'}:`, error);
+      alert(`Erreur lors de la génération du ${isFinalExam ? 'examen final' : 'quiz'}. Veuillez réessayer.`);
+    } finally {
+      setGeneratingQuizForModule(null);
+      setGeneratingFinalExam(false);
     }
   };
 
@@ -304,14 +410,14 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
       },
       {
         title: 'Overview',
-        content: `Complete training with ${modules.length} modules • Total: ${modules.reduce((sum, m) => sum + m.duration, 0)} min`,
+        content: `Complete training with ${updatedModules.length} modules • Total: ${updatedModules.reduce((sum, m) => sum + m.duration, 0)} min`,
         bgColor: '#8B5CF6',
         textColor: '#FFFFFF'
       }
     ];
     
     // Generate detailed slides for each module
-    modules.forEach((module, index) => {
+    updatedModules.forEach((module, index) => {
       const moduleColor = colors[index % colors.length];
       
       // Module title slide
@@ -402,7 +508,7 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
     // Final slide
     slides.push({
       title: 'Thank You!',
-      content: `Training complete • ${modules.length} modules covered`,
+      content: `Training complete • ${updatedModules.length} modules covered`,
       bgColor: '#6366F1',
       textColor: '#FFFFFF'
     });
@@ -507,7 +613,7 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
       journey: journey.name,
       totalTime: formatTime(rehearsalTime),
       modulesCompleted: completedModules.length,
-      totalModules: modules.length,
+      totalModules: updatedModules.length,
       feedback: feedback.length,
       rating: overallRating,
       readyForLaunch: overallRating >= 3 && feedback.filter(f => f.severity === 'high').length === 0,
@@ -765,7 +871,7 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
               <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-6 mb-6">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-semibold text-gray-900">
-                    Module {currentModuleIndex + 1} of {modules.length}
+                    Module {currentModuleIndex + 1} of {updatedModules.length}
                   </h3>
                   <div className="flex items-center space-x-2">
                     <button
@@ -786,7 +892,7 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
                 </div>
 
                 <div className="flex flex-wrap gap-2">
-                  {modules.map((module, index) => (
+                  {updatedModules.map((module, index) => (
                     <button
                       key={module.id}
                       onClick={() => {
@@ -847,7 +953,7 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
                           </button>
                           <button
                             onClick={handleNextSection}
-                            disabled={currentSectionIndex === currentModule.sections!.length - 1 && currentModuleIndex === modules.length - 1}
+                            disabled={currentSectionIndex === currentModule.sections!.length - 1 && currentModuleIndex === updatedModules.length - 1}
                             className="px-3 py-1 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                           >
                             Next
@@ -938,12 +1044,52 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
                     </div>
 
                     {/* AI-Generated Assessments */}
-                    {currentModule.assessments && currentModule.assessments.length > 0 && (
-                      <div className="bg-purple-50 rounded-xl p-6 border border-purple-200">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                    <div className="bg-purple-50 rounded-xl p-6 border border-purple-200">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-semibold text-gray-900 flex items-center">
                           <BarChart3 className="h-5 w-5 mr-2 text-purple-600" />
-                          AI-Generated Assessments ({currentModule.assessments.length})
+                          AI-Generated Assessments {currentModule.assessments && currentModule.assessments.length > 0 && `(${currentModule.assessments.length})`}
                         </h3>
+                        <div className="flex items-center space-x-2">
+                          <button
+                            onClick={() => generateModuleQuiz(currentModule, false)}
+                            disabled={generatingQuizForModule === currentModule.id}
+                            className="flex items-center space-x-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                          >
+                            {generatingQuizForModule === currentModule.id ? (
+                              <>
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                <span>Génération...</span>
+                              </>
+                            ) : (
+                              <>
+                                <FileQuestion className="h-4 w-4" />
+                                <span>Générer Quiz</span>
+                              </>
+                            )}
+                          </button>
+                          {isLastModule && (
+                            <button
+                              onClick={() => generateModuleQuiz(currentModule, true)}
+                              disabled={generatingFinalExam}
+                              className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            >
+                              {generatingFinalExam ? (
+                                <>
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                  <span>Génération...</span>
+                                </>
+                              ) : (
+                                <>
+                                  <FileQuestion className="h-4 w-4" />
+                                  <span>Examen Final</span>
+                                </>
+                              )}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      {currentModule.assessments && currentModule.assessments.length > 0 ? (
                         <div className="space-y-3">
                           {currentModule.assessments.map((assessment, idx) => (
                             <div key={idx} className="bg-white rounded-lg p-4 border border-purple-200 flex items-center justify-between">
@@ -961,8 +1107,14 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
                             </div>
                           ))}
                         </div>
-                      </div>
-                    )}
+                      ) : (
+                        <div className="text-center py-6 text-gray-500">
+                          <FileQuestion className="h-12 w-12 mx-auto mb-3 text-gray-400" />
+                          <p className="text-sm">Aucun quiz généré pour ce module</p>
+                          <p className="text-xs mt-1">Cliquez sur "Générer Quiz" pour créer un quiz avec l'IA</p>
+                        </div>
+                      )}
+                    </div>
 
                     {/* Prerequisites */}
                     {currentModule.prerequisites && currentModule.prerequisites.length > 0 && (
