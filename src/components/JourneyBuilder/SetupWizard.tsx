@@ -74,40 +74,26 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
   const steps = [
     { 
       id: 1, 
-      title: 'Company & Gig Setup', 
+      title: 'Company Information', 
       icon: Building2, 
-      description: 'Tell us about your organization and role',
-      features: ['Industry-specific templates', 'Smart defaults', 'Compliance settings']
+      description: 'Select your industry',
+      features: ['Auto-load company data', 'Industry-specific templates', 'Smart defaults']
     },
     { 
       id: 2, 
-      title: 'Training Vision', 
-      icon: Target, 
-      description: 'Define your learning objectives',
-      features: ['AI-suggested goals', 'Success metrics', 'Timeline planning']
-    },
-    { 
-      id: 3, 
-      title: 'Team & Roles', 
-      icon: Users, 
-      description: 'Identify your learners',
-      features: ['Role-based paths', 'Skill assessments', 'Personalization']
-    },
-    {
-      id: 4,
-      title: 'Training Methodology',
-      icon: Sparkles,
-      description: 'Choose comprehensive training approach',
-      features: ['360° methodology', 'Industry-specific', 'Compliance-ready']
+      title: 'Select Gig/Role', 
+      icon: Briefcase, 
+      description: 'Choose the position this training is for',
+      features: ['Filtered by industry', 'Role-based paths', 'Skill assessments']
     }
   ];
 
   const handleNext = () => {
-    if (currentStep === 4) {
+    if (currentStep === 2) {
       // Complete setup and move to content upload
       const completeCompany: Company = {
         id: Date.now().toString(),
-        name: company.name || '',
+        name: companyData?.name || company.name || '',
         industry: company.industry || '',
         size: company.size || 'medium',
         setupComplete: true,
@@ -116,8 +102,8 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
       const completeJourney: TrainingJourney = {
         id: Date.now().toString(),
         companyId: completeCompany.id,
-        name: journey.name || 'New Training Journey',
-        description: journey.description || '',
+        name: selectedGig?.title || 'New Training Journey',
+        description: selectedGig?.description || '',
         status: 'draft',
         steps: [
           {
@@ -364,98 +350,46 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
         return (
           <div className="space-y-6">
             <div className="text-center mb-8">
-              <Target className="h-16 w-16 text-green-500 mx-auto mb-4" />
-              <h3 className="text-2xl font-bold text-gray-900 mb-2">Define Your Training Vision</h3>
-              <p className="text-gray-600">What do you want to achieve with this training program?</p>
+              <Briefcase className="h-16 w-16 text-green-500 mx-auto mb-4" />
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">Select Your Gig/Role</h3>
+              <p className="text-gray-600">Choose the position this training is for</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
               {steps[1].features.map((feature, index) => (
                 <div key={index} className="text-center p-4 bg-green-50 rounded-lg">
-                  <Zap className="h-6 w-6 text-green-500 mx-auto mb-2" />
+                  <Briefcase className="h-6 w-6 text-green-500 mx-auto mb-2" />
                   <p className="text-sm text-green-700 font-medium">{feature}</p>
                 </div>
               ))}
             </div>
 
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Training Program Name *
-                </label>
-                <input
-                  type="text"
-                  value={journey.name || ''}
-                  onChange={(e) => setJourney({ ...journey, name: e.target.value })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg"
-                  placeholder="e.g., Customer Success Mastery Program"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Program Description
-                </label>
-                <textarea
-                  value={journey.description || ''}
-                  onChange={(e) => setJourney({ ...journey, description: e.target.value })}
-                  rows={4}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Describe the goals, outcomes, and key benefits of this training program..."
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Expected Program Duration
-                </label>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  {[
-                    { value: '1-2 hours', label: 'Quick Start', desc: '1-2 hours' },
-                    { value: 'Half day', label: 'Half Day', desc: '3-4 hours' },
-                    { value: '1 day', label: 'Full Day', desc: '6-8 hours' },
-                    { value: '1 week', label: 'One Week', desc: 'Multi-session' },
-                    { value: '2 weeks', label: 'Two Weeks', desc: 'Comprehensive' },
-                    { value: '1 month', label: 'One Month', desc: 'Deep Learning' },
-                  ].map((duration) => (
-                    <button
-                      key={duration.value}
-                      onClick={() => setJourney({ ...journey, estimatedDuration: duration.value })}
-                      className={`p-3 border-2 rounded-lg text-center transition-all hover:shadow-md ${
-                        journey.estimatedDuration === duration.value
-                          ? 'border-green-500 bg-green-50 text-green-700 shadow-md'
-                          : 'border-gray-300 hover:border-gray-400'
-                      }`}
-                    >
-                      <div className="font-semibold text-sm">{duration.label}</div>
-                      <div className="text-xs text-gray-600">{duration.desc}</div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
+            <GigSelector
+              industryFilter={company.industry}
+              onGigSelect={handleGigSelect}
+              selectedGigId={selectedGig?._id}
+            />
           </div>
         );
 
-      case 3:
-        return (
-          <div className="space-y-6">
-            <div className="text-center mb-8">
-              <Users className="h-16 w-16 text-purple-500 mx-auto mb-4" />
-              <h3 className="text-2xl font-bold text-gray-900 mb-2">Identify Your Learners</h3>
-              <p className="text-gray-600">Who will be participating in this training program?</p>
-            </div>
+      default:
+        return null;
+    }
+  };
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-              {steps[2].features.map((feature, index) => (
-                <div key={index} className="text-center p-4 bg-purple-50 rounded-lg">
-                  <Users className="h-6 w-6 text-purple-500 mx-auto mb-2" />
-                  <p className="text-sm text-purple-700 font-medium">{feature}</p>
-                </div>
-              ))}
-            </div>
+  const isStepValid = () => {
+    switch (currentStep) {
+      case 1:
+        return companyData && company.industry && selectedGig !== null;
+      case 2:
+        return true; // Gig selected, can proceed
+      default:
+        return true;
+    }
+  };
 
-            <div className="space-y-6">
+  // ATTENTION: Le code ci-dessous va rester intact
+  // Placeholder pour éviter les erreurs
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-4">
                   Target Roles & Departments *
@@ -615,13 +549,9 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
   const isStepValid = () => {
     switch (currentStep) {
       case 1:
-        return companyData && company.industry && company.size && selectedGig !== null;
+        return companyData && company.industry && selectedGig !== null;
       case 2:
-        return journey.name && journey.estimatedDuration;
-      case 3:
-        return journey.targetRoles && journey.targetRoles.length > 0;
-      case 4:
-        return true; // Setup complete
+        return true; // Gig selected, can proceed
       default:
         return true;
     }
