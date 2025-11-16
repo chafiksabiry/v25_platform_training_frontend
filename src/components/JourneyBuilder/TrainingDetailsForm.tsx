@@ -100,22 +100,13 @@ export default function TrainingDetailsForm({ onComplete, onBack, gigData }: Tra
             </div>
 
             {/* Navigation Buttons */}
-            <div className="flex justify-between items-center mt-8 pt-6 border-t border-gray-200">
+            <div className="flex justify-start items-center mt-8 pt-6 border-t border-gray-200">
               <button
                 onClick={onBack}
                 className="px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-all font-medium flex items-center space-x-2"
               >
                 <ArrowLeft className="h-5 w-5" />
                 <span>Back</span>
-              </button>
-
-              <button
-                onClick={handleSubmit}
-                disabled={!canProceed}
-                className="px-8 py-3 text-gray-700 rounded-xl hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium flex items-center space-x-2"
-              >
-                <span>Continue</span>
-                <ArrowRight className="h-5 w-5" />
               </button>
             </div>
           </div>

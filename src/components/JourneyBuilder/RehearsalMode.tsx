@@ -558,20 +558,39 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
               {/* Document Viewer */}
               <div className="relative w-full bg-gray-50 rounded-lg border border-gray-200" style={{ minHeight: '300px' }}>
                 {file.url && isPDF ? (
-                  <iframe
-                    key={`pdf-${section.id}`}
-                    src={`https://mozilla.github.io/pdf.js/web/viewer.html?file=${encodeURIComponent(file.url)}`}
-                    className="w-full border-0 rounded-lg"
-                    style={{ height: '400px' }}
-                    title={file.name || 'Document'}
-                    allow="autoplay"
-                    onLoad={() => {
-                      console.log('✅ PDF loaded successfully');
-                    }}
-                    onError={(e) => {
-                      console.error('❌ PDF load error:', e);
-                    }}
-                  />
+                  // For blob URLs, show download link instead of iframe (CORS issue with PDF.js)
+                  file.url.startsWith('blob:') ? (
+                    <div className="flex flex-col items-center justify-center h-full p-8">
+                      <FileText className="w-16 h-16 text-blue-500 mb-4" />
+                      <h4 className="text-lg font-semibold text-gray-900 mb-2">{file.name}</h4>
+                      <p className="text-gray-600 mb-4 text-center">PDF Document</p>
+                      <a
+                        href={file.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        download={file.name}
+                        className="inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-lg font-medium transition-all"
+                      >
+                        <Download className="h-5 w-5" />
+                        <span>Open PDF Document</span>
+                      </a>
+                    </div>
+                  ) : (
+                    <iframe
+                      key={`pdf-${section.id}`}
+                      src={`https://mozilla.github.io/pdf.js/web/viewer.html?file=${encodeURIComponent(file.url)}`}
+                      className="w-full border-0 rounded-lg"
+                      style={{ height: '400px' }}
+                      title={file.name || 'Document'}
+                      allow="autoplay"
+                      onLoad={() => {
+                        console.log('✅ PDF loaded successfully');
+                      }}
+                      onError={(e) => {
+                        console.error('❌ PDF load error:', e);
+                      }}
+                    />
+                  )
                 ) : file.url && isWord ? (
                   <div className="flex flex-col items-center justify-center h-full p-8">
                     <FileText className="w-16 h-16 text-blue-500 mb-4" />
