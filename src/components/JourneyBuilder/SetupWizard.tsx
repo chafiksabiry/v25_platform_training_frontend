@@ -388,176 +388,6 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
     }
   };
 
-  const handleGigSelect = (gig: GigFromApi) => {
-    setSelectedGig(gig);
-  };
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto">
-          {/* Header */}
-          <div className="text-center mb-12">
-            <div className="inline-flex items-center space-x-2 bg-white px-6 py-3 rounded-full shadow-sm border border-gray-200 mb-6">
-              <Sparkles className="h-5 w-5 text-blue-500" />
-              <span className="text-sm font-medium text-gray-700">AI-Powered Training Journey Builder</span>
-                    { role: 'Product Specialists', dept: 'Product', icon: '⚙️' },
-                    { role: 'New Hires', dept: 'All Departments', icon: '🌟' },
-                    { role: 'Team Leaders', dept: 'Management', icon: '👥' },
-                    { role: 'All Employees', dept: 'Company-wide', icon: '🏢' },
-                  ].map((item) => (
-                    <label key={item.role} className="flex items-center p-4 border-2 border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 cursor-pointer transition-all">
-                      <input
-                        type="checkbox"
-                        checked={journey.targetRoles?.includes(item.role) || false}
-                        onChange={(e) => {
-                          const currentRoles = journey.targetRoles || [];
-                          if (e.target.checked) {
-                            setJourney({ ...journey, targetRoles: [...currentRoles, item.role] });
-                          } else {
-                            setJourney({ ...journey, targetRoles: currentRoles.filter(r => r !== item.role) });
-                          }
-                        }}
-                        className="mr-4 h-5 w-5 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
-                      />
-                      <div className="flex items-center space-x-3">
-                        <span className="text-2xl">{item.icon}</span>
-                        <div>
-                          <div className="font-medium text-gray-900">{item.role}</div>
-                          <div className="text-sm text-gray-600">{item.dept}</div>
-                        </div>
-                      </div>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-xl p-6">
-                <h4 className="font-semibold text-blue-900 mb-3 flex items-center">
-                  <Sparkles className="h-5 w-5 mr-2" />
-                  What Happens Next?
-                </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-3">
-                    <div className="flex items-start space-x-3">
-                      <FileText className="h-5 w-5 text-blue-600 mt-0.5" />
-                      <div>
-                        <div className="font-medium text-blue-900">Upload & Transform</div>
-                        <div className="text-sm text-blue-700">AI transforms your documents into engaging content</div>
-                      </div>
-                    </div>
-                    <div className="flex items-start space-x-3">
-                      <Video className="h-5 w-5 text-blue-600 mt-0.5" />
-                      <div>
-                        <div className="font-medium text-blue-900">Media Generation</div>
-                        <div className="text-sm text-blue-700">Create videos, audio, and interactive elements</div>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="space-y-3">
-                    <div className="flex items-start space-x-3">
-                      <Target className="h-5 w-5 text-blue-600 mt-0.5" />
-                      <div>
-                        <div className="font-medium text-blue-900">Smart Curriculum</div>
-                        <div className="text-sm text-blue-700">AI designs optimal learning paths</div>
-                      </div>
-                    </div>
-                    <div className="flex items-start space-x-3">
-                      <Zap className="h-5 w-5 text-blue-600 mt-0.5" />
-                      <div>
-                        <div className="font-medium text-blue-900">Launch & Track</div>
-                        <div className="text-sm text-blue-700">Deploy and monitor progress in real-time</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-
-      case 4:
-        return (
-          <div className="space-y-6">
-            <div className="text-center mb-8">
-              <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
-              <h3 className="text-2xl font-bold text-gray-900 mb-2">Setup Complete!</h3>
-              <p className="text-gray-600">Your 360° training methodology is configured. Ready to transform your content!</p>
-            </div>
-
-            <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-8">
-              <h4 className="text-xl font-semibold text-green-900 mb-4">360° Methodology Applied Successfully</h4>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                <div>
-                  <h5 className="font-semibold text-green-900 mb-2">Company Setup</h5>
-                  <div className="space-y-1 text-sm text-green-700">
-                    <div>• {company.name}</div>
-                    <div>• {company.industry}</div>
-                    <div>• {company.size} company</div>
-                  </div>
-                </div>
-                <div>
-                  <h5 className="font-semibold text-green-900 mb-2">Selected Gig</h5>
-                  <div className="space-y-1 text-sm text-green-700">
-                    <div>• {selectedGig?.title || 'No gig selected'}</div>
-                    <div>• {selectedGig?.category || ''}</div>
-                    <div>• {selectedGig?.seniority.level || ''}</div>
-                  </div>
-                </div>
-                <div>
-                  <h5 className="font-semibold text-green-900 mb-2">Training Program</h5>
-                  <div className="space-y-1 text-sm text-green-700">
-                    <div>• {journey.name}</div>
-                    <div>• {journey.estimatedDuration}</div>
-                    <div>• {journey.targetRoles?.length || 0} target roles</div>
-                  </div>
-                </div>
-              </div>
-              
-              {selectedMethodology && (
-                <div className="mb-4">
-                  <h5 className="font-semibold text-green-900 mb-3">360° Methodology Components:</h5>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {selectedMethodology.components.slice(0, 6).map((component, index) => (
-                      <div key={index} className="flex items-center space-x-2 text-sm text-green-700">
-                        <CheckCircle className="h-4 w-4 text-green-600" />
-                        <span>{component.title} ({component.estimatedDuration}h)</span>
-                      </div>
-                    ))}
-                    {selectedMethodology.components.length > 6 && (
-                      <div className="text-sm text-green-600 font-medium">
-                        +{selectedMethodology.components.length - 6} more components
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-              
-              <div className="text-center">
-                <p className="text-green-700 font-medium">
-                  Next: Upload your content and AI will enhance it with {selectedMethodology ? '360° methodology components' : 'multimedia elements'}
-                </p>
-              </div>
-            </div>
-          </div>
-        );
-      default:
-        return null;
-    }
-  };
-
-  const isStepValid = () => {
-    switch (currentStep) {
-      case 1:
-        return companyData && company.industry && selectedGig !== null;
-      case 2:
-        return true; // Gig selected, can proceed
-      default:
-        return true;
-    }
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
       <div className="container mx-auto px-4 py-8">
@@ -627,20 +457,27 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
             {renderStepContent()}
           </div>
 
-          {/* Navigation */}
+          {/* Navigation Buttons */}
           <div className="flex justify-between items-center">
             <button
-              onClick={handleBack}
+              onClick={() => currentStep > 1 ? setCurrentStep(currentStep - 1) : null}
+              className={`px-6 py-3 rounded-xl transition-all font-medium flex items-center space-x-2 ${
+                currentStep === 1
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
               disabled={currentStep === 1}
-              className="px-8 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium"
             >
-              Back
+              <span>Back</span>
             </button>
-            
-            <div className="text-center">
-              <div className="text-sm text-gray-500 mb-1">Step {currentStep} of {steps.length}</div>
-              <div className="w-32 bg-gray-200 rounded-full h-2">
-                <div 
+
+            <div className="flex items-center space-x-4">
+              <div className="text-sm text-gray-600">
+                Step {currentStep} of {steps.length}
+              </div>
+
+              <div className="w-64 bg-gray-200 rounded-full h-2 overflow-hidden">
+                <div
                   className="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full transition-all duration-500"
                   style={{ width: `${(currentStep / steps.length) * 100}%` }}
                 />
@@ -652,7 +489,7 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
               disabled={!isStepValid()}
               className="px-8 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium shadow-lg flex items-center space-x-2"
             >
-              <span>{currentStep === 4 ? 'Start Building' : currentStep === 3 ? 'Choose Methodology' : 'Continue'}</span>
+              <span>{currentStep === 2 ? 'Start Building' : 'Continue'}</span>
               <ArrowRight className="h-5 w-5" />
             </button>
           </div>
