@@ -137,6 +137,7 @@ export default function JourneyBuilder({ onComplete }: JourneyBuilderProps) {
             <RehearsalMode
               journey={journey}
               modules={modules}
+              uploads={uploads}
               methodology={methodology}
               onComplete={handleRehearsalComplete}
               onBack={() => setCurrentStep(2)}

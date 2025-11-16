@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { Play, Pause, RotateCcw, CheckCircle, AlertTriangle, MessageSquare, Star, Eye, Users, Rocket, ArrowLeft, ArrowRight, Clock, BarChart3, Zap, Video, BookOpen, Edit3, Save, X as XIcon, Trash2, Plus, Download, FileQuestion, FileText, Image as ImageIcon, Youtube } from 'lucide-react';
-import { TrainingJourney, TrainingModule, RehearsalFeedback } from '../../types';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Play, Pause, RotateCcw, CheckCircle, AlertTriangle, MessageSquare, Star, Eye, Users, Rocket, ArrowLeft, ArrowRight, Clock, BarChart3, Zap, Video, BookOpen, Edit3, Save, X as XIcon, Trash2, Plus, Download, FileQuestion, FileText, Image as ImageIcon, Youtube, Sparkles } from 'lucide-react';
+import { TrainingJourney, TrainingModule, RehearsalFeedback, ContentUpload } from '../../types';
 import { TrainingMethodology } from '../../types/methodology';
 import ModuleContentViewer from '../Training/ModuleContentViewer';
 import QuizGenerator from '../Assessment/QuizGenerator';
-import { TrainingSection, SectionContent } from '../../types/manualTraining';
+import { TrainingSection, SectionContent, ContentFile } from '../../types/manualTraining';
 
 interface SlideData {
   title: string;
@@ -21,12 +21,13 @@ interface ModuleWithSections extends TrainingModule {
 interface RehearsalModeProps {
   journey: TrainingJourney;
   modules: TrainingModule[];
+  uploads?: ContentUpload[];
   methodology?: TrainingMethodology;
   onComplete: (feedback: RehearsalFeedback[], rating: number) => void;
   onBack: () => void;
 }
 
-export default function RehearsalMode({ journey, modules, methodology, onComplete, onBack }: RehearsalModeProps) {
+export default function RehearsalMode({ journey, modules, uploads = [], methodology, onComplete, onBack }: RehearsalModeProps) {
   const [currentModuleIndex, setCurrentModuleIndex] = useState(0);
   const [completedModules, setCompletedModules] = useState<string[]>([]);
   const [feedback, setFeedback] = useState<RehearsalFeedback[]>([]);
@@ -51,7 +52,97 @@ export default function RehearsalMode({ journey, modules, methodology, onComplet
   const [currentSectionIndex, setCurrentSectionIndex] = useState(0);
   const [completedSections, setCompletedSections] = useState<Set<string>>(new Set());
 
-  const currentModule = modules[currentModuleIndex] as ModuleWithSections;
+  // Convert uploads to sections if modules don't have sections
+  const modulesWithSections = useMemo(() => {
+    return modules.map((module, moduleIndex) => {
+      const moduleWithSections = module as ModuleWithSections;
+      
+      // If module already has sections, use them
+      if (moduleWithSections.sections && moduleWithSections.sections.length > 0) {
+        return moduleWithSections;
+      }
+      
+      // Otherwise, create sections from uploads
+      // Match uploads to modules based on index or content
+      const relevantUploads = uploads.filter((upload, uploadIndex) => {
+        // Try to match by module title or use index-based matching
+        const moduleTitleLower = module.title.toLowerCase();
+        const uploadNameLower = upload.name.toLowerCase();
+        return moduleTitleLower.includes(uploadNameLower.replace(/\.[^/.]+$/, '')) || 
+               uploadIndex === moduleIndex;
+      });
+      
+      // If no direct match, use all uploads for first module, or distribute
+      const uploadsToUse = relevantUploads.length > 0 
+        ? relevantUploads 
+        : (moduleIndex === 0 ? uploads : []);
+      
+      const sections: TrainingSection[] = uploadsToUse.map((upload, uploadIdx) => {
+        // Determine section type based on upload type
+        let sectionType: TrainingSection['type'] = 'document';
+        if (upload.type === 'video') {
+          sectionType = 'video';
+        } else if (upload.type === 'document' || upload.type === 'presentation') {
+          sectionType = 'document';
+        }
+        
+        // Get AI description from upload analysis (formatted nicely)
+        const aiDescription = upload.aiAnalysis 
+          ? `📚 **Key Topics:**\n${upload.aiAnalysis.keyTopics?.map(topic => `• ${topic}`).join('\n') || 'N/A'}\n\n` +
+            `🎯 **Learning Objectives:**\n${upload.aiAnalysis.learningObjectives?.map(obj => `• ${obj}`).join('\n') || 'N/A'}\n\n` +
+            `⏱️ **Estimated Duration:** ${upload.aiAnalysis.estimatedReadTime || 0} minutes\n\n` +
+            `📊 **Difficulty Level:** ${upload.aiAnalysis.difficulty || 'N/A'}/10`
+          : `Document: ${upload.name}`;
+        
+        // Create content file from upload
+        // Try to get URL from file object or use empty string (will be handled in renderSectionContent)
+        let fileUrl = '';
+        if (upload.file) {
+          try {
+            fileUrl = URL.createObjectURL(upload.file);
+          } catch (e) {
+            console.warn('Could not create object URL for file:', upload.name);
+          }
+        }
+        
+        const contentFile: ContentFile = {
+          id: upload.id,
+          name: upload.name,
+          type: upload.type === 'video' ? 'video' : 
+                upload.type === 'presentation' ? 'pdf' : 
+                upload.type === 'document' ? 'pdf' : 'pdf',
+          url: fileUrl,
+          publicId: upload.id,
+          size: upload.size || 0,
+          mimeType: upload.type === 'video' ? 'video/mp4' : 
+                   upload.type === 'document' ? 'application/pdf' : 
+                   upload.type === 'presentation' ? 'application/pdf' : 'application/pdf'
+        };
+        
+        const sectionContent: SectionContent = {
+          text: aiDescription,
+          file: contentFile,
+          keyPoints: upload.aiAnalysis?.keyTopics || []
+        };
+        
+        return {
+          id: `section-${moduleIndex}-${uploadIdx}`,
+          title: upload.name.replace(/\.[^/.]+$/, ''),
+          type: sectionType,
+          content: sectionContent,
+          orderIndex: uploadIdx + 1,
+          estimatedDuration: upload.aiAnalysis?.estimatedReadTime || 10
+        };
+      });
+      
+      return {
+        ...moduleWithSections,
+        sections: sections.length > 0 ? sections : undefined
+      };
+    });
+  }, [modules, uploads]);
+
+  const currentModule = modulesWithSections[currentModuleIndex];
   const hasSections = currentModule?.sections && currentModule.sections.length > 0;
   const currentSection = hasSections ? currentModule.sections[currentSectionIndex] : null;
   const progress = (completedModules.length / modules.length) * 100;
@@ -440,52 +531,84 @@ export default function RehearsalMode({ journey, modules, methodology, onComplet
           const isWord = file.type === 'word' || file.mimeType?.includes('word') || file.mimeType?.includes('document');
           
           return (
-            <div className="relative w-full" style={{ minHeight: '600px' }}>
-              {isPDF ? (
-                <iframe
-                  key={`pdf-${section.id}`}
-                  src={`https://mozilla.github.io/pdf.js/web/viewer.html?file=${encodeURIComponent(file.url)}`}
-                  className="w-full border-0 rounded-lg"
-                  style={{ height: '800px' }}
-                  title={file.name || 'Document'}
-                  allow="autoplay"
-                  onLoad={() => {
-                    console.log('✅ PDF loaded successfully');
-                  }}
-                  onError={(e) => {
-                    console.error('❌ PDF load error:', e);
-                  }}
-                />
-              ) : isWord ? (
-                <div className="flex flex-col items-center justify-center h-full p-8 bg-gray-50 rounded-lg">
-                  <FileText className="w-16 h-16 text-blue-500 mb-4" />
-                  <h4 className="text-lg font-semibold text-gray-900 mb-2">{file.name}</h4>
-                  <p className="text-gray-600 mb-4">Word document preview not available in browser</p>
-                  <a
-                    href={file.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-lg font-medium transition-all"
-                  >
-                    <Download className="h-5 w-5" />
-                    <span>Download & Open Document</span>
-                  </a>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center h-full p-8 bg-gray-50 rounded-lg">
-                  <FileText className="w-16 h-16 text-gray-400 mb-4" />
-                  <h4 className="text-lg font-semibold text-gray-900 mb-2">{file.name}</h4>
-                  <a
-                    href={file.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white rounded-lg font-medium transition-all"
-                  >
-                    <Download className="h-5 w-5" />
-                    <span>Open Document</span>
-                  </a>
+            <div className="space-y-6">
+              {/* AI Description */}
+              {content.text && (
+                <div className="bg-gradient-to-br from-purple-50 to-blue-50 rounded-lg p-6 border border-purple-200">
+                  <div className="flex items-center mb-3">
+                    <Sparkles className="h-5 w-5 text-purple-600 mr-2" />
+                    <h4 className="font-semibold text-purple-900">AI-Generated Description</h4>
+                  </div>
+                  <div className="whitespace-pre-wrap text-gray-700 leading-relaxed">
+                    {content.text.split('\n').map((line, idx) => {
+                      if (line.startsWith('📚') || line.startsWith('🎯') || line.startsWith('⏱️') || line.startsWith('📊')) {
+                        return <div key={idx} className="font-semibold text-gray-900 mt-3 mb-2">{line}</div>;
+                      } else if (line.startsWith('•')) {
+                        return <div key={idx} className="ml-4 text-gray-700">{line}</div>;
+                      } else if (line.trim() === '') {
+                        return <br key={idx} />;
+                      } else {
+                        return <div key={idx} className="text-gray-700">{line}</div>;
+                      }
+                    })}
+                  </div>
                 </div>
               )}
+              
+              {/* Document Viewer */}
+              <div className="relative w-full bg-gray-50 rounded-lg border border-gray-200" style={{ minHeight: '600px' }}>
+                {file.url && isPDF ? (
+                  <iframe
+                    key={`pdf-${section.id}`}
+                    src={`https://mozilla.github.io/pdf.js/web/viewer.html?file=${encodeURIComponent(file.url)}`}
+                    className="w-full border-0 rounded-lg"
+                    style={{ height: '800px' }}
+                    title={file.name || 'Document'}
+                    allow="autoplay"
+                    onLoad={() => {
+                      console.log('✅ PDF loaded successfully');
+                    }}
+                    onError={(e) => {
+                      console.error('❌ PDF load error:', e);
+                    }}
+                  />
+                ) : file.url && isWord ? (
+                  <div className="flex flex-col items-center justify-center h-full p-8">
+                    <FileText className="w-16 h-16 text-blue-500 mb-4" />
+                    <h4 className="text-lg font-semibold text-gray-900 mb-2">{file.name}</h4>
+                    <p className="text-gray-600 mb-4 text-center">Word document preview not available in browser</p>
+                    <a
+                      href={file.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-lg font-medium transition-all"
+                    >
+                      <Download className="h-5 w-5" />
+                      <span>Download & Open Document</span>
+                    </a>
+                  </div>
+                ) : file.url ? (
+                  <div className="flex flex-col items-center justify-center h-full p-8">
+                    <FileText className="w-16 h-16 text-gray-400 mb-4" />
+                    <h4 className="text-lg font-semibold text-gray-900 mb-2">{file.name}</h4>
+                    <a
+                      href={file.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white rounded-lg font-medium transition-all"
+                    >
+                      <Download className="h-5 w-5" />
+                      <span>Open Document</span>
+                    </a>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-full p-8">
+                    <FileText className="w-16 h-16 text-gray-300 mb-4" />
+                    <h4 className="text-lg font-semibold text-gray-900 mb-2">{file.name}</h4>
+                    <p className="text-gray-500 text-center">Document file not available for preview</p>
+                  </div>
+                )}
+              </div>
             </div>
           );
         }
@@ -500,18 +623,34 @@ export default function RehearsalMode({ journey, modules, methodology, onComplet
         return (
           <div className="prose max-w-none">
             {content?.text ? (
-              <div className="whitespace-pre-wrap text-gray-700 leading-relaxed">
-                {content.text}
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-6 border border-blue-200">
+                <div className="whitespace-pre-wrap text-gray-700 leading-relaxed">
+                  {content.text.split('\n').map((line, idx) => {
+                    // Format markdown-like syntax
+                    if (line.startsWith('📚') || line.startsWith('🎯') || line.startsWith('⏱️') || line.startsWith('📊')) {
+                      return <div key={idx} className="font-semibold text-gray-900 mt-3 mb-2">{line}</div>;
+                    } else if (line.startsWith('•')) {
+                      return <div key={idx} className="ml-4 text-gray-700">{line}</div>;
+                    } else if (line.trim() === '') {
+                      return <br key={idx} />;
+                    } else {
+                      return <div key={idx} className="text-gray-700">{line}</div>;
+                    }
+                  })}
+                </div>
               </div>
             ) : (
               <p className="text-gray-500">No text content available</p>
             )}
             {content?.keyPoints && content.keyPoints.length > 0 && (
-              <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-                <h4 className="font-semibold text-blue-900 mb-2">Key Points:</h4>
-                <ul className="list-disc list-inside space-y-1 text-blue-800">
+              <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <h4 className="font-semibold text-blue-900 mb-3 flex items-center">
+                  <Zap className="h-4 w-4 mr-2" />
+                  Key Points:
+                </h4>
+                <ul className="list-disc list-inside space-y-2 text-blue-800">
                   {content.keyPoints.map((point, idx) => (
-                    <li key={idx}>{point}</li>
+                    <li key={idx} className="text-gray-700">{point}</li>
                   ))}
                 </ul>
               </div>
@@ -830,7 +969,7 @@ export default function RehearsalMode({ journey, modules, methodology, onComplet
                       <QuizGenerator
                         moduleTitle={currentModule.title}
                         moduleDescription={currentModule.description}
-                        moduleContent={currentModule.content.map(c => c.title).join('. ')}
+                        moduleContent={currentModule.content?.map(c => c.title).join('. ') || ''}
                       />
                     ) : hasSections && currentSection ? (
                       <div className="bg-gray-50 rounded-xl p-6">
@@ -853,211 +992,14 @@ export default function RehearsalMode({ journey, modules, methodology, onComplet
                           {renderSectionContent(currentSection)}
                         </div>
                       </div>
-                    ) : showPPTViewer && slideImages.length > 0 ? (
-                      <div className="bg-gray-100 rounded-xl overflow-hidden">
-                        {/* Éditeur PPT Visuel */}
-                        <div className="bg-white p-4">
-                          {isEditMode ? (
-                            // MODE ÉDITION - Éditeur visuel type PowerPoint
-                            <div 
-                              className="relative aspect-video rounded-lg overflow-hidden border-4 border-orange-400 shadow-2xl"
-                              style={{ 
-                                background: `linear-gradient(135deg, ${slideData[currentSlideIndex]?.bgColor || '#6366F1'} 0%, ${slideData[currentSlideIndex]?.bgColor || '#6366F1'}dd 100%)`
-                              }}
-                            >
-                              {/* Cercles décoratifs */}
-                              <div className="absolute top-10 left-10 w-20 h-20 rounded-full bg-white opacity-10"></div>
-                              <div className="absolute bottom-16 right-10 w-28 h-28 rounded-full bg-white opacity-10"></div>
-                              
-                              {/* Title Text Area - Editable */}
-                              <div className="absolute top-1/3 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-4/5">
-                                <textarea
-                                  value={slideData[currentSlideIndex]?.title || ''}
-                                  onChange={(e) => updateCurrentSlide('title', e.target.value)}
-                                  className="w-full bg-transparent text-white text-center font-bold text-4xl md:text-5xl resize-none outline-none border-2 border-dashed border-white/30 hover:border-white/60 focus:border-white p-4 rounded-lg"
-                                  style={{ 
-                                    minHeight: '80px',
-                                    color: slideData[currentSlideIndex]?.textColor || '#FFFFFF'
-                                  }}
-                                  placeholder="Slide title"
-                                  maxLength={50}
-                                />
-                              </div>
-                              
-                              {/* Content Text Area - Editable */}
-                              <div className="absolute top-2/3 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-4/5">
-                                <textarea
-                                  value={slideData[currentSlideIndex]?.content || ''}
-                                  onChange={(e) => updateCurrentSlide('content', e.target.value)}
-                                  className="w-full bg-transparent text-white text-center text-xl md:text-2xl resize-none outline-none border-2 border-dashed border-white/30 hover:border-white/60 focus:border-white p-4 rounded-lg opacity-90"
-                                  style={{ 
-                                    minHeight: '60px',
-                                    color: slideData[currentSlideIndex]?.textColor || '#FFFFFF'
-                                  }}
-                                  placeholder="Slide content"
-                                  maxLength={800}
-                                />
-                              </div>
-                              
-                              {/* Footer */}
-                              <div className="absolute bottom-4 w-full">
-                                <div className="w-4/5 mx-auto h-0.5 bg-white opacity-30"></div>
-                                <p className="text-center text-white text-xs opacity-60 mt-2">Powered by AI Training Platform</p>
-                              </div>
-                              
-                              {/* Edit Mode Indicator */}
-                              <div className="absolute top-4 right-4 bg-orange-500 text-white px-3 py-1 rounded-full text-sm font-semibold flex items-center">
-                                <Edit3 className="h-3 w-3 mr-1" />
-                                EDIT MODE
-                              </div>
-                            </div>
-                          ) : (
-                            // MODE LECTURE - Affichage normal
-                            <div className="aspect-video bg-gray-900 flex items-center justify-center rounded-lg overflow-hidden shadow-xl">
-                              <div 
-                                className="w-full h-full flex flex-col items-center justify-center p-8"
-                                style={{
-                                  background: `linear-gradient(135deg, ${slideData[currentSlideIndex]?.bgColor || '#6366F1'} 0%, ${slideData[currentSlideIndex]?.bgColor || '#6366F1'}dd 100%)`
-                                }}
-                              >
-                                <h2 className="text-4xl md:text-5xl font-bold text-white mb-4 text-center">
-                                  {slideData[currentSlideIndex]?.title || 'Slide Title'}
-                                </h2>
-                                <p className="text-xl md:text-2xl text-white text-center opacity-90">
-                                  {slideData[currentSlideIndex]?.content || 'Slide content'}
-                                </p>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Edit Toolbar */}
-                        {isEditMode && (
-                          <div className="bg-white border-t border-gray-200 p-4">
-                            <div className="flex flex-wrap items-center justify-center gap-4">
-                              {/* Color Palette */}
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm font-medium text-gray-700">Color:</span>
-                                <div className="flex gap-1">
-                                  {['#6366F1', '#8B5CF6', '#EC4899', '#F59E0B', '#10B981', '#06B6D4', '#3B82F6', '#A855F7', '#EF4444', '#14B8A6'].map(color => (
-                                    <button
-                                      key={color}
-                                      onClick={() => updateCurrentSlide('bgColor', color)}
-                                      className={`w-8 h-8 rounded-lg border-2 transition-transform hover:scale-110 ${
-                                        slideData[currentSlideIndex]?.bgColor === color 
-                                          ? 'border-gray-900 scale-110' 
-                                          : 'border-gray-300'
-                                      }`}
-                                      style={{ backgroundColor: color }}
-                                      title={color}
-                                    />
-                                  ))}
-                                </div>
-                              </div>
-                              
-                              <div className="h-8 w-px bg-gray-300"></div>
-                              
-                              {/* Actions */}
-                              <button
-                                onClick={deleteCurrentSlide}
-                                className="flex items-center px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-sm font-medium"
-                                title="Delete this slide"
-                              >
-                                <Trash2 className="h-4 w-4 mr-2" />
-                                Delete
-                              </button>
-                              
-                              <button
-                                onClick={addNewSlide}
-                                className="flex items-center px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm font-medium"
-                                title="Add new slide"
-                              >
-                                <Plus className="h-4 w-4 mr-2" />
-                                New Slide
-                              </button>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Navigation Controls */}
-                        <div className="bg-white p-4 border-t border-gray-200">
-                          <div className="flex flex-wrap justify-between items-center gap-4">
-                            <button
-                              onClick={goToPreviousSlide}
-                              disabled={currentSlideIndex === 0}
-                              className="px-4 py-2 bg-indigo-500 text-white rounded-md hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center transition-colors"
-                            >
-                              <ArrowLeft className="h-4 w-4 mr-1" />
-                              Previous
-                            </button>
-                            
-                            <div className="flex flex-wrap items-center gap-4">
-                              <span className="text-lg font-medium text-gray-700">
-                                Slide {currentSlideIndex + 1} / {slideImages.length}
-                              </span>
-                              
-                              <button
-                                onClick={() => setIsEditMode(!isEditMode)}
-                                className={`flex items-center px-4 py-2 rounded-lg text-sm font-bold transition-all transform hover:scale-105 ${
-                                  isEditMode 
-                                    ? 'bg-green-500 text-white hover:bg-green-600 shadow-lg' 
-                                    : 'bg-orange-500 text-white hover:bg-orange-600 shadow-lg'
-                                }`}
-                              >
-                                {isEditMode ? (
-                                  <>
-                                    <Save className="h-5 w-5 mr-2" />
-                                    Finish Editing
-                                  </>
-                                ) : (
-                                  <>
-                                    <Edit3 className="h-5 w-5 mr-2" />
-                                    Edit PPT
-                                  </>
-                                )}
-                              </button>
-
-                              <button
-                                onClick={downloadPowerPoint}
-                                disabled={isGeneratingPPT}
-                                className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg transition-all transform hover:scale-105 font-bold"
-                                title="Download editable PowerPoint"
-                              >
-                                {isGeneratingPPT ? (
-                                  <>
-                                    <div className="h-5 w-5 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                    Generating...
-                                  </>
-                                ) : (
-                                  <>
-                                    <Download className="h-5 w-5 mr-2" />
-                                    Download PPT
-                                  </>
-                                )}
-                              </button>
-                            </div>
-                            
-                            <button
-                              onClick={goToNextSlide}
-                              disabled={currentSlideIndex === slideImages.length - 1}
-                              className="px-4 py-2 bg-indigo-500 text-white rounded-md hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center transition-colors"
-                            >
-                              Next
-                              <ArrowRight className="h-4 w-4 ml-1" />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
                     ) : (
-                      <div className="text-center py-12 bg-gray-50 rounded-lg">
-                        <p className="text-gray-600 mb-4">Click "Play PPT" to generate and view slides</p>
-                        <button
-                          onClick={handlePlayPPT}
-                          className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-                        >
-                          <Play className="h-5 w-5 inline mr-2" />
-                          Generate Slides
-                        </button>
+                      <div className="text-center py-12 bg-gray-50 rounded-lg border border-gray-200">
+                        <BookOpen className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                        <h3 className="text-lg font-semibold text-gray-700 mb-2">No Sections Available</h3>
+                        <p className="text-gray-600">This module doesn't have any sections with documents yet.</p>
+                        {uploads.length === 0 && (
+                          <p className="text-sm text-gray-500 mt-2">Please upload documents in the previous step.</p>
+                        )}
                       </div>
                     )}
                   </div>
@@ -1065,34 +1007,11 @@ export default function RehearsalMode({ journey, modules, methodology, onComplet
                   {/* Module Controls */}
                   <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center space-x-4">
-                      <button
-                        onClick={handlePlayPPT}
-                        className="flex items-center space-x-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-                      >
-                        {isPlaying ? (
-                          <>
-                            <Pause className="h-4 w-4" />
-                            <span>Pause</span>
-                          </>
-                        ) : (
-                          <>
-                            <Play className="h-4 w-4" />
-                            <span>Play PPT</span>
-                          </>
-                        )}
-                      </button>
-                      <button 
-                        onClick={() => {
-                          setIsPlaying(false);
-                          setShowPPTViewer(false);
-                          setSlideImages([]);
-                          setCurrentSlideIndex(0);
-                        }}
-                        className="flex items-center space-x-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-                      >
-                        <RotateCcw className="h-4 w-4" />
-                        <span>Restart</span>
-                      </button>
+                      {hasSections && (
+                        <div className="text-sm text-gray-600">
+                          Section {currentSectionIndex + 1} of {currentModule.sections?.length || 0}
+                        </div>
+                      )}
                     </div>
                     <button
                       onClick={handleModuleComplete}
@@ -1107,17 +1026,17 @@ export default function RehearsalMode({ journey, modules, methodology, onComplet
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div className="text-center p-4 bg-blue-50 rounded-xl">
                       <Clock className="h-6 w-6 text-blue-600 mx-auto mb-2" />
-                      <div className="text-lg font-bold text-blue-600">{currentModule.duration}</div>
+                      <div className="text-lg font-bold text-blue-600">{currentModule.duration || 0}</div>
                       <div className="text-sm text-gray-600">Duration (min)</div>
                     </div>
                     <div className="text-center p-4 bg-green-50 rounded-xl">
                       <BookOpen className="h-6 w-6 text-green-600 mx-auto mb-2" />
-                      <div className="text-lg font-bold text-green-600">{currentModule.content.length}</div>
-                      <div className="text-sm text-gray-600">Content Items</div>
+                      <div className="text-lg font-bold text-green-600">{hasSections ? (currentModule.sections?.length || 0) : (currentModule.content?.length || 0)}</div>
+                      <div className="text-sm text-gray-600">{hasSections ? 'Sections' : 'Content Items'}</div>
                     </div>
                     <div className="text-center p-4 bg-purple-50 rounded-xl">
                       <BarChart3 className="h-6 w-6 text-purple-600 mx-auto mb-2" />
-                      <div className="text-lg font-bold text-purple-600">{currentModule.assessments.length}</div>
+                      <div className="text-lg font-bold text-purple-600">{currentModule.assessments?.length || 0}</div>
                       <div className="text-sm text-gray-600">Assessments</div>
                     </div>
                   </div>
