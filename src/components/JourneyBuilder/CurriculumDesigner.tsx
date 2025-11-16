@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Brain, BookOpen, CheckSquare, Play, Edit, Trash2, Plus, ArrowRight, Sparkles, Video, Music, BarChart3, Zap, Eye, Wand2, FileDown, ChevronRight, FileText, Rocket, RotateCcw } from 'lucide-react';
 import { ContentUpload, TrainingModule, ModuleContent, Assessment, Question } from '../../types/core';
 import { TrainingMethodology } from '../../types/methodology';
+import { TrainingSection } from '../../types/manualTraining';
 import { AIService } from '../../infrastructure/services/AIService';
 import PowerPointViewer from '../Export/PowerPointViewer';
 
@@ -147,74 +148,99 @@ export default function CurriculumDesigner({ uploads, methodology, onComplete, o
           .map(u => u.transcription || u.content || '')
           .join('\n\n---\n\n');
         
-        const fullModules: TrainingModule[] = await Promise.all(
-          modulesToUse.map(async (aiModule, index) => {
-            console.log(`📚 Module ${index + 1}/${modulesToUse.length}: Generating AI content for "${aiModule.title}"`);
-            
-            let moduleContent;
-            let assessments;
-            
-            try {
-              // ✅ Générer le CONTENU PERSONNALISÉ avec l'IA
-              const aiSections = await AIService.generateModuleContent(
-                aiModule.title,
-                aiModule.description,
-                allTranscriptions || `Training content for ${aiModule.title}`,
-                aiModule.learningObjectives
-              );
-              
-              moduleContent = aiSections.map((section: any, idx: number) => ({
-                id: section.id || `section-${idx + 1}`,
-                type: section.type || 'text',
-                title: section.title,
-                content: section.content,
-                duration: section.duration || 10
-              }));
-              
-              console.log(`  ✅ ${aiSections.length} sections with personalized content`);
-            } catch (error) {
-              console.warn(`  ⚠️ Using fallback content for "${aiModule.title}"`);
-              moduleContent = generateModuleContentFromAI(aiModule);
-            }
-            
-            try {
-              // ✅ Générer les QCM avec l'IA
-              assessments = await generateEnhancedAssessments(
-                aiModule.title,
-                aiModule.description,
-                aiModule.learningObjectives
-              );
-              
-              console.log(`  ✅ ${assessments[0]?.questions?.length || 0} QCM questions generated`);
-            } catch (error) {
-              console.warn(`  ⚠️ Using fallback QCM for "${aiModule.title}"`);
-              assessments = [];
+        // ✅ CRÉER UN MODULE PAR DOCUMENT UPLOADÉ
+        // Au lieu de créer des sections AI, on crée une section par document
+        const fullModules: TrainingModule[] = modulesToUse.map((aiModule, index) => {
+          console.log(`📚 Module ${index + 1}/${modulesToUse.length}: "${aiModule.title}"`);
+          
+          // Distribuer les uploads entre les modules
+          // Si on a 6 modules et 3 uploads, chaque upload va dans un module différent
+          const uploadsPerModule = Math.ceil(uploads.length / modulesToUse.length);
+          const startIndex = index * uploadsPerModule;
+          const endIndex = Math.min(startIndex + uploadsPerModule, uploads.length);
+          const moduleUploads = uploads.slice(startIndex, endIndex);
+          
+          // Créer une section par document uploadé
+          const moduleSections: TrainingSection[] = moduleUploads.map((upload, uploadIdx) => {
+            // Déterminer le type de section basé sur le type de fichier
+            let sectionType: TrainingSection['type'] = 'document';
+            if (upload.type === 'video') {
+              sectionType = 'video';
+            } else if (upload.type === 'document' || upload.type === 'presentation') {
+              sectionType = 'document';
             }
             
             return {
+              id: `section-${index}-${uploadIdx}`,
+              type: sectionType,
+              title: upload.name.replace(/\.[^/.]+$/, ''),
+              content: {
+                text: upload.aiAnalysis 
+                  ? `📚 **Key Topics:**\n${upload.aiAnalysis.keyTopics?.map(topic => `• ${topic}`).join('\n') || 'N/A'}\n\n` +
+                    `🎯 **Learning Objectives:**\n${upload.aiAnalysis.learningObjectives?.map(obj => `• ${obj}`).join('\n') || 'N/A'}\n\n` +
+                    `⏱️ **Estimated Duration:** ${upload.aiAnalysis.estimatedReadTime || 0} minutes\n\n` +
+                    `📊 **Difficulty Level:** ${upload.aiAnalysis.difficulty || 'N/A'}/10`
+                  : `Document: ${upload.name}`,
+                file: {
+                  id: upload.id,
+                  name: upload.name,
+                  type: upload.type === 'video' ? 'video' : 
+                        upload.type === 'presentation' ? 'pdf' : 
+                        upload.type === 'document' ? 'pdf' : 'pdf',
+                  url: upload.file ? URL.createObjectURL(upload.file) : '',
+                  publicId: upload.id,
+                  size: upload.size || 0,
+                  mimeType: upload.type === 'video' ? 'video/mp4' : 
+                           upload.type === 'document' ? 'application/pdf' : 
+                           upload.type === 'presentation' ? 'application/pdf' : 'application/pdf'
+                },
+                keyPoints: upload.aiAnalysis?.keyTopics || []
+              },
+              orderIndex: uploadIdx + 1,
+              estimatedDuration: upload.aiAnalysis?.estimatedReadTime || 10
+            };
+          });
+          
+          // Générer les QCM
+          let assessments = [];
+          try {
+            assessments = generateEnhancedAssessments(
+              aiModule.title,
+              aiModule.description,
+              aiModule.learningObjectives
+            );
+          } catch (error) {
+            console.warn(`  ⚠️ Using fallback QCM for "${aiModule.title}"`);
+            assessments = [];
+          }
+          
+          // Calculer la durée totale du module basée sur les sections
+          const totalDuration = moduleSections.reduce((sum, section) => sum + (section.estimatedDuration || 10), 0);
+          
+          return {
             id: `ai-module-${index + 1}`,
             title: aiModule.title,
             description: aiModule.description,
-              order: index + 1,
-              content: moduleContent,
-            duration: aiModule.duration,
+            order: index + 1,
+            content: [], // Pas de contenu AI généré
+            sections: moduleSections, // ✅ Sections basées sur les documents
+            duration: totalDuration || aiModule.duration,
             difficulty: aiModule.difficulty,
             prerequisites: combinedAnalysis.prerequisites,
             learningObjectives: aiModule.learningObjectives,
             topics: combinedAnalysis.keyTopics || [],
-              assessments: assessments,
-              completionCriteria: {
-                minimumScore: 70,
-                requiredActivities: ['video', 'quiz'],
-                timeRequirement: aiModule.duration
-              }
-            };
-          })
-        );
+            assessments: assessments,
+            completionCriteria: {
+              minimumScore: 70,
+              requiredActivities: ['video', 'quiz'],
+              timeRequirement: totalDuration || aiModule.duration
+            }
+          };
+        });
         
-        console.log('✅ AI-powered content generation COMPLETE!');
-        console.log(`📊 ${fullModules.length} modules with personalized content and QCM`);
-        console.log(`📚 Total sections: ${fullModules.reduce((sum, m) => sum + m.content.length, 0)}`);
+        console.log('✅ Modules created with document-based sections!');
+        console.log(`📊 ${fullModules.length} modules created`);
+        console.log(`📚 Total sections (one per document): ${fullModules.reduce((sum, m) => sum + (m.sections?.length || 0), 0)}`);
         console.log(`📝 Total QCM: ${fullModules.reduce((sum, m) => sum + (m.assessments[0]?.questions?.length || 0), 0)} questions`);
         
         setEnhancementProgress({ 'content-complete': 90 });

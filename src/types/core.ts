@@ -56,11 +56,19 @@ export interface TrainingModule {
   title: string;
   description: string;
   content: ModuleContent[];
+  sections?: any[]; // Sections basées sur les documents uploadés (TrainingSection from manualTraining.ts)
   duration: number;
   difficulty: 'beginner' | 'intermediate' | 'advanced';
   prerequisites: string[];
   learningObjectives: string[];
   assessments: Assessment[];
+  order?: number;
+  topics?: string[];
+  completionCriteria?: {
+    minimumScore: number;
+    requiredActivities: string[];
+    timeRequirement: number;
+  };
 }
 
 export interface ModuleContent {
