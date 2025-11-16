@@ -680,7 +680,7 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
         );
 
       case 'youtube':
-        return (
+    return (
           <div className="w-full aspect-video">
             {content?.youtubeUrl ? (
               <iframe
@@ -772,10 +772,10 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
                   </div>
                   <h1 className="text-2xl font-bold text-gray-900">{journey.name}</h1>
                   <p className="text-gray-600">Test and review your training journey before launch</p>
+                  </div>
                 </div>
-              </div>
               
-              <div className="text-right">
+                <div className="text-right">
                 <div className="text-sm text-gray-500 mb-1">Rehearsal Time</div>
                 <div className="text-2xl font-bold text-gray-900">{formatTime(rehearsalTime)}</div>
               </div>
@@ -870,7 +870,7 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
 
               {/* Current Module Content */}
               {currentModule && (
-                <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-8">
+          <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-8">
                   <div className="flex items-center justify-between mb-6">
                     <div>
                       <h2 className="text-2xl font-bold text-gray-900 mb-2">{currentModule.title}</h2>
@@ -936,9 +936,9 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
                   )}
 
                   {/* Tab Navigation */}
-                  <div className="mb-6">
-                    <div className="flex gap-2 border-b border-gray-200">
-                      <button
+            <div className="mb-6">
+              <div className="flex gap-2 border-b border-gray-200">
+                    <button
                         onClick={() => setActiveTab('sections')}
                         className={`px-6 py-3 font-medium transition-colors ${
                           activeTab === 'sections'
@@ -948,9 +948,9 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
                       >
                         <BookOpen className="h-4 w-4 inline mr-2" />
                         Sections
-                      </button>
-                      <button
-                        onClick={() => setActiveTab('quiz')}
+                    </button>
+                    <button
+                  onClick={() => setActiveTab('quiz')}
                         className={`px-6 py-3 font-medium transition-colors ${
                           activeTab === 'quiz'
                             ? 'text-indigo-600 border-b-2 border-indigo-600'
@@ -959,16 +959,16 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
                       >
                         <FileQuestion className="h-4 w-4 inline mr-2" />
                         Quiz / QCM
-                      </button>
-                    </div>
+                    </button>
                   </div>
+                </div>
 
                   {/* Content based on active tab */}
                   <div className="mb-6">
                     {activeTab === 'quiz' ? (
-                      <QuizGenerator
-                        moduleTitle={currentModule.title}
-                        moduleDescription={currentModule.description}
+              <QuizGenerator
+                      moduleTitle={currentModule.title}
+                      moduleDescription={currentModule.description}
                         moduleContent={currentModule.content?.map(c => c.title).join('. ') || ''}
                       />
                     ) : hasSections && currentSection ? (

@@ -161,95 +161,157 @@ export default function CurriculumDesigner({ uploads, methodology, onComplete, o
           .map(u => u.transcription || u.content || '')
           .join('\n\n---\n\n');
         
-        // ✅ CRÉER UN MODULE PAR DOCUMENT UPLOADÉ
-        // Au lieu de créer des sections AI, on crée une section par document
-        const fullModules: TrainingModule[] = modulesToUse.map((aiModule, index) => {
-          console.log(`📚 Module ${index + 1}/${modulesToUse.length}: "${aiModule.title}"`);
+        // ✅ ORGANISER LES DOCUMENTS EN MODULES ET SECTIONS
+        // Si 1 document → 1 module avec 1 section
+        // Si plusieurs documents → organiser intelligemment par l'IA
+        let fullModules: TrainingModule[] = [];
+        
+        if (uploads.length === 1) {
+          // UN SEUL DOCUMENT : 1 module avec 1 section
+          const upload = uploads[0];
+          const aiModule = modulesToUse[0] || {
+            title: upload.aiAnalysis?.keyTopics?.[0] || upload.name.replace(/\.[^/.]+$/, ''),
+            description: upload.aiAnalysis 
+              ? `Training module covering: ${upload.aiAnalysis.keyTopics?.join(', ') || 'core concepts'}`
+              : `Training module based on: ${upload.name}`,
+            duration: upload.aiAnalysis?.estimatedReadTime || 60,
+            difficulty: 'intermediate' as const,
+            learningObjectives: upload.aiAnalysis?.learningObjectives || []
+          };
           
-          // Distribuer les uploads entre les modules
-          // Si on a 6 modules et 3 uploads, chaque upload va dans un module différent
-          const uploadsPerModule = Math.ceil(uploads.length / modulesToUse.length);
-          const startIndex = index * uploadsPerModule;
-          const endIndex = Math.min(startIndex + uploadsPerModule, uploads.length);
-          const moduleUploads = uploads.slice(startIndex, endIndex);
+          const section = createSectionFromUpload(upload, 0, 0);
           
-          // Créer une section par document uploadé
-          const moduleSections: TrainingSection[] = moduleUploads.map((upload, uploadIdx) => {
-            // Déterminer le type de section basé sur le type de fichier
-            let sectionType: TrainingSection['type'] = 'document';
-            if (upload.type === 'video') {
-              sectionType = 'video';
-            } else if (upload.type === 'document' || upload.type === 'presentation') {
-              sectionType = 'document';
+          fullModules = [{
+            id: `module-1`,
+            title: aiModule.title, // ✅ Titre généré par l'IA
+            description: aiModule.description,
+            order: 1,
+            content: [],
+            sections: [section], // ✅ 1 section = 1 document
+            duration: upload.aiAnalysis?.estimatedReadTime || aiModule.duration,
+            difficulty: aiModule.difficulty,
+            prerequisites: upload.aiAnalysis?.prerequisites || combinedAnalysis.prerequisites,
+            learningObjectives: aiModule.learningObjectives,
+            topics: upload.aiAnalysis?.keyTopics || combinedAnalysis.keyTopics || [],
+            assessments: []
+          }];
+        } else {
+          // PLUSIEURS DOCUMENTS : Organiser par l'IA
+          // L'IA a déjà organisé les modules, maintenant on assigne les documents aux modules
+          fullModules = modulesToUse.map((aiModule, moduleIndex) => {
+            console.log(`📚 Module ${moduleIndex + 1}/${modulesToUse.length}: "${aiModule.title}"`);
+            
+            // Calculer combien de documents par module
+            // Distribuer équitablement ou selon la logique de l'IA
+            const totalModules = modulesToUse.length;
+            const documentsPerModule = Math.ceil(uploads.length / totalModules);
+            const startIndex = moduleIndex * documentsPerModule;
+            const endIndex = Math.min(startIndex + documentsPerModule, uploads.length);
+            const moduleUploads = uploads.slice(startIndex, endIndex);
+            
+            // Créer les sections pour ce module
+            const moduleSections: TrainingSection[] = moduleUploads.map((upload, uploadIdx) => {
+              return createSectionFromUpload(upload, moduleIndex, uploadIdx, aiModule);
+            });
+            
+            // Générer les QCM
+            let assessments = [];
+            try {
+              assessments = generateEnhancedAssessments(
+                aiModule.title,
+                aiModule.description,
+                aiModule.learningObjectives
+              );
+            } catch (error) {
+              console.warn(`  ⚠️ Using fallback QCM for "${aiModule.title}"`);
+              assessments = [];
             }
             
+            // Calculer la durée totale du module basée sur les sections
+            const totalDuration = moduleSections.reduce((sum, section) => sum + (section.estimatedDuration || 10), 0);
+            
             return {
-              id: `section-${index}-${uploadIdx}`,
-              type: sectionType,
-              title: upload.name.replace(/\.[^/.]+$/, ''),
-              content: {
-                text: upload.aiAnalysis 
-                  ? `📚 **Key Topics:**\n${upload.aiAnalysis.keyTopics?.map(topic => `• ${topic}`).join('\n') || 'N/A'}\n\n` +
-                    `🎯 **Learning Objectives:**\n${upload.aiAnalysis.learningObjectives?.map(obj => `• ${obj}`).join('\n') || 'N/A'}\n\n` +
-                    `⏱️ **Estimated Duration:** ${upload.aiAnalysis.estimatedReadTime || 0} minutes\n\n` +
-                    `📊 **Difficulty Level:** ${upload.aiAnalysis.difficulty || 'N/A'}/10`
-                  : `Document: ${upload.name}`,
-                file: {
-                  id: upload.id,
-                  name: upload.name,
-                  type: upload.type === 'video' ? 'video' : 
-                        upload.type === 'presentation' ? 'pdf' : 
-                        upload.type === 'document' ? 'pdf' : 'pdf',
-                  url: upload.file ? URL.createObjectURL(upload.file) : '',
-                  publicId: upload.id,
-                  size: upload.size || 0,
-                  mimeType: upload.type === 'video' ? 'video/mp4' : 
-                           upload.type === 'document' ? 'application/pdf' : 
-                           upload.type === 'presentation' ? 'application/pdf' : 'application/pdf'
-                },
-                keyPoints: upload.aiAnalysis?.keyTopics || []
-              },
-              orderIndex: uploadIdx + 1,
-              estimatedDuration: upload.aiAnalysis?.estimatedReadTime || 10
+              id: `ai-module-${moduleIndex + 1}`,
+              title: aiModule.title, // ✅ Titre généré par l'IA
+              description: aiModule.description,
+              order: moduleIndex + 1,
+              content: [],
+              sections: moduleSections, // ✅ Sections basées sur les documents
+              duration: totalDuration || aiModule.duration,
+              difficulty: aiModule.difficulty,
+              prerequisites: combinedAnalysis.prerequisites,
+              learningObjectives: aiModule.learningObjectives,
+              topics: combinedAnalysis.keyTopics || [],
+              assessments: assessments,
+              completionCriteria: {
+                minimumScore: 70,
+                requiredActivities: ['video', 'quiz'],
+                timeRequirement: totalDuration || aiModule.duration
+              }
             };
           });
-          
-          // Générer les QCM
-          let assessments = [];
-          try {
-            assessments = generateEnhancedAssessments(
-              aiModule.title,
-              aiModule.description,
-              aiModule.learningObjectives
-            );
-          } catch (error) {
-            console.warn(`  ⚠️ Using fallback QCM for "${aiModule.title}"`);
-            assessments = [];
+        }
+        
+        // Fonction helper pour créer une section à partir d'un upload
+        function createSectionFromUpload(upload: ContentUpload, moduleIndex: number, uploadIdx: number, aiModule?: any): TrainingSection {
+          // Déterminer le type de section
+          let sectionType: TrainingSection['type'] = 'document';
+          if (upload.type === 'video') {
+            sectionType = 'video';
+          } else if (upload.type === 'document' || upload.type === 'presentation') {
+            sectionType = 'document';
           }
           
-          // Calculer la durée totale du module basée sur les sections
-          const totalDuration = moduleSections.reduce((sum, section) => sum + (section.estimatedDuration || 10), 0);
+          // Générer un titre de section intelligent basé sur l'analyse AI
+          let sectionTitle = upload.name.replace(/\.[^/.]+$/, '');
+          if (upload.aiAnalysis?.keyTopics && upload.aiAnalysis.keyTopics.length > 0) {
+            // Utiliser le premier key topic comme titre de section
+            sectionTitle = upload.aiAnalysis.keyTopics[0];
+          } else if (aiModule?.title) {
+            // Utiliser une partie du titre du module si disponible
+            sectionTitle = `${aiModule.title} - ${upload.name.replace(/\.[^/.]+$/, '')}`;
+          }
+          
+          // Créer l'URL du fichier
+          let fileUrl = '';
+          if (upload.file) {
+            try {
+              fileUrl = URL.createObjectURL(upload.file);
+            } catch (e) {
+              console.warn('Could not create object URL for file:', upload.name, e);
+            }
+          }
           
           return {
-            id: `ai-module-${index + 1}`,
-            title: aiModule.title,
-            description: aiModule.description,
-            order: index + 1,
-            content: [], // Pas de contenu AI généré
-            sections: moduleSections, // ✅ Sections basées sur les documents
-            duration: totalDuration || aiModule.duration,
-            difficulty: aiModule.difficulty,
-            prerequisites: combinedAnalysis.prerequisites,
-            learningObjectives: aiModule.learningObjectives,
-            topics: combinedAnalysis.keyTopics || [],
-            assessments: assessments,
-            completionCriteria: {
-              minimumScore: 70,
-              requiredActivities: ['video', 'quiz'],
-              timeRequirement: totalDuration || aiModule.duration
-            }
+            id: `section-${moduleIndex}-${uploadIdx}`,
+            type: sectionType,
+            title: sectionTitle, // ✅ Titre intelligent basé sur l'analyse AI
+            content: {
+              text: upload.aiAnalysis 
+                ? `📚 **Key Topics:**\n${upload.aiAnalysis.keyTopics?.map(topic => `• ${topic}`).join('\n') || 'N/A'}\n\n` +
+                  `🎯 **Learning Objectives:**\n${upload.aiAnalysis.learningObjectives?.map(obj => `• ${obj}`).join('\n') || 'N/A'}\n\n` +
+                  `⏱️ **Estimated Duration:** ${upload.aiAnalysis.estimatedReadTime || 0} minutes\n\n` +
+                  `📊 **Difficulty Level:** ${upload.aiAnalysis.difficulty || 'N/A'}/10`
+                : `Document: ${upload.name}`,
+              file: {
+                id: upload.id,
+                name: upload.name,
+                type: upload.type === 'video' ? 'video' : 
+                      upload.type === 'presentation' ? 'pdf' : 
+                      upload.type === 'document' ? 'pdf' : 'pdf',
+                url: fileUrl,
+                publicId: upload.id,
+                size: upload.size || 0,
+                mimeType: upload.type === 'video' ? 'video/mp4' : 
+                         upload.type === 'document' ? 'application/pdf' : 
+                         upload.type === 'presentation' ? 'application/pdf' : 'application/pdf'
+              },
+              keyPoints: upload.aiAnalysis?.keyTopics || []
+            },
+            orderIndex: uploadIdx + 1,
+            estimatedDuration: upload.aiAnalysis?.estimatedReadTime || 10
           };
-        });
+        }
         
         console.log('✅ Modules created with document-based sections!');
         console.log(`📊 ${fullModules.length} modules created`);
@@ -298,53 +360,35 @@ export default function CurriculumDesigner({ uploads, methodology, onComplete, o
 
   // Fonction helper pour créer des modules à partir des uploads
   const createModulesFromUploads = (uploads: ContentUpload[], combinedAnalysis?: any): TrainingModule[] => {
-    // Créer un module par upload ou regrouper intelligemment
-    const modulesPerUpload = Math.max(1, Math.floor(6 / uploads.length));
-    
-    return uploads.map((upload, i) => {
-      // Créer une section par document uploadé
-      let fileUrl = '';
-      if (upload.file) {
-        try {
-          fileUrl = URL.createObjectURL(upload.file);
-        } catch (e) {
-          console.warn('Could not create object URL for file:', upload.name, e);
-        }
-      }
+    // Si 1 document → 1 module avec 1 section
+    if (uploads.length === 1) {
+      const upload = uploads[0];
+      const section = createSectionFromUploadHelper(upload, 0, 0);
       
-      const section: TrainingSection = {
-        id: `section-${i}-0`,
-        type: upload.type === 'video' ? 'video' : 'document',
-        title: upload.name.replace(/\.[^/.]+$/, ''),
-        content: {
-          text: upload.aiAnalysis 
-            ? `📚 **Key Topics:**\n${upload.aiAnalysis.keyTopics?.map(topic => `• ${topic}`).join('\n') || 'N/A'}\n\n` +
-              `🎯 **Learning Objectives:**\n${upload.aiAnalysis.learningObjectives?.map(obj => `• ${obj}`).join('\n') || 'N/A'}\n\n` +
-              `⏱️ **Estimated Duration:** ${upload.aiAnalysis.estimatedReadTime || 0} minutes\n\n` +
-              `📊 **Difficulty Level:** ${upload.aiAnalysis.difficulty || 'N/A'}/10`
-            : `Document: ${upload.name}`,
-          file: {
-            id: upload.id,
-            name: upload.name,
-            type: upload.type === 'video' ? 'video' : 
-                  upload.type === 'presentation' ? 'pdf' : 
-                  upload.type === 'document' ? 'pdf' : 'pdf',
-            url: fileUrl,
-            publicId: upload.id,
-            size: upload.size || 0,
-            mimeType: upload.type === 'video' ? 'video/mp4' : 
-                     upload.type === 'document' ? 'application/pdf' : 
-                     upload.type === 'presentation' ? 'application/pdf' : 'application/pdf'
-          },
-          keyPoints: upload.aiAnalysis?.keyTopics || []
-        },
-        orderIndex: 1,
-        estimatedDuration: upload.aiAnalysis?.estimatedReadTime || 10
-      };
+      return [{
+        id: `module-1`,
+        title: upload.aiAnalysis?.keyTopics?.[0] || upload.name.replace(/\.[^/.]+$/, ''), // ✅ Titre basé sur l'analyse AI
+        description: upload.aiAnalysis 
+          ? `Training module covering: ${upload.aiAnalysis.keyTopics?.join(', ') || 'core concepts'}`
+          : `Training module based on: ${upload.name}`,
+        content: [],
+        sections: [section], // ✅ 1 section = 1 document
+        duration: upload.aiAnalysis?.estimatedReadTime || 60,
+        difficulty: 'intermediate',
+        prerequisites: upload.aiAnalysis?.prerequisites || combinedAnalysis?.prerequisites || [],
+        learningObjectives: upload.aiAnalysis?.learningObjectives || combinedAnalysis?.learningObjectives || ['Understand core concepts', 'Apply knowledge in practice'],
+        topics: upload.aiAnalysis?.keyTopics || combinedAnalysis?.keyTopics || [],
+        assessments: []
+      }];
+    }
+    
+    // Plusieurs documents : créer un module par document (ou organiser intelligemment)
+    return uploads.map((upload, i) => {
+      const section = createSectionFromUploadHelper(upload, i, 0);
       
       return {
         id: `module-${i + 1}`,
-        title: `Module ${i + 1}: ${upload.name.replace(/\.[^/.]+$/, "")}`,
+        title: upload.aiAnalysis?.keyTopics?.[0] || upload.name.replace(/\.[^/.]+$/, ''), // ✅ Titre basé sur l'analyse AI
         description: upload.aiAnalysis 
           ? `Training module covering: ${upload.aiAnalysis.keyTopics?.join(', ') || 'core concepts'}`
           : `Training module based on uploaded content: ${upload.name}`,
@@ -359,6 +403,64 @@ export default function CurriculumDesigner({ uploads, methodology, onComplete, o
       };
     });
   };
+  
+  // Fonction helper pour créer une section à partir d'un upload
+  function createSectionFromUploadHelper(upload: ContentUpload, moduleIndex: number, uploadIdx: number): TrainingSection {
+    // Déterminer le type de section
+    let sectionType: TrainingSection['type'] = 'document';
+    if (upload.type === 'video') {
+      sectionType = 'video';
+    } else if (upload.type === 'document' || upload.type === 'presentation') {
+      sectionType = 'document';
+    }
+    
+    // Générer un titre de section intelligent basé sur l'analyse AI
+    let sectionTitle = upload.name.replace(/\.[^/.]+$/, '');
+    if (upload.aiAnalysis?.keyTopics && upload.aiAnalysis.keyTopics.length > 0) {
+      // Utiliser le premier key topic comme titre de section
+      sectionTitle = upload.aiAnalysis.keyTopics[0];
+    }
+    
+    // Créer l'URL du fichier
+    let fileUrl = '';
+    if (upload.file) {
+      try {
+        fileUrl = URL.createObjectURL(upload.file);
+      } catch (e) {
+        console.warn('Could not create object URL for file:', upload.name, e);
+      }
+    }
+    
+    return {
+      id: `section-${moduleIndex}-${uploadIdx}`,
+      type: sectionType,
+      title: sectionTitle, // ✅ Titre intelligent basé sur l'analyse AI
+      content: {
+        text: upload.aiAnalysis 
+          ? `📚 **Key Topics:**\n${upload.aiAnalysis.keyTopics?.map(topic => `• ${topic}`).join('\n') || 'N/A'}\n\n` +
+            `🎯 **Learning Objectives:**\n${upload.aiAnalysis.learningObjectives?.map(obj => `• ${obj}`).join('\n') || 'N/A'}\n\n` +
+            `⏱️ **Estimated Duration:** ${upload.aiAnalysis.estimatedReadTime || 0} minutes\n\n` +
+            `📊 **Difficulty Level:** ${upload.aiAnalysis.difficulty || 'N/A'}/10`
+          : `Document: ${upload.name}`,
+        file: {
+          id: upload.id,
+          name: upload.name,
+          type: upload.type === 'video' ? 'video' : 
+                upload.type === 'presentation' ? 'pdf' : 
+                upload.type === 'document' ? 'pdf' : 'pdf',
+          url: fileUrl,
+          publicId: upload.id,
+          size: upload.size || 0,
+          mimeType: upload.type === 'video' ? 'video/mp4' : 
+                   upload.type === 'document' ? 'application/pdf' : 
+                   upload.type === 'presentation' ? 'application/pdf' : 'application/pdf'
+        },
+        keyPoints: upload.aiAnalysis?.keyTopics || []
+      },
+      orderIndex: uploadIdx + 1,
+      estimatedDuration: upload.aiAnalysis?.estimatedReadTime || 10
+    };
+  }
 
   // ✅ ÉTAPE 2: Générer le contenu détaillé et PERSONNALISÉ pour les modules
   const generateDetailedContent = async () => {
