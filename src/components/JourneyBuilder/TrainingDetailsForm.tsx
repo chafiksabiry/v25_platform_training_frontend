@@ -8,9 +8,9 @@ interface TrainingDetailsFormProps {
 }
 
 export default function TrainingDetailsForm({ onComplete, onBack, gigData }: TrainingDetailsFormProps) {
-  const [trainingName, setTrainingName] = useState(gigData?.title || gigData?.name || '');
-  const [trainingDescription, setTrainingDescription] = useState(gigData?.description || '');
-  const [estimatedDuration, setEstimatedDuration] = useState('120'); // Quick Start default (1-2 hours = 120 min)
+  const [trainingName, setTrainingName] = useState('');
+  const [trainingDescription, setTrainingDescription] = useState('');
+  const [estimatedDuration, setEstimatedDuration] = useState('');
 
   const handleSubmit = () => {
     onComplete({
@@ -112,9 +112,9 @@ export default function TrainingDetailsForm({ onComplete, onBack, gigData }: Tra
               <button
                 onClick={handleSubmit}
                 disabled={!canProceed}
-                className="px-8 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl hover:from-purple-700 hover:to-pink-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium shadow-lg flex items-center space-x-2"
+                className="px-8 py-3 text-gray-700 rounded-xl hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium flex items-center space-x-2"
               >
-                <span>Continue to Curriculum</span>
+                <span>Continue</span>
                 <ArrowRight className="h-5 w-5" />
               </button>
             </div>
