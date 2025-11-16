@@ -70,21 +70,12 @@ export default function DocumentViewer({ fileUrl, fileName, mimeType }: Document
       {type === "pdf" && (
         <>
           {isBlobUrl ? (
-            <div className="flex flex-col items-center justify-center h-full p-8 bg-gray-50 rounded-lg border border-gray-200">
-              <FileText className="w-16 h-16 text-blue-500 mb-4" />
-              <h4 className="text-lg font-semibold text-gray-900 mb-2">{fileName || "PDF Document"}</h4>
-              <p className="text-gray-600 mb-4 text-center">PDF Document</p>
-              <a
-                href={fileUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                download={fileName}
-                className="inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-lg font-medium transition-all"
-              >
-                <Download className="h-5 w-5" />
-                <span>Open PDF Document</span>
-              </a>
-            </div>
+            <embed
+              src={fileUrl}
+              type="application/pdf"
+              className="w-full h-full rounded-lg shadow"
+              style={{ minHeight: '400px' }}
+            />
           ) : (
             <iframe
               src={fileUrl}
