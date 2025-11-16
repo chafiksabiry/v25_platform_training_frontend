@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { Upload, FileText, Video, Music, Image, File, CheckCircle, Clock, AlertCircle, X, Sparkles, Zap, BarChart3, Eye, Wand2 } from 'lucide-react';
+import { Upload, FileText, Video, Music, Image, File, CheckCircle, Clock, AlertCircle, AlertTriangle, X, Sparkles, Zap, BarChart3, Eye, Wand2 } from 'lucide-react';
 import { ContentUpload, ContentAnalysis } from '../../types/core';
 import { AIService } from '../../infrastructure/services/AIService';
 
@@ -80,10 +80,15 @@ export default function ContentUploader({ onComplete, onBack }: ContentUploaderP
             ? { ...u, status: 'analyzed', aiAnalysis: analysis }
             : u
         ));
-      } catch (error) {
+      } catch (error: any) {
         console.error('AI Analysis failed:', error);
+        const errorMessage = error?.message || 'Analysis failed';
         setUploads(prev => prev.map(u => 
-          u.id === upload.id ? { ...u, status: 'error' } : u
+          u.id === upload.id ? { 
+            ...u, 
+            status: 'error',
+            error: errorMessage
+          } : u
         ));
       }
     }
@@ -337,6 +342,24 @@ export default function ContentUploader({ onComplete, onBack }: ContentUploaderP
                         </button>
                       </div>
                     </div>
+                    
+                    {upload.status === 'error' && upload.error && (
+                      <div className="mt-4 p-4 bg-red-100 border border-red-300 rounded-lg">
+                        <div className="flex items-start space-x-2">
+                          <AlertTriangle className="h-5 w-5 text-red-600 mt-0.5" />
+                          <div className="flex-1">
+                            <h5 className="font-medium text-red-900 mb-1">Analysis Failed</h5>
+                            <p className="text-sm text-red-700">{upload.error}</p>
+                            <button
+                              onClick={() => analyzeUpload(upload)}
+                              className="mt-2 text-sm text-red-600 hover:text-red-800 font-medium underline"
+                            >
+                              Try again
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                     
                     {upload.status === 'analyzed' && upload.aiAnalysis && (
                       <div className="space-y-4">

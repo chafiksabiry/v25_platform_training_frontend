@@ -58,16 +58,49 @@ export class AIService {
    * Analyse un document avec l'IA (OpenAI GPT-4)
    */
   static async analyzeDocument(file: File): Promise<DocumentAnalysis> {
-    const formData = new FormData();
-    formData.append('file', file);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
 
-    const response = await ApiClient.upload('/api/ai/analyze-document', formData);
-    
-    if (!response.data.success) {
-      throw new Error(response.data.error || 'Analysis failed');
+      console.log('📄 Analyzing document:', file.name, 'Size:', file.size, 'Type:', file.type);
+
+      const response = await ApiClient.upload('/api/ai/analyze-document', formData);
+      
+      if (!response.data.success) {
+        const errorMsg = response.data.error || response.data.message || 'Analysis failed';
+        console.error('❌ Analysis failed:', errorMsg);
+        throw new Error(errorMsg);
+      }
+
+      console.log('✅ Document analyzed successfully');
+      return response.data.analysis || response.data.data?.analysis;
+    } catch (error: any) {
+      console.error('❌ Error in analyzeDocument:', error);
+      
+      // Provide more specific error messages
+      if (error.message?.includes('Failed to fetch') || error.message?.includes('Network error')) {
+        throw new Error('Unable to connect to the AI service. Please check your internet connection and try again.');
+      }
+      
+      if (error.status === 0) {
+        throw new Error('Network error: Unable to reach the server. Please check your connection.');
+      }
+      
+      if (error.status === 413) {
+        throw new Error('File too large. Please upload a smaller file.');
+      }
+      
+      if (error.status === 415) {
+        throw new Error('Unsupported file type. Please upload a supported document format.');
+      }
+      
+      // Re-throw with original message if it's already an Error
+      if (error instanceof Error) {
+        throw error;
+      }
+      
+      throw new Error(error.message || 'Document analysis failed. Please try again.');
     }
-
-    return response.data.analysis;
   }
 
   /**

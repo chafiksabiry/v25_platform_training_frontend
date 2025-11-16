@@ -40,6 +40,7 @@ export interface ContentUpload {
   status: 'uploading' | 'processing' | 'analyzed' | 'error';
   file: File;  // ✅ Ajout du fichier original pour l'analyse AI
   aiAnalysis?: ContentAnalysis;
+  error?: string;  // Error message if analysis fails
 }
 
 export interface ContentAnalysis {
