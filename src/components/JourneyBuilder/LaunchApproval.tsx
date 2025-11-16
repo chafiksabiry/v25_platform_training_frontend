@@ -229,6 +229,12 @@ export default function LaunchApproval({
       });
       
       console.log('✅ Journey saved to MongoDB:', launchResponse);
+      console.log('📊 Launching with:', {
+        journey: updatedJourney.name,
+        modules: updatedModules.length,
+        enrolledReps: enrolledReps.length,
+        assessments: updatedModules.reduce((sum, m) => sum + (m.assessments?.length || 0), 0)
+      });
       
       onLaunch(updatedJourney, updatedModules, enrolledReps);
     } catch (error) {

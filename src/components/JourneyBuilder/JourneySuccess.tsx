@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { CheckCircle, Rocket, Users, BarChart3, Calendar, Bell, Eye, Download, Share2, Settings } from 'lucide-react';
 import { TrainingJourney, TrainingModule, Rep } from '../../types';
 
@@ -17,6 +17,11 @@ export default function JourneySuccess({
   onViewDashboard, 
   onCreateAnother 
 }: JourneySuccessProps) {
+  // Scroll to top when component mounts
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
   const totalDuration = modules.reduce((sum, module) => sum + (module.duration || 0), 0);
   const totalAssessments = modules.reduce((sum, module) => sum + (module.assessments?.length || 0), 0);
 

@@ -113,9 +113,16 @@ function App() {
   };
 
   const handleJourneyComplete = (journey: TrainingJourney, modules: TrainingModule[], enrolledReps: Rep[]) => {
+    console.log('🎉 Journey completed, redirecting to success page:', {
+      journey: journey.name,
+      modules: modules.length,
+      enrolledReps: enrolledReps.length
+    });
     setLaunchedJourney({ journey, modules, enrolledReps });
     setShowJourneyBuilder(false);
     setShowJourneySuccess(true);
+    // Scroll to top when redirecting
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleMethodologyApply = (methodology: TrainingMethodology) => {
