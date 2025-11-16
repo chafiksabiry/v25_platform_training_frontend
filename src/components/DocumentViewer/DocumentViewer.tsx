@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { FileText, Download, ExternalLink } from "lucide-react";
 
 interface DocumentViewerProps {
