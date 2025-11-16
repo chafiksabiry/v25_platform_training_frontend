@@ -388,18 +388,19 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
     }
   };
 
-  // ATTENTION: Le code ci-dessous va rester intact
-  // Placeholder pour éviter les erreurs
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-4">
-                  Target Roles & Departments *
-                </label>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {[
-                    { role: 'Customer Success Representatives', dept: 'Customer Success', icon: '🎯' },
-                    { role: 'Sales Representatives', dept: 'Sales', icon: '💼' },
-                    { role: 'Support Agents', dept: 'Customer Support', icon: '🛟' },
-                    { role: 'Account Managers', dept: 'Sales', icon: '🤝' },
+  const handleGigSelect = (gig: GigFromApi) => {
+    setSelectedGig(gig);
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-4xl mx-auto">
+          {/* Header */}
+          <div className="text-center mb-12">
+            <div className="inline-flex items-center space-x-2 bg-white px-6 py-3 rounded-full shadow-sm border border-gray-200 mb-6">
+              <Sparkles className="h-5 w-5 text-blue-500" />
+              <span className="text-sm font-medium text-gray-700">AI-Powered Training Journey Builder</span>
                     { role: 'Product Specialists', dept: 'Product', icon: '⚙️' },
                     { role: 'New Hires', dept: 'All Departments', icon: '🌟' },
                     { role: 'Team Leaders', dept: 'Management', icon: '👥' },
