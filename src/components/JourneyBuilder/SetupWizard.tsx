@@ -221,6 +221,11 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
     setCurrentStep(5);
   };
 
+  // Scroll to top when step changes
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [currentStep]);
+
   if (showMethodologySelector) {
     return (
       <MethodologySelector
@@ -552,11 +557,6 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
         return true;
     }
   };
-
-  // Scroll to top when step changes
-  useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [currentStep]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">

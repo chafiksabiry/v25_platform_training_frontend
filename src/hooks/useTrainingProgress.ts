@@ -103,7 +103,8 @@ export const useTrainingProgress = (initialData: {
     if (overallProgress !== progress.overallProgress) {
       setProgress(prev => ({ ...prev, overallProgress }));
     }
-  }, [progress.modules, progress.steps, progress.overallProgress, calculateOverallProgress]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [progress.modules, progress.steps]);
 
   return {
     progress,
