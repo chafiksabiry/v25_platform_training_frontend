@@ -283,22 +283,51 @@ export default function ModuleContentViewer({ modules, onComplete }: ModuleConte
                 );
               })
             ) : currentSection.content?.file ? (
-              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-6 shadow-md hover:shadow-lg transition-all duration-300">
-                <p className="text-blue-900 font-bold text-lg flex items-center mb-2">
-                  <FileText className="h-5 w-5 mr-2" />
-                  Document: {currentSection.content.file.name}
-                </p>
-                {currentSection.content.file.url && (
-                  <a
-                    href={currentSection.content.file.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-lg font-medium transition-all mt-4"
-                  >
-                    <FileText className="h-5 w-5" />
-                    <span>Ouvrir le document</span>
-                  </a>
-                )}
+              <div className="space-y-6">
+                {/* Document Info */}
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-6 shadow-md">
+                  <p className="text-blue-900 font-bold text-lg flex items-center mb-2">
+                    <FileText className="h-5 w-5 mr-2" />
+                    Document: {currentSection.content.file.name}
+                  </p>
+                  {currentSection.content.file.url && (
+                    <div className="mt-4">
+                      {/* PDF Viewer */}
+                      {currentSection.content.file.type === 'pdf' || currentSection.content.file.mimeType?.includes('pdf') ? (
+                        <div className="relative w-full bg-gray-100 rounded-lg border border-gray-200" style={{ minHeight: '600px' }}>
+                          <iframe
+                            key={`pdf-${currentSection.id}`}
+                            src={`https://mozilla.github.io/pdf.js/web/viewer.html?file=${encodeURIComponent(currentSection.content.file.url)}`}
+                            className="w-full border-0 rounded-lg"
+                            style={{ height: '800px' }}
+                            title={currentSection.content.file.name || 'Document'}
+                            allow="autoplay"
+                            onLoad={() => {
+                              console.log('✅ PDF loaded successfully');
+                            }}
+                            onError={(e) => {
+                              console.error('❌ PDF load error:', e);
+                            }}
+                          />
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center p-8 bg-gray-50 rounded-lg">
+                          <FileText className="w-16 h-16 text-gray-400 mb-4" />
+                          <h4 className="text-lg font-semibold text-gray-900 mb-2">{currentSection.content.file.name}</h4>
+                          <a
+                            href={currentSection.content.file.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-lg font-medium transition-all mt-4"
+                          >
+                            <FileText className="h-5 w-5" />
+                            <span>Ouvrir le document</span>
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             ) : typeof currentSection.content === 'string' ? (
               <div className="text-gray-700 leading-relaxed">

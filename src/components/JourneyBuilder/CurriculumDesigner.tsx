@@ -36,13 +36,14 @@ export default function CurriculumDesigner({ uploads, methodology, onComplete, o
   // ÉTAPE 1 : Générer le plan de formation (structure seulement)
   const generateTrainingPlan = async () => {
     setIsGenerating(true);
-    setEnhancementProgress({ 'plan': 10 });
+        setEnhancementProgress({ 'plan': 10 });
     
     try {
       // ✅ SUPPORT DE PLUSIEURS FICHIERS : Combiner les analyses de tous les uploads
       const analyzedUploads = uploads.filter(u => u.aiAnalysis);
       
-      if (analyzedUploads.length > 0) {
+      // Si on a des uploads, créer des modules même si l'API échoue
+      if (uploads.length > 0) {
         // Combiner toutes les analyses en une seule
         const combinedAnalysis = analyzedUploads.length === 1 
           ? analyzedUploads[0].aiAnalysis!
@@ -88,7 +89,19 @@ export default function CurriculumDesigner({ uploads, methodology, onComplete, o
         setEnhancementProgress({ 'generating': 30 });
         
         // ✅ APPEL API RÉEL pour générer le curriculum avec l'analyse combinée
-        const curriculum = await AIService.generateCurriculum(combinedAnalysis, industry);
+        let curriculum;
+        try {
+          curriculum = await AIService.generateCurriculum(combinedAnalysis, industry);
+        } catch (apiError) {
+          console.warn('⚠️ API generateCurriculum failed, using fallback modules:', apiError);
+          // Créer des modules fallback basés sur les uploads
+          const fallbackModules = createModulesFromUploads(uploads, combinedAnalysis);
+          setModules(fallbackModules);
+          setCurrentStep('content');
+          setEnhancementProgress({ 'complete': 100 });
+          setIsGenerating(false);
+          return;
+        }
         
         console.log('📚 Curriculum API Response:', {
           modulesCount: curriculum.modules.length,
@@ -269,104 +282,82 @@ export default function CurriculumDesigner({ uploads, methodology, onComplete, o
         setEnhancementProgress({ 'complete': 100 });
       } else {
         // Fallback: générer des modules basiques avec sections basées sur les documents
-        const fallbackModules: TrainingModule[] = uploads.map((upload, i) => {
-          const section: TrainingSection = {
-            id: `section-${i}-0`,
-            type: upload.type === 'video' ? 'video' : 'document',
-            title: upload.name.replace(/\.[^/.]+$/, ''),
-            content: {
-              text: upload.aiAnalysis 
-                ? `📚 **Key Topics:**\n${upload.aiAnalysis.keyTopics?.map(topic => `• ${topic}`).join('\n') || 'N/A'}\n\n` +
-                  `🎯 **Learning Objectives:**\n${upload.aiAnalysis.learningObjectives?.map(obj => `• ${obj}`).join('\n') || 'N/A'}\n\n` +
-                  `⏱️ **Estimated Duration:** ${upload.aiAnalysis.estimatedReadTime || 0} minutes\n\n` +
-                  `📊 **Difficulty Level:** ${upload.aiAnalysis.difficulty || 'N/A'}/10`
-                : `Document: ${upload.name}`,
-              file: {
-                id: upload.id,
-                name: upload.name,
-                type: upload.type === 'video' ? 'video' : 'pdf',
-                url: upload.file ? URL.createObjectURL(upload.file) : '',
-                publicId: upload.id,
-                size: upload.size || 0,
-                mimeType: upload.type === 'video' ? 'video/mp4' : 'application/pdf'
-              },
-              keyPoints: upload.aiAnalysis?.keyTopics || []
-            },
-            orderIndex: 1,
-            estimatedDuration: upload.aiAnalysis?.estimatedReadTime || 10
-          };
-          
-          return {
-            id: `fallback-module-${i + 1}`,
-            title: `Module ${i + 1}: ${upload.name.replace(/\.[^/.]+$/, "")}`,
-            description: upload.aiAnalysis 
-              ? `Training module covering: ${upload.aiAnalysis.keyTopics?.join(', ') || 'core concepts'}`
-              : `Training module based on uploaded content`,
-            content: [],
-            sections: [section],
-            duration: upload.aiAnalysis?.estimatedReadTime || 60,
-            difficulty: 'intermediate',
-            prerequisites: upload.aiAnalysis?.prerequisites || [],
-            learningObjectives: upload.aiAnalysis?.learningObjectives || ['Understand core concepts', 'Apply knowledge in practice'],
-            topics: upload.aiAnalysis?.keyTopics || [],
-            assessments: []
-          };
-        });
-        
+        const fallbackModules = createModulesFromUploads(uploads);
         setModules(fallbackModules);
       }
     } catch (error) {
       console.error('Failed to generate curriculum with AI:', error);
       
       // En cas d'erreur, créer des modules fallback avec sections basées sur les documents
-      const fallbackModules: TrainingModule[] = uploads.map((upload, i) => {
-        const section: TrainingSection = {
-          id: `section-error-${i}-0`,
-          type: upload.type === 'video' ? 'video' : 'document',
-          title: upload.name.replace(/\.[^/.]+$/, ''),
-          content: {
-            text: upload.aiAnalysis 
-              ? `📚 **Key Topics:**\n${upload.aiAnalysis.keyTopics?.map(topic => `• ${topic}`).join('\n') || 'N/A'}\n\n` +
-                `🎯 **Learning Objectives:**\n${upload.aiAnalysis.learningObjectives?.map(obj => `• ${obj}`).join('\n') || 'N/A'}\n\n` +
-                `⏱️ **Estimated Duration:** ${upload.aiAnalysis.estimatedReadTime || 0} minutes\n\n` +
-                `📊 **Difficulty Level:** ${upload.aiAnalysis.difficulty || 'N/A'}/10`
-              : `Document: ${upload.name}`,
-            file: {
-              id: upload.id,
-              name: upload.name,
-              type: upload.type === 'video' ? 'video' : 'pdf',
-              url: upload.file ? URL.createObjectURL(upload.file) : '',
-              publicId: upload.id,
-              size: upload.size || 0,
-              mimeType: upload.type === 'video' ? 'video/mp4' : 'application/pdf'
-            },
-            keyPoints: upload.aiAnalysis?.keyTopics || []
-          },
-          orderIndex: 1,
-          estimatedDuration: upload.aiAnalysis?.estimatedReadTime || 10
-        };
-        
-        return {
-          id: `fallback-module-${i + 1}`,
-          title: `Module ${i + 1}: ${upload.name.replace(/\.[^/.]+$/, "")}`,
-          description: upload.aiAnalysis 
-            ? `Training module covering: ${upload.aiAnalysis.keyTopics?.join(', ') || 'core concepts'}`
-            : `Training module based on uploaded content`,
-          content: [],
-          sections: [section],
-          duration: upload.aiAnalysis?.estimatedReadTime || 60,
-          difficulty: 'intermediate',
-          prerequisites: upload.aiAnalysis?.prerequisites || [],
-          learningObjectives: upload.aiAnalysis?.learningObjectives || ['Understand core concepts', 'Apply knowledge in practice'],
-          topics: upload.aiAnalysis?.keyTopics || [],
-          assessments: []
-        };
-      });
-      
+      const fallbackModules = createModulesFromUploads(uploads);
       setModules(fallbackModules);
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  // Fonction helper pour créer des modules à partir des uploads
+  const createModulesFromUploads = (uploads: ContentUpload[], combinedAnalysis?: any): TrainingModule[] => {
+    // Créer un module par upload ou regrouper intelligemment
+    const modulesPerUpload = Math.max(1, Math.floor(6 / uploads.length));
+    
+    return uploads.map((upload, i) => {
+      // Créer une section par document uploadé
+      let fileUrl = '';
+      if (upload.file) {
+        try {
+          fileUrl = URL.createObjectURL(upload.file);
+        } catch (e) {
+          console.warn('Could not create object URL for file:', upload.name, e);
+        }
+      }
+      
+      const section: TrainingSection = {
+        id: `section-${i}-0`,
+        type: upload.type === 'video' ? 'video' : 'document',
+        title: upload.name.replace(/\.[^/.]+$/, ''),
+        content: {
+          text: upload.aiAnalysis 
+            ? `📚 **Key Topics:**\n${upload.aiAnalysis.keyTopics?.map(topic => `• ${topic}`).join('\n') || 'N/A'}\n\n` +
+              `🎯 **Learning Objectives:**\n${upload.aiAnalysis.learningObjectives?.map(obj => `• ${obj}`).join('\n') || 'N/A'}\n\n` +
+              `⏱️ **Estimated Duration:** ${upload.aiAnalysis.estimatedReadTime || 0} minutes\n\n` +
+              `📊 **Difficulty Level:** ${upload.aiAnalysis.difficulty || 'N/A'}/10`
+            : `Document: ${upload.name}`,
+          file: {
+            id: upload.id,
+            name: upload.name,
+            type: upload.type === 'video' ? 'video' : 
+                  upload.type === 'presentation' ? 'pdf' : 
+                  upload.type === 'document' ? 'pdf' : 'pdf',
+            url: fileUrl,
+            publicId: upload.id,
+            size: upload.size || 0,
+            mimeType: upload.type === 'video' ? 'video/mp4' : 
+                     upload.type === 'document' ? 'application/pdf' : 
+                     upload.type === 'presentation' ? 'application/pdf' : 'application/pdf'
+          },
+          keyPoints: upload.aiAnalysis?.keyTopics || []
+        },
+        orderIndex: 1,
+        estimatedDuration: upload.aiAnalysis?.estimatedReadTime || 10
+      };
+      
+      return {
+        id: `module-${i + 1}`,
+        title: `Module ${i + 1}: ${upload.name.replace(/\.[^/.]+$/, "")}`,
+        description: upload.aiAnalysis 
+          ? `Training module covering: ${upload.aiAnalysis.keyTopics?.join(', ') || 'core concepts'}`
+          : `Training module based on uploaded content: ${upload.name}`,
+        content: [],
+        sections: [section],
+        duration: upload.aiAnalysis?.estimatedReadTime || 60,
+        difficulty: 'intermediate',
+        prerequisites: upload.aiAnalysis?.prerequisites || combinedAnalysis?.prerequisites || [],
+        learningObjectives: upload.aiAnalysis?.learningObjectives || combinedAnalysis?.learningObjectives || ['Understand core concepts', 'Apply knowledge in practice'],
+        topics: upload.aiAnalysis?.keyTopics || combinedAnalysis?.keyTopics || [],
+        assessments: []
+      };
+    });
   };
 
   // ✅ ÉTAPE 2: Générer le contenu détaillé et PERSONNALISÉ pour les modules
