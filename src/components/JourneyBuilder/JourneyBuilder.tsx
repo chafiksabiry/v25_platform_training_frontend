@@ -159,6 +159,7 @@ export default function JourneyBuilder({ onComplete }: JourneyBuilderProps) {
           <AIContentOrganizer
             trainingId={journey.id}
             trainingTitle={journey.name || 'Training'}
+            existingUploads={uploads}
             onComplete={handleOrganizationComplete}
             onSkip={handleOrganizationComplete}
             onBack={() => setCurrentStep(1)}

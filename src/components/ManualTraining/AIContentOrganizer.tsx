@@ -33,6 +33,8 @@ interface AIContentOrganizerProps {
   trainingTitle: string;
   onComplete: () => void;
   onSkip: () => void;
+  onBack?: () => void;
+  existingUploads?: any[]; // Files already uploaded from previous step
 }
 
 export const AIContentOrganizer: React.FC<AIContentOrganizerProps> = ({
@@ -40,8 +42,19 @@ export const AIContentOrganizer: React.FC<AIContentOrganizerProps> = ({
   trainingTitle,
   onComplete,
   onSkip,
+  onBack,
+  existingUploads = [],
 }) => {
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
+  
+  // Initialize with existing uploads if provided
+  useEffect(() => {
+    if (existingUploads && existingUploads.length > 0) {
+      console.log('[AIContentOrganizer] Using existing uploads:', existingUploads);
+      // Convert existing uploads to UploadedFile format if needed
+      // For now, we'll let user upload again or use the uploaded files
+    }
+  }, [existingUploads]);
   const [uploading, setUploading] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [aiAvailable, setAiAvailable] = useState<boolean | null>(null);
