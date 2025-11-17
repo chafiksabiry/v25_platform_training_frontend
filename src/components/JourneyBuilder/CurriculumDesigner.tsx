@@ -1407,7 +1407,7 @@ export default function CurriculumDesigner({ uploads, methodology, onComplete, o
                                   ))}
                                   {assessment.questions && assessment.questions.length > 3 && (
                                     <p className="text-xs text-center text-gray-600">
-                                      ... et {assessment.questions.length - 3} autres questions
+                                      ... and {assessment.questions.length - 3} more questions
                                     </p>
                                   )}
                                 </div>
@@ -1525,7 +1525,7 @@ export default function CurriculumDesigner({ uploads, methodology, onComplete, o
                   </div>
                 ))}
                 <p className="text-sm text-gray-600 mt-4 text-center">
-                  ... et {finalExam.questionCount - 3} autres questions
+                  ... and {finalExam.questionCount - 3} more questions
                 </p>
               </div>
             </div>
@@ -1585,32 +1585,32 @@ export default function CurriculumDesigner({ uploads, methodology, onComplete, o
                 className="px-8 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-all font-medium flex items-center space-x-2"
               >
                 <ArrowRight className="h-5 w-5 rotate-180" />
-                <span>← Retour Upload</span>
+                <span>← Back to Upload</span>
               </button>
               
               <button
                 onClick={() => {
-                  console.log('🔄 Régénération du plan de formation...');
+                  console.log('🔄 Regenerating training plan...');
                   setModules([]);
                   setCurrentStep('plan');
                   setIsGenerating(true);
-                  // Relancer la génération
+                  // Regenerate the training plan
                   setTimeout(() => {
                     window.location.reload();
                   }, 500);
                 }}
                 disabled={isGenerating}
                 className="px-6 py-3 border-2 border-blue-500 text-blue-600 rounded-xl hover:bg-blue-50 transition-all font-medium flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                title="Régénérer tout le plan de formation"
+                title="Regenerate entire training plan"
               >
                 <RotateCcw className="h-5 w-5" />
-                <span>🔄 Régénérer</span>
+                <span>🔄 Regenerate</span>
               </button>
             </div>
             
             <div className="text-center">
               <div className="text-sm text-gray-500 mb-2">
-                {modules.length} modules avec contenu et QCM
+                {modules.length} modules with content and QCM
               </div>
               <div className="flex items-center space-x-2">
                 <Sparkles className="h-4 w-4 text-purple-500" />
@@ -1626,7 +1626,7 @@ export default function CurriculumDesigner({ uploads, methodology, onComplete, o
               className="px-8 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium shadow-lg flex items-center space-x-2"
             >
               <Rocket className="h-5 w-5" />
-              <span>🚀 LANCER LA FORMATION</span>
+              <span>🚀 LAUNCH TRAINING</span>
             </button>
           </div>
         </div>

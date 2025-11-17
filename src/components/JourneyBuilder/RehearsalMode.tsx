@@ -295,8 +295,7 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
   };
 
   const handleSectionComplete = () => {
-    // Save current scroll position and prevent scrolling
-    savedScrollPositionRef.current = window.scrollY || window.pageYOffset || 0;
+    // Prevent scrolling when switching sections
     shouldScrollRef.current = false;
     
     if (currentSection?.id) {
@@ -310,26 +309,28 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
     }
   };
 
-  const handlePreviousSection = () => {
-    if (currentSectionIndex > 0) {
-      setCurrentSectionIndex(prev => prev - 1);
-    } else if (currentModuleIndex > 0) {
-      const prevModule = modules[currentModuleIndex - 1] as ModuleWithSections;
-      if (prevModule.sections && prevModule.sections.length > 0) {
-        setCurrentModuleIndex(prev => prev - 1);
-        setCurrentSectionIndex(prevModule.sections.length - 1);
-      } else {
-        setCurrentModuleIndex(prev => prev - 1);
-      }
+  const handleNextSection = () => {
+    // Prevent scrolling when clicking Next
+    shouldScrollRef.current = false;
+    
+    if (hasSections && currentSectionIndex < currentModule.sections!.length - 1) {
+      setCurrentSectionIndex(prev => prev + 1);
+    } else if (currentModuleIndex < updatedModules.length - 1) {
+      setCurrentModuleIndex(prev => prev + 1);
+      setCurrentSectionIndex(0);
     }
   };
 
-  const handleNextSection = () => {
-    if (hasSections && currentSectionIndex < currentModule.sections!.length - 1) {
-      setCurrentSectionIndex(prev => prev + 1);
-    } else if (currentModuleIndex < modules.length - 1) {
-      setCurrentModuleIndex(prev => prev + 1);
-      setCurrentSectionIndex(0);
+  const handlePreviousSection = () => {
+    // Prevent scrolling when clicking Previous
+    shouldScrollRef.current = false;
+    
+    if (currentSectionIndex > 0) {
+      setCurrentSectionIndex(prev => prev - 1);
+    } else if (currentModuleIndex > 0) {
+      setCurrentModuleIndex(prev => prev - 1);
+      const prevModule = updatedModules[currentModuleIndex - 1];
+      setCurrentSectionIndex(prevModule.sections?.length ? prevModule.sections.length - 1 : 0);
     }
   };
 
@@ -448,7 +449,7 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
           ? `final-exam-${journey.id}` 
           : `assessment-${moduleId}-${Date.now()}`,
         title: isFinalExam 
-          ? `Examen Final - ${journey.name}` 
+          ? `Final Exam - ${journey.name}` 
           : `Quiz - ${module.title}`,
         type: 'quiz',
         questions: assessmentQuestions,
@@ -503,7 +504,7 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
       console.log(`✅ ${isFinalExam ? 'Final exam' : 'Quiz'} generated successfully`);
     } catch (error) {
       console.error(`❌ Error generating ${isFinalExam ? 'final exam' : 'quiz'}:`, error);
-      alert(`Erreur lors de la génération du ${isFinalExam ? 'examen final' : 'quiz'}. Veuillez réessayer.`);
+      alert(`Error generating ${isFinalExam ? 'final exam' : 'quiz'}. Please try again.`);
     } finally {
       setGeneratingQuizForModule(null);
       setGeneratingFinalExam(false);
@@ -1083,39 +1084,30 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
               {/* Current Module Content - Unified Component */}
               {currentModule && (
                 <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-8">
-                  {/* Module Title and Mark Complete Button - Same Component */}
-                  <div className="flex items-center justify-between mb-6 pb-6 border-b border-gray-200">
-                    <div className="flex-1">
-                      <h2 className="text-2xl font-bold text-gray-900 mb-2">{currentModule.title}</h2>
-                      <div className="flex items-center space-x-4 text-sm text-gray-600">
-                        <span className="flex items-center">
-                          <Clock className="h-4 w-4 mr-1" />
-                          {currentModule.duration || 0} min
-                        </span>
-                        <span className="flex items-center">
-                          <BookOpen className="h-4 w-4 mr-1" />
-                          {currentModule.sections?.length || 0} sections
-                        </span>
-                        <span className="flex items-center">
-                          <BarChart3 className="h-4 w-4 mr-1" />
-                          {currentModule.competencyLevel || 'Beginner'}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-4">
+                  {/* Module Title */}
+                  <div className="mb-6 pb-6 border-b border-gray-200">
+                    <div className="flex items-center justify-between mb-2">
+                      <h2 className="text-2xl font-bold text-gray-900">{currentModule.title}</h2>
                       {completedModules.includes(currentModule.id) && (
                         <div className="flex items-center space-x-2 text-green-600">
                           <CheckCircle className="h-5 w-5" />
                           <span className="font-medium text-sm">Completed</span>
                         </div>
                       )}
-                      <button
-                        onClick={handleModuleComplete}
-                        className="flex items-center space-x-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
-                      >
-                        <CheckCircle className="h-5 w-5" />
-                        <span>Mark Complete</span>
-                      </button>
+                    </div>
+                    <div className="flex items-center space-x-4 text-sm text-gray-600">
+                      <span className="flex items-center">
+                        <Clock className="h-4 w-4 mr-1" />
+                        {currentModule.duration || 0} min
+                      </span>
+                      <span className="flex items-center">
+                        <BookOpen className="h-4 w-4 mr-1" />
+                        {currentModule.sections?.length || 0} sections
+                      </span>
+                      <span className="flex items-center">
+                        <BarChart3 className="h-4 w-4 mr-1" />
+                        {currentModule.competencyLevel || 'Beginner'}
+                      </span>
                     </div>
                   </div>
 
@@ -1126,22 +1118,6 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
                         <h3 className="text-lg font-semibold text-gray-900">
                           Section {currentSectionIndex + 1} of {currentModule.sections!.length}
                         </h3>
-                        <div className="flex items-center space-x-2">
-                          <button
-                            onClick={handlePreviousSection}
-                            disabled={currentSectionIndex === 0 && currentModuleIndex === 0}
-                            className="px-3 py-1 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                          >
-                            Previous
-                          </button>
-                          <button
-                            onClick={handleNextSection}
-                            disabled={currentSectionIndex === currentModule.sections!.length - 1 && currentModuleIndex === updatedModules.length - 1}
-                            className="px-3 py-1 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                          >
-                            Next
-                          </button>
-                        </div>
                       </div>
                       <div className="flex flex-wrap gap-2">
                         {currentModule.sections!.map((section, index) => (
@@ -1187,6 +1163,36 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
                     )}
                   </div>
 
+                  {/* Navigation Controls - Bottom with Mark Complete */}
+                  <div className="flex items-center justify-between mt-6 pt-6 border-t border-gray-200">
+                    <div className="flex items-center space-x-2">
+                      {hasSections && (
+                        <>
+                          <button
+                            onClick={handlePreviousSection}
+                            disabled={currentSectionIndex === 0 && currentModuleIndex === 0}
+                            className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+                          >
+                            Previous
+                          </button>
+                          <button
+                            onClick={handleNextSection}
+                            disabled={currentSectionIndex === currentModule.sections!.length - 1 && currentModuleIndex === updatedModules.length - 1}
+                            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+                          >
+                            Next
+                          </button>
+                        </>
+                      )}
+                    </div>
+                    <button
+                      onClick={handleModuleComplete}
+                      className="flex items-center space-x-2 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
+                    >
+                      <CheckCircle className="h-5 w-5" />
+                      <span>Mark Complete</span>
+                    </button>
+                  </div>
 
                   {/* Module Statistics - Bottom Section */}
                   <div className="mt-8 space-y-6">
@@ -1409,26 +1415,45 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
                                             {!isEditing && (
                                               <>
                                                 <div className="space-y-2 mt-3">
-                                                  {question.options?.map((option, optIdx) => (
-                                                    <div
-                                                      key={optIdx}
-                                                      className={`p-2 rounded ${
-                                                        option === question.correctAnswer
-                                                          ? 'bg-green-100 border border-green-300'
-                                                          : 'bg-gray-50 border border-gray-200'
-                                                      }`}
-                                                    >
-                                                      <div className="flex items-center space-x-2">
-                                                        <span className="text-sm font-medium">
-                                                          {String.fromCharCode(65 + optIdx)}.
-                                                        </span>
-                                                        <span className="text-sm">{option}</span>
-                                                        {option === question.correctAnswer && (
-                                                          <CheckCircle className="h-4 w-4 text-green-600 ml-auto" />
-                                                        )}
+                                                  {question.options?.map((option, optIdx) => {
+                                                    const isCorrect = option === question.correctAnswer;
+                                                    return (
+                                                      <div
+                                                        key={optIdx}
+                                                        className={`p-3 rounded-lg transition-all ${
+                                                          isCorrect
+                                                            ? 'bg-green-50 border-2 border-green-500 shadow-sm'
+                                                            : 'bg-gray-50 border border-gray-200'
+                                                        }`}
+                                                      >
+                                                        <div className="flex items-center space-x-3">
+                                                          {isCorrect && (
+                                                            <div className="flex-shrink-0 w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
+                                                              <CheckCircle className="h-3 w-3 text-white" fill="currentColor" />
+                                                            </div>
+                                                          )}
+                                                          {!isCorrect && (
+                                                            <div className="flex-shrink-0 w-5 h-5 border-2 border-gray-300 rounded-full"></div>
+                                                          )}
+                                                          <span className={`text-sm font-medium ${
+                                                            isCorrect ? 'text-green-800 font-semibold' : 'text-gray-700'
+                                                          }`}>
+                                                            {String.fromCharCode(65 + optIdx)}.
+                                                          </span>
+                                                          <span className={`text-sm flex-1 ${
+                                                            isCorrect ? 'text-green-900 font-medium' : 'text-gray-700'
+                                                          }`}>
+                                                            {option}
+                                                          </span>
+                                                          {isCorrect && (
+                                                            <span className="flex-shrink-0 px-2 py-1 bg-green-500 text-white text-xs font-semibold rounded-full">
+                                                              Correct
+                                                            </span>
+                                                          )}
+                                                        </div>
                                                       </div>
-                                                    </div>
-                                                  ))}
+                                                    );
+                                                  })}
                                                 </div>
                                                 {question.explanation && (
                                                   <div className="mt-3 p-2 bg-blue-50 rounded border border-blue-200">

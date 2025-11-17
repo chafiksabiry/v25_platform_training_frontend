@@ -787,26 +787,45 @@ export default function LaunchApproval({
                                                     {!isEditing && (
                                                       <>
                                                         <div className="space-y-2 mt-3">
-                                                          {question.options?.map((option, optIdx) => (
-                                                            <div
-                                                              key={optIdx}
-                                                              className={`p-2 rounded text-sm ${
-                                                                option === question.correctAnswer
-                                                                  ? 'bg-green-100 border border-green-300'
-                                                                  : 'bg-gray-50 border border-gray-200'
-                                                              }`}
-                                                            >
-                                                              <div className="flex items-center space-x-2">
-                                                                <span className="text-xs font-medium">
-                                                                  {String.fromCharCode(65 + optIdx)}.
-                                                                </span>
-                                                                <span className="text-xs">{option}</span>
-                                                                {option === question.correctAnswer && (
-                                                                  <CheckCircle className="h-3 w-3 text-green-600 ml-auto" />
-                                                                )}
+                                                          {question.options?.map((option, optIdx) => {
+                                                            const isCorrect = option === question.correctAnswer;
+                                                            return (
+                                                              <div
+                                                                key={optIdx}
+                                                                className={`p-3 rounded-lg transition-all ${
+                                                                  isCorrect
+                                                                    ? 'bg-green-50 border-2 border-green-500 shadow-sm'
+                                                                    : 'bg-gray-50 border border-gray-200'
+                                                                }`}
+                                                              >
+                                                                <div className="flex items-center space-x-3">
+                                                                  {isCorrect && (
+                                                                    <div className="flex-shrink-0 w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
+                                                                      <CheckCircle className="h-3 w-3 text-white" fill="currentColor" />
+                                                                    </div>
+                                                                  )}
+                                                                  {!isCorrect && (
+                                                                    <div className="flex-shrink-0 w-5 h-5 border-2 border-gray-300 rounded-full"></div>
+                                                                  )}
+                                                                  <span className={`text-xs font-medium ${
+                                                                    isCorrect ? 'text-green-800 font-semibold' : 'text-gray-700'
+                                                                  }`}>
+                                                                    {String.fromCharCode(65 + optIdx)}.
+                                                                  </span>
+                                                                  <span className={`text-xs flex-1 ${
+                                                                    isCorrect ? 'text-green-900 font-medium' : 'text-gray-700'
+                                                                  }`}>
+                                                                    {option}
+                                                                  </span>
+                                                                  {isCorrect && (
+                                                                    <span className="flex-shrink-0 px-2 py-1 bg-green-500 text-white text-xs font-semibold rounded-full">
+                                                                      Correct
+                                                                    </span>
+                                                                  )}
+                                                                </div>
                                                               </div>
-                                                            </div>
-                                                          ))}
+                                                            );
+                                                          })}
                                                         </div>
                                                         {question.explanation && (
                                                           <div className="mt-3 p-2 bg-blue-50 rounded border border-blue-200">
