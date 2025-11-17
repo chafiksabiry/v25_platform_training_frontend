@@ -43,6 +43,16 @@ export default function LaunchApproval({
   const [expandedQuizId, setExpandedQuizId] = useState<string | null>(null);
   const [editingQuestionId, setEditingQuestionId] = useState<string | null>(null);
   const [editedQuestions, setEditedQuestions] = useState<Record<string, Question>>({});
+  const [showQuizConfigModal, setShowQuizConfigModal] = useState(false);
+  const [quizConfigModuleId, setQuizConfigModuleId] = useState<string | null>(null);
+  const [isFinalExamConfig, setIsFinalExamConfig] = useState(false);
+  const [quizConfig, setQuizConfig] = useState({
+    totalQuestions: 12,
+    passingScore: 70,
+    multipleChoice: 8,
+    trueFalse: 2,
+    multipleCorrect: 2
+  });
 
   // Save edited question
   const saveQuestionEdit = (moduleId: string, assessmentId: string, questionIndex: number, editedQuestion: Question) => {
@@ -74,13 +84,30 @@ export default function LaunchApproval({
   };
   const API_BASE = getApiBaseUrl();
 
-  // Generate quiz for a module
-  const generateModuleQuiz = async (module: TrainingModule, isFinalExam: boolean = false) => {
+  // Show quiz configuration modal
+  const showQuizConfig = (module: TrainingModule, isFinalExam: boolean = false) => {
+    setQuizConfigModuleId(module.id);
+    setIsFinalExamConfig(isFinalExam);
+    setQuizConfig({
+      totalQuestions: isFinalExam ? 25 : 12,
+      passingScore: 70,
+      multipleChoice: isFinalExam ? 15 : 8,
+      trueFalse: isFinalExam ? 5 : 2,
+      multipleCorrect: isFinalExam ? 5 : 2
+    });
+    setShowQuizConfigModal(true);
+  };
+
+  // Generate quiz for a module with configuration
+  const generateModuleQuiz = async (module: TrainingModule, isFinalExam: boolean = false, config?: typeof quizConfig) => {
     const moduleId = module.id;
     setGeneratingQuizForModule(moduleId);
     if (isFinalExam) {
       setGeneratingFinalExam(true);
     }
+    setShowQuizConfigModal(false);
+
+    const finalConfig = config || quizConfig;
 
     try {
       // Prepare module content in the format expected by the backend
@@ -96,8 +123,8 @@ export default function LaunchApproval({
         })) || []
       };
 
-      // Calculate number of questions (10-15 for modules, 20-30 for final exam)
-      const questionCount = isFinalExam ? 25 : 12;
+      // Use configured number of questions
+      const questionCount = finalConfig.totalQuestions;
 
       console.log(`📝 Generating ${isFinalExam ? 'final exam' : 'quiz'} for module: ${module.title}`);
 
@@ -115,9 +142,9 @@ export default function LaunchApproval({
         points: q.points || 10
       }));
 
-      // Calculate passing score (70% of total points)
+      // Calculate passing score based on configured percentage
       const totalPoints = assessmentQuestions.reduce((sum, q) => sum + (q.points || 10), 0);
-      const passingScore = Math.floor(totalPoints * 0.7);
+      const passingScore = Math.ceil(totalPoints * (finalConfig.passingScore / 100)); // Use configured passing score percentage
 
       // Create assessment
       const assessment: Assessment = {
@@ -573,7 +600,7 @@ export default function LaunchApproval({
                                     return (
                                       <>
                                         <button
-                                          onClick={() => generateModuleQuiz(module, false)}
+                                          onClick={() => showQuizConfig(module, false)}
                                           disabled={generatingQuizForModule === module.id}
                                           className="flex items-center space-x-2 px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
                                         >
@@ -591,7 +618,7 @@ export default function LaunchApproval({
                                         </button>
                                         {isLastModule && (
                                           <button
-                                            onClick={() => generateModuleQuiz(module, true)}
+                                            onClick={() => showQuizConfig(module, true)}
                                             disabled={generatingFinalExam}
                                             className="flex items-center space-x-2 px-3 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
                                           >
@@ -630,7 +657,13 @@ export default function LaunchApproval({
                                                 {assessment.questions?.length || 0} questions
                                               </span>
                                               <span>Type: {assessment.type || 'quiz'}</span>
-                                              <span>Passing Score: {assessment.passingScore || 80}%</span>
+                                              <span>Passing Score: {(() => {
+                                                const totalPts = assessment.questions?.reduce((sum, q) => sum + (q.points || 10), 0) || 0;
+                                                const minPassing = Math.ceil(totalPts * 0.7);
+                                                const actualPassing = assessment.passingScore || minPassing;
+                                                const percentage = totalPts > 0 ? Math.round((actualPassing / totalPts) * 100) : 70;
+                                                return `${actualPassing} pts (${percentage}%)`;
+                                              })()}</span>
                                             </div>
                                           </div>
                                           <div className="flex items-center space-x-2">
@@ -1019,6 +1052,185 @@ export default function LaunchApproval({
           </div>
         </div>
       </div>
+
+      {/* Quiz Configuration Modal */}
+      {showQuizConfigModal && quizConfigModuleId && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-2xl font-bold text-gray-900">
+                {isFinalExamConfig ? 'Final Exam Configuration' : 'Quiz Configuration'}
+              </h3>
+              <button
+                onClick={() => setShowQuizConfigModal(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <XIcon className="h-6 w-6" />
+              </button>
+            </div>
+
+            <div className="space-y-6">
+              {/* Total Questions */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Total Number of Questions *
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="50"
+                  value={quizConfig.totalQuestions}
+                  onChange={(e) => {
+                    const total = parseInt(e.target.value) || 1;
+                    setQuizConfig(prev => ({
+                      ...prev,
+                      totalQuestions: total,
+                      // Auto-adjust distribution if total changes
+                      multipleChoice: Math.min(prev.multipleChoice, total - prev.trueFalse - prev.multipleCorrect),
+                      trueFalse: Math.min(prev.trueFalse, total - prev.multipleChoice - prev.multipleCorrect),
+                      multipleCorrect: Math.min(prev.multipleCorrect, total - prev.multipleChoice - prev.trueFalse)
+                    }));
+                  }}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                />
+              </div>
+
+              {/* Passing Score */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Passing Score (%) * (Minimum 70%)
+                </label>
+                <input
+                  type="number"
+                  min="70"
+                  max="100"
+                  value={quizConfig.passingScore}
+                  onChange={(e) => {
+                    const score = Math.max(70, parseInt(e.target.value) || 70);
+                    setQuizConfig(prev => ({ ...prev, passingScore: score }));
+                  }}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                />
+                <p className="text-xs text-gray-500 mt-1">Minimum passing score is 70%</p>
+              </div>
+
+              {/* Question Type Distribution */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-3">
+                  Question Type Distribution *
+                </label>
+                <div className="space-y-4 bg-gray-50 p-4 rounded-lg">
+                  {/* Multiple Choice (QCM) */}
+                  <div>
+                    <label className="block text-sm text-gray-600 mb-2">
+                      Multiple Choice (QCM)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      max={quizConfig.totalQuestions}
+                      value={quizConfig.multipleChoice}
+                      onChange={(e) => {
+                        const value = parseInt(e.target.value) || 0;
+                        setQuizConfig(prev => ({
+                          ...prev,
+                          multipleChoice: Math.min(value, prev.totalQuestions - prev.trueFalse - prev.multipleCorrect)
+                        }));
+                      }}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    />
+                  </div>
+
+                  {/* True/False */}
+                  <div>
+                    <label className="block text-sm text-gray-600 mb-2">
+                      True/False
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      max={quizConfig.totalQuestions}
+                      value={quizConfig.trueFalse}
+                      onChange={(e) => {
+                        const value = parseInt(e.target.value) || 0;
+                        setQuizConfig(prev => ({
+                          ...prev,
+                          trueFalse: Math.min(value, prev.totalQuestions - prev.multipleChoice - prev.multipleCorrect)
+                        }));
+                      }}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    />
+                  </div>
+
+                  {/* Multiple Correct Answers */}
+                  <div>
+                    <label className="block text-sm text-gray-600 mb-2">
+                      Multiple Correct Answers
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      max={quizConfig.totalQuestions}
+                      value={quizConfig.multipleCorrect}
+                      onChange={(e) => {
+                        const value = parseInt(e.target.value) || 0;
+                        setQuizConfig(prev => ({
+                          ...prev,
+                          multipleCorrect: Math.min(value, prev.totalQuestions - prev.multipleChoice - prev.trueFalse)
+                        }));
+                      }}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    />
+                  </div>
+
+                  {/* Total Validation */}
+                  <div className="pt-3 border-t border-gray-300">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-gray-700">Total:</span>
+                      <span className={`text-sm font-bold ${
+                        (quizConfig.multipleChoice + quizConfig.trueFalse + quizConfig.multipleCorrect) === quizConfig.totalQuestions
+                          ? 'text-green-600'
+                          : 'text-red-600'
+                      }`}>
+                        {quizConfig.multipleChoice + quizConfig.trueFalse + quizConfig.multipleCorrect} / {quizConfig.totalQuestions}
+                      </span>
+                    </div>
+                    {(quizConfig.multipleChoice + quizConfig.trueFalse + quizConfig.multipleCorrect) !== quizConfig.totalQuestions && (
+                      <p className="text-xs text-red-600 mt-1">
+                        The sum must equal the total number of questions
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="flex items-center justify-end space-x-3 mt-8 pt-6 border-t border-gray-200">
+              <button
+                onClick={() => setShowQuizConfigModal(false)}
+                className="px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  const module = updatedModules.find(m => m.id === quizConfigModuleId);
+                  if (module && (quizConfig.multipleChoice + quizConfig.trueFalse + quizConfig.multipleCorrect) === quizConfig.totalQuestions) {
+                    generateModuleQuiz(module, isFinalExamConfig, quizConfig);
+                  } else {
+                    alert('Please ensure the sum of question types equals the total number of questions');
+                  }
+                }}
+                disabled={(quizConfig.multipleChoice + quizConfig.trueFalse + quizConfig.multipleCorrect) !== quizConfig.totalQuestions}
+                className="px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium"
+              >
+                Generate Quiz
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
