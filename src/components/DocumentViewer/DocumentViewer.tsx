@@ -97,25 +97,38 @@ export default function DocumentViewer({ fileUrl, fileName, mimeType }: Document
               }}
             />
           ) : (
-            <iframe
-              src={fileUrl}
-              className="w-full h-full border-0 rounded-lg shadow"
-              title="PDF Viewer"
-              style={{ minHeight: '400px' }}
-              onLoad={() => {
-                // Scroll to top when iframe loads
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-                // Also try to scroll the iframe content to top
-                try {
-                  const iframe = document.querySelector('iframe[title="PDF Viewer"]') as HTMLIFrameElement;
-                  if (iframe?.contentWindow) {
-                    iframe.contentWindow.scrollTo(0, 0);
-                  }
-                } catch (e) {
-                  // CORS may prevent accessing iframe content
-                }
-              }}
-            />
+            (() => {
+              // Check if it's a Cloudinary URL
+              const isCloudinaryUrl = fileUrl.includes('cloudinary.com');
+              
+              // For Cloudinary URLs, use Google Docs Viewer to display PDFs
+              // because Cloudinary raw URLs force download instead of display
+              const viewerUrl = isCloudinaryUrl 
+                ? `https://docs.google.com/gview?url=${encodeURIComponent(fileUrl)}&embedded=true`
+                : fileUrl;
+              
+              return (
+                <iframe
+                  src={viewerUrl}
+                  className="w-full h-full border-0 rounded-lg shadow"
+                  title="PDF Viewer"
+                  style={{ minHeight: '400px' }}
+                  onLoad={() => {
+                    // Scroll to top when iframe loads
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    // Also try to scroll the iframe content to top
+                    try {
+                      const iframe = document.querySelector('iframe[title="PDF Viewer"]') as HTMLIFrameElement;
+                      if (iframe?.contentWindow) {
+                        iframe.contentWindow.scrollTo(0, 0);
+                      }
+                    } catch (e) {
+                      // CORS may prevent accessing iframe content
+                    }
+                  }}
+                />
+              );
+            })()
           )}
         </>
       )}
