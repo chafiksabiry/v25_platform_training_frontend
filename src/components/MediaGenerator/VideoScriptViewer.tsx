@@ -117,18 +117,14 @@ export default function VideoScriptViewer({
     );
   }
 
-  if (!script) {
+  // Si le script n'est pas encore généré, afficher l'état de chargement
+  // (la génération se fait automatiquement via useEffect)
+  if (!script && !isGenerating) {
     return (
       <div className="bg-gray-50 rounded-xl p-8 border-2 border-dashed border-gray-300">
         <div className="flex flex-col items-center space-y-4">
           <Video className="w-12 h-12 text-gray-400" />
-          <p className="text-gray-600">Aucun script disponible</p>
-          <button
-            onClick={generateScript}
-            className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-          >
-            Générer un script
-          </button>
+          <p className="text-gray-600">Génération du script en cours...</p>
         </div>
       </div>
     );
