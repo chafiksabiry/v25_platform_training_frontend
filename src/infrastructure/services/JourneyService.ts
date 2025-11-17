@@ -19,6 +19,8 @@ export interface LaunchJourneyRequest {
     modulesCompleted: number;
     feedback: string[];
   };
+  companyId?: string;
+  gigId?: string;
 }
 
 export interface LaunchJourneyResponse {
@@ -56,7 +58,7 @@ export class JourneyService {
   /**
    * Create or save a journey
    */
-  static async saveJourney(journey: TrainingJourney, modules: TrainingModule[]): Promise<any> {
+  static async saveJourney(journey: TrainingJourney, modules: TrainingModule[], companyId?: string, gigId?: string): Promise<any> {
     const payload = {
       title: journey.title,
       description: journey.description,
@@ -64,6 +66,8 @@ export class JourneyService {
       status: journey.status,
       company: journey.company,
       vision: journey.vision,
+      companyId: companyId,
+      gigId: gigId,
       modules: modules.map(m => ({
         id: m.id,
         title: m.title,
@@ -97,6 +101,8 @@ export class JourneyService {
         vision: request.journey.vision,
         launchSettings: request.launchSettings,
         rehearsalData: request.rehearsalData,
+        companyId: request.companyId,
+        gigId: request.gigId,
         modules: request.modules.map(m => {
           // Convert sections to content format for backend compatibility
           const sections = (m as any).sections || [];

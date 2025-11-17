@@ -10,7 +10,7 @@ import GigSelector from '../Dashboard/GigSelector';
 import TrainingDetailsForm from './TrainingDetailsForm';
 
 interface SetupWizardProps {
-  onComplete: (company: Company, journey: TrainingJourney, methodology?: TrainingMethodology) => void;
+  onComplete: (company: Company, journey: TrainingJourney, methodology?: TrainingMethodology, gigId?: string) => void;
 }
 
 export default function SetupWizard({ onComplete }: SetupWizardProps) {
@@ -183,7 +183,7 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
         targetRoles: journey.targetRoles || [],
       };
 
-      onComplete(completeCompany, completeJourney, selectedMethodology || undefined);
+      onComplete(completeCompany, completeJourney, selectedMethodology || undefined, selectedGig?._id);
     } else if (currentStep === 3) {
       // Move to methodology selector
       setShowMethodologySelector(true);

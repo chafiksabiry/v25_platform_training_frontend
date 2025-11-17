@@ -5,6 +5,7 @@ import DocumentViewer from '../DocumentViewer/DocumentViewer';
 import { JourneyService } from '../../infrastructure/services/JourneyService';
 import { AIService } from '../../infrastructure/services/AIService';
 import axios from 'axios';
+import Cookies from 'js-cookie';
 
 interface LaunchApprovalProps {
   journey: TrainingJourney;
@@ -14,6 +15,7 @@ interface LaunchApprovalProps {
   onLaunch: (journey: TrainingJourney, modules: TrainingModule[], enrolledReps: Rep[]) => void;
   onBackToRehearsal: () => void;
   onBack: () => void;
+  gigId?: string | null;
 }
 
 export default function LaunchApproval({ 
@@ -23,7 +25,8 @@ export default function LaunchApproval({
   rehearsalRating, 
   onLaunch, 
   onBackToRehearsal,
-  onBack 
+  onBack,
+  gigId 
 }: LaunchApprovalProps) {
   const [selectedReps, setSelectedReps] = useState<string[]>([]);
   const [expandedModules, setExpandedModules] = useState<string[]>([]);
@@ -280,7 +283,10 @@ export default function LaunchApproval({
         steps: journey.steps.map(step => ({ ...step, status: 'completed' }))
       };
       
-      // ✅ Sauvegarder dans MongoDB
+      // Get companyId from cookies
+      const companyId = Cookies.get('companyId');
+      
+      // ✅ Sauvegarder dans MongoDB with companyId and gigId
       const launchResponse = await JourneyService.launchJourney({
         journey: updatedJourney,
         modules: updatedModules, // Use updated modules with quizzes
@@ -290,7 +296,9 @@ export default function LaunchApproval({
           rating: rehearsalRating,
           modulesCompleted: updatedModules.length,
           feedback: rehearsalFeedback.map(f => f.message)
-        }
+        },
+        companyId: companyId || undefined,
+        gigId: gigId || undefined
       });
       
       console.log('✅ Journey saved to MongoDB:', launchResponse);

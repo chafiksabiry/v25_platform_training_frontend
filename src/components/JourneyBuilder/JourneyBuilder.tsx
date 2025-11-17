@@ -22,6 +22,7 @@ export default function JourneyBuilder({ onComplete }: JourneyBuilderProps) {
   const [rehearsalFeedback, setRehearsalFeedback] = useState<RehearsalFeedback[]>([]);
   const [rehearsalRating, setRehearsalRating] = useState(0);
   const [showLaunchApproval, setShowLaunchApproval] = useState(false);
+  const [selectedGigId, setSelectedGigId] = useState<string | null>(null);
 
   const steps = [
     { 
@@ -54,11 +55,14 @@ export default function JourneyBuilder({ onComplete }: JourneyBuilderProps) {
     }
   ];
 
-  const handleSetupComplete = (newCompany: Company, newJourney: TrainingJourney, selectedMethodology?: TrainingMethodology) => {
+  const handleSetupComplete = (newCompany: Company, newJourney: TrainingJourney, selectedMethodology?: TrainingMethodology, gigId?: string) => {
     setCompany(newCompany);
     setJourney(newJourney);
     if (selectedMethodology) {
       setMethodology(selectedMethodology);
+    }
+    if (gigId) {
+      setSelectedGigId(gigId);
     }
     setCurrentStep(1);
   };
@@ -153,6 +157,7 @@ export default function JourneyBuilder({ onComplete }: JourneyBuilderProps) {
               onLaunch={handleLaunch}
               onBackToRehearsal={() => setShowLaunchApproval(false)}
               onBack={() => setCurrentStep(2)}
+              gigId={selectedGigId}
             />
           ) : null;
         }
