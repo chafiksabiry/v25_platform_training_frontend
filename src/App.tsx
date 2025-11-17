@@ -167,58 +167,58 @@ function App() {
   // Show welcome screen for first-time users (but not if showing success page)
   if (!hasCompletedSetup && showWelcome && !showJourneyBuilder && !showManualTraining && !showJourneySuccess) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 pt-4 pb-8">
-        <div className="container mx-auto px-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full mx-auto p-8 text-center">
-          <Sparkles className="h-16 w-16 text-blue-500 mx-auto mb-6" />
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">
+      <div className="h-screen bg-gradient-to-br from-blue-50 to-indigo-100 overflow-y-auto">
+        <div className="container mx-auto px-4 py-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full mx-auto p-6 text-center">
+          <Sparkles className="h-12 w-12 text-blue-500 mx-auto mb-4" />
+          <h1 className="text-2xl font-bold text-gray-900 mb-3">
             Welcome to Your Training Platform
           </h1>
-          <p className="text-lg text-gray-600 mb-8">
+          <p className="text-base text-gray-600 mb-6">
             Transform your boring documents into engaging, interactive training experiences. 
             Our AI will help you create professional training programs in minutes, not weeks.
           </p>
           
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-            <div className="p-6 bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl border border-blue-200">
-              <Upload className="h-8 w-8 text-blue-600 mx-auto mb-3" />
-              <div className="font-semibold text-blue-900 mb-1">Upload & Analyze</div>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-6">
+            <div className="p-4 bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl border border-blue-200">
+              <Upload className="h-6 w-6 text-blue-600 mx-auto mb-2" />
+              <div className="font-semibold text-sm text-blue-900 mb-1">Upload & Analyze</div>
               <div className="text-xs text-blue-700">AI analyzes your documents</div>
             </div>
-            <div className="p-6 bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl border border-purple-200">
-              <Wand2 className="h-8 w-8 text-purple-600 mx-auto mb-3" />
-              <div className="font-semibold text-purple-900 mb-1">AI Enhancement</div>
+            <div className="p-4 bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl border border-purple-200">
+              <Wand2 className="h-6 w-6 text-purple-600 mx-auto mb-2" />
+              <div className="font-semibold text-sm text-purple-900 mb-1">AI Enhancement</div>
               <div className="text-xs text-purple-700">Creates videos, audio & graphics</div>
             </div>
-            <div className="p-6 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border border-green-200">
-              <Zap className="h-8 w-8 text-green-600 mx-auto mb-3" />
-              <div className="font-semibold text-green-900 mb-1">Interactive Elements</div>
+            <div className="p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border border-green-200">
+              <Zap className="h-6 w-6 text-green-600 mx-auto mb-2" />
+              <div className="font-semibold text-sm text-green-900 mb-1">Interactive Elements</div>
               <div className="text-xs text-green-700">Quizzes, scenarios & simulations</div>
             </div>
-            <div className="p-6 bg-gradient-to-br from-orange-50 to-red-50 rounded-xl border border-orange-200">
-              <Eye className="h-8 w-8 text-orange-600 mx-auto mb-3" />
-              <div className="font-semibold text-orange-900 mb-1">Rehearsal & Launch</div>
+            <div className="p-4 bg-gradient-to-br from-orange-50 to-red-50 rounded-xl border border-orange-200">
+              <Eye className="h-6 w-6 text-orange-600 mx-auto mb-2" />
+              <div className="font-semibold text-sm text-orange-900 mb-1">Rehearsal & Launch</div>
               <div className="text-xs text-orange-700">Test before deploying to team</div>
             </div>
           </div>
           
-          <div className="space-y-6">
+          <div className="space-y-4">
             {/* Titre de sélection */}
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">Choose Your Creation Method</h2>
+            <h2 className="text-lg font-semibold text-gray-800 mb-3">Choose Your Creation Method</h2>
             
             {/* Cards de choix */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* AI Creation */}
               <button
                 onClick={() => setShowJourneyBuilder(true)}
-                className="group p-8 bg-gradient-to-br from-blue-500 to-purple-600 text-white rounded-xl shadow-lg hover:shadow-2xl transition-all transform hover:scale-105 text-left"
+                className="group p-6 bg-gradient-to-br from-blue-500 to-purple-600 text-white rounded-xl shadow-lg hover:shadow-2xl transition-all transform hover:scale-105 text-left"
               >
-                <Sparkles className="h-12 w-12 mb-4 group-hover:rotate-12 transition-transform" />
-                <h3 className="text-2xl font-bold mb-2">🤖 AI-Powered Creation</h3>
-                <p className="text-sm opacity-90 mb-4">
+                <Sparkles className="h-8 w-8 mb-3 group-hover:rotate-12 transition-transform" />
+                <h3 className="text-xl font-bold mb-2">🤖 AI-Powered Creation</h3>
+                <p className="text-xs opacity-90 mb-3">
                   Let AI automatically generate modules, quizzes, and interactive content from your documents.
                 </p>
-                <div className="flex items-center text-sm font-semibold">
+                <div className="flex items-center text-xs font-semibold">
                   <span>Start with AI</span>
                   <span className="ml-2 group-hover:translate-x-2 transition-transform">→</span>
                 </div>
@@ -230,14 +230,14 @@ function App() {
                   console.log('Manual Training clicked!');
                   setShowManualTraining(true);
                 }}
-                className="group p-8 bg-gradient-to-br from-green-500 to-teal-600 text-white rounded-xl shadow-lg hover:shadow-2xl transition-all transform hover:scale-105 text-left"
+                className="group p-6 bg-gradient-to-br from-green-500 to-teal-600 text-white rounded-xl shadow-lg hover:shadow-2xl transition-all transform hover:scale-105 text-left"
               >
-                <Upload className="h-12 w-12 mb-4 group-hover:-translate-y-1 transition-transform" />
-                <h3 className="text-2xl font-bold mb-2">✍️ Manual Creation</h3>
-                <p className="text-sm opacity-90 mb-4">
+                <Upload className="h-8 w-8 mb-3 group-hover:-translate-y-1 transition-transform" />
+                <h3 className="text-xl font-bold mb-2">✍️ Manual Creation</h3>
+                <p className="text-xs opacity-90 mb-3">
                   Full control with manual uploads: videos, PDFs, Word docs, YouTube links, and custom quizzes.
                 </p>
-                <div className="flex items-center text-sm font-semibold">
+                <div className="flex items-center text-xs font-semibold">
                   <span>Create Manually</span>
                   <span className="ml-2 group-hover:translate-x-2 transition-transform">→</span>
                 </div>
