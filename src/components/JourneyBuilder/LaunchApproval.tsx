@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { CheckCircle, AlertTriangle, MessageSquare, Star, Users, Rocket, ArrowLeft, Clock, BarChart3, Eye, Play, Zap, Video, ChevronDown, ChevronUp, FileQuestion, Loader2 } from 'lucide-react';
+import { CheckCircle, AlertTriangle, MessageSquare, Star, Users, Rocket, ArrowLeft, Clock, BarChart3, Eye, Play, Zap, Video, ChevronDown, ChevronUp, FileQuestion, Loader2, FileText } from 'lucide-react';
 import { TrainingJourney, TrainingModule, RehearsalFeedback, Rep, Assessment, Question } from '../../types';
-import VideoScriptViewer from '../MediaGenerator/VideoScriptViewer';
+import DocumentViewer from '../DocumentViewer/DocumentViewer';
 import { JourneyService } from '../../infrastructure/services/JourneyService';
 import { AIService } from '../../infrastructure/services/AIService';
 import axios from 'axios';
@@ -496,18 +496,29 @@ export default function LaunchApproval({
                               </ul>
                             </div>
 
-                            {/* AI-Generated Video Script */}
-                            <div className="mb-6">
-                              <h5 className="font-semibold text-gray-700 mb-3 flex items-center space-x-2">
-                                <Video className="h-5 w-5 text-purple-600" />
-                                <span>AI-Generated Video Script</span>
-                              </h5>
-                              <VideoScriptViewer
-                                moduleTitle={module.title}
-                                moduleDescription={module.description}
-                                learningObjectives={module.learningObjectives}
-                              />
-                            </div>
+                            {/* Document Display */}
+                            {(module as any).sections && (module as any).sections.length > 0 && (
+                              <div className="mb-6">
+                                <h5 className="font-semibold text-gray-700 mb-3 flex items-center space-x-2">
+                                  <FileText className="h-5 w-5 text-purple-600" />
+                                  <span>Module Document</span>
+                                </h5>
+                                {(module as any).sections.map((section: any, sectionIndex: number) => {
+                                  if (section.type === 'document' && section.content?.file?.url) {
+                                    return (
+                                      <div key={sectionIndex} className="mb-4">
+                                        <DocumentViewer
+                                          fileUrl={section.content.file.url}
+                                          fileName={section.content.file.name}
+                                          mimeType={section.content.file.mimeType}
+                                        />
+                                      </div>
+                                    );
+                                  }
+                                  return null;
+                                })}
+                              </div>
+                            )}
 
                             {/* Quiz Generation Section */}
                             <div className="border-t border-gray-200 pt-6">
