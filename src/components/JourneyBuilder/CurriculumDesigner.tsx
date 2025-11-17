@@ -1183,32 +1183,6 @@ export default function CurriculumDesigner({ uploads, methodology, onComplete, o
                       <Plus className="h-4 w-4" />
                       <span>Add Module</span>
                     </button>
-                    <button
-                      onClick={exportCurriculum}
-                      className="flex items-center space-x-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                      title="Export as JSON"
-                    >
-                      <Eye className="h-4 w-4" />
-                      <span>Export JSON</span>
-                    </button>
-                    <button
-                      onClick={exportToPowerPoint}
-                      disabled={isExportingPPT}
-                      className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-lg hover:from-orange-600 hover:to-red-600 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                      title="Export as PowerPoint"
-                    >
-                      {isExportingPPT ? (
-                        <>
-                          <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
-                          <span>Exporting...</span>
-                        </>
-                      ) : (
-                        <>
-                          <FileDown className="h-4 w-4" />
-                          <span>Export PPT</span>
-                        </>
-                      )}
-                    </button>
                   </div>
                 </div>
 

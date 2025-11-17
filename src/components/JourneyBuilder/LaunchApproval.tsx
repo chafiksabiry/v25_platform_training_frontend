@@ -122,7 +122,7 @@ export default function LaunchApproval({
 
       setUpdatedModules(updatedModulesList);
 
-      // Save to server
+      // Save to server (optional - quiz is available locally even if save fails)
       try {
         const saveData = {
           moduleId: moduleId,
@@ -131,11 +131,14 @@ export default function LaunchApproval({
           isFinalExam: isFinalExam
         };
 
-        // Try to save to server
+        // Try to save to server (endpoint may not exist yet, but quiz is saved locally)
         await axios.post(`${API_BASE}/api/training-journeys/${journey.id}/modules/${moduleId}/assessments`, saveData);
         console.log(`✅ ${isFinalExam ? 'Final exam' : 'Quiz'} saved to server`);
-      } catch (saveError) {
-        console.warn('⚠️ Could not save to server, but quiz is generated locally:', saveError);
+      } catch (saveError: any) {
+        // Silently handle 404 - quiz is still available locally and will be saved when journey is launched
+        if (saveError?.response?.status !== 404) {
+          console.warn('⚠️ Could not save to server, but quiz is generated locally');
+        }
         // Continue even if save fails - quiz is still available locally
       }
 
