@@ -37,10 +37,10 @@ export default function TrainingDetailsForm({ onComplete, onBack, gigData }: Tra
               <div className="px-4 py-2 bg-green-100 text-green-700 rounded-lg text-sm font-medium">
                 AI-suggested goals
               </div>
-              <div className="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg text-sm font-medium">
+              <div className="px-4 py-2 text-gray-600 rounded-lg text-sm font-medium">
                 Success metrics
               </div>
-              <div className="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg text-sm font-medium">
+              <div className="px-4 py-2 text-gray-600 rounded-lg text-sm font-medium">
                 Timeline planning
               </div>
             </div>
