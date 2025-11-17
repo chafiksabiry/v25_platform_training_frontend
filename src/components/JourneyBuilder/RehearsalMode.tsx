@@ -236,7 +236,8 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
   };
 
   const handleModuleComplete = () => {
-    // Don't scroll when marking complete
+    // Save current scroll position and prevent scrolling
+    savedScrollPositionRef.current = window.scrollY || window.pageYOffset || 0;
     shouldScrollRef.current = false;
     
     if (currentModule && !completedModules.includes(currentModule.id)) {
@@ -250,7 +251,8 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
   };
 
   const handleSectionComplete = () => {
-    // Don't scroll when marking complete
+    // Save current scroll position and prevent scrolling
+    savedScrollPositionRef.current = window.scrollY || window.pageYOffset || 0;
     shouldScrollRef.current = false;
     
     if (currentSection?.id) {
@@ -289,12 +291,16 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
 
   // Track if we should scroll (don't scroll when marking complete)
   const shouldScrollRef = React.useRef(true);
+  const savedScrollPositionRef = React.useRef<number>(0);
 
   // Reset section index when module changes and scroll to top
   useEffect(() => {
     setCurrentSectionIndex(0);
     if (shouldScrollRef.current) {
       window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      // Restore saved scroll position when marking complete
+      window.scrollTo({ top: savedScrollPositionRef.current, behavior: 'instant' });
     }
     shouldScrollRef.current = true; // Reset for next time
   }, [currentModuleIndex]);
@@ -303,6 +309,9 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
   useEffect(() => {
     if (shouldScrollRef.current) {
       window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      // Restore saved scroll position when marking complete
+      window.scrollTo({ top: savedScrollPositionRef.current, behavior: 'instant' });
     }
     shouldScrollRef.current = true; // Reset for next time
   }, [currentSectionIndex]);
