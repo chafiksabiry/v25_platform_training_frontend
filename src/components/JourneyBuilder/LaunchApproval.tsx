@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CheckCircle, AlertTriangle, MessageSquare, Star, Users, Rocket, ArrowLeft, Clock, BarChart3, Eye, Play, Zap, Video, ChevronDown, ChevronUp, FileQuestion, Loader2, FileText } from 'lucide-react';
+import { CheckCircle, AlertTriangle, MessageSquare, Star, Users, Rocket, ArrowLeft, Clock, BarChart3, Eye, Play, Zap, Video, ChevronDown, ChevronUp, FileQuestion, Loader2, FileText, Edit3, Save, X as XIcon } from 'lucide-react';
 import { TrainingJourney, TrainingModule, RehearsalFeedback, Rep, Assessment, Question } from '../../types';
 import DocumentViewer from '../DocumentViewer/DocumentViewer';
 import { JourneyService } from '../../infrastructure/services/JourneyService';
@@ -40,6 +40,30 @@ export default function LaunchApproval({
   const [updatedModules, setUpdatedModules] = useState<TrainingModule[]>(modules);
   const [generatingQuizForModule, setGeneratingQuizForModule] = useState<string | null>(null);
   const [generatingFinalExam, setGeneratingFinalExam] = useState(false);
+  const [expandedQuizId, setExpandedQuizId] = useState<string | null>(null);
+  const [editingQuestionId, setEditingQuestionId] = useState<string | null>(null);
+  const [editedQuestions, setEditedQuestions] = useState<Record<string, Question>>({});
+
+  // Save edited question
+  const saveQuestionEdit = (moduleId: string, assessmentId: string, questionIndex: number, editedQuestion: Question) => {
+    const updatedModulesList = updatedModules.map(m => {
+      if (m.id === moduleId) {
+        const updatedAssessments = (m.assessments || []).map(a => {
+          if (a.id === assessmentId && a.questions) {
+            const updatedQuestions = [...a.questions];
+            updatedQuestions[questionIndex] = editedQuestion;
+            return { ...a, questions: updatedQuestions };
+          }
+          return a;
+        });
+        return { ...m, assessments: updatedAssessments };
+      }
+      return m;
+    });
+    setUpdatedModules(updatedModulesList);
+    setEditingQuestionId(null);
+    setEditedQuestions({});
+  };
 
   // Get API base URL
   const getApiBaseUrl = () => {
@@ -109,12 +133,23 @@ export default function LaunchApproval({
         timeLimit: assessmentQuestions.length * 2 // 2 minutes per question
       };
 
-      // Update module with new assessment
+      // Update module with new assessment (replace existing quiz instead of adding)
       const updatedModulesList = updatedModules.map(m => {
         if (m.id === moduleId) {
+          // Remove existing quiz for this module (keep only final exam if it exists and this is not final exam)
+          const existingAssessments = (m.assessments || []).filter(a => {
+            if (isFinalExam) {
+              // If generating final exam, remove only existing final exam
+              return !a.id?.startsWith('final-exam-');
+            } else {
+              // If generating regular quiz, remove only regular quizzes (keep final exam)
+              return a.id?.startsWith('final-exam-');
+            }
+          });
+          
           return {
             ...m,
-            assessments: [...(m.assessments || []), assessment]
+            assessments: [...existingAssessments, assessment] // Replace with new assessment
           };
         }
         return m;
@@ -531,69 +566,239 @@ export default function LaunchApproval({
                                   <span>Assessments & Quizzes</span>
                                 </h5>
                                 <div className="flex items-center space-x-2">
-                                  <button
-                                    onClick={() => generateModuleQuiz(module, false)}
-                                    disabled={generatingQuizForModule === module.id}
-                                    className="flex items-center space-x-2 px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
-                                  >
-                                    {generatingQuizForModule === module.id ? (
+                                  {(() => {
+                                    const hasRegularQuiz = module.assessments?.some(a => !a.id?.startsWith('final-exam-'));
+                                    const hasFinalExam = module.assessments?.some(a => a.id?.startsWith('final-exam-'));
+                                    
+                                    return (
                                       <>
-                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                        <span>Génération...</span>
+                                        <button
+                                          onClick={() => generateModuleQuiz(module, false)}
+                                          disabled={generatingQuizForModule === module.id}
+                                          className="flex items-center space-x-2 px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
+                                        >
+                                          {generatingQuizForModule === module.id ? (
+                                            <>
+                                              <Loader2 className="h-4 w-4 animate-spin" />
+                                              <span>Generating...</span>
+                                            </>
+                                          ) : (
+                                            <>
+                                              <FileQuestion className="h-4 w-4" />
+                                              <span>{hasRegularQuiz ? 'Regenerate Quiz' : 'Generate Quiz'}</span>
+                                            </>
+                                          )}
+                                        </button>
+                                        {isLastModule && (
+                                          <button
+                                            onClick={() => generateModuleQuiz(module, true)}
+                                            disabled={generatingFinalExam}
+                                            className="flex items-center space-x-2 px-3 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
+                                          >
+                                            {generatingFinalExam ? (
+                                              <>
+                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                                <span>Generating...</span>
+                                              </>
+                                            ) : (
+                                              <>
+                                                <FileQuestion className="h-4 w-4" />
+                                                <span>{hasFinalExam ? 'Regenerate Final Exam' : 'Generate Final Exam'}</span>
+                                              </>
+                                            )}
+                                          </button>
+                                        )}
                                       </>
-                                    ) : (
-                                      <>
-                                        <FileQuestion className="h-4 w-4" />
-                                        <span>Générer Quiz</span>
-                                      </>
-                                    )}
-                                  </button>
-                                  {isLastModule && (
-                                    <button
-                                      onClick={() => generateModuleQuiz(module, true)}
-                                      disabled={generatingFinalExam}
-                                      className="flex items-center space-x-2 px-3 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
-                                    >
-                                      {generatingFinalExam ? (
-                                        <>
-                                          <Loader2 className="h-4 w-4 animate-spin" />
-                                          <span>Génération...</span>
-                                        </>
-                                      ) : (
-                                        <>
-                                          <FileQuestion className="h-4 w-4" />
-                                          <span>Examen Final</span>
-                                        </>
-                                      )}
-                                    </button>
-                                  )}
+                                    );
+                                  })()}
                                 </div>
                               </div>
 
                               {/* Display existing assessments */}
                               {module.assessments && module.assessments.length > 0 ? (
-                                <div className="space-y-2">
-                                  {module.assessments.map((assessment, idx) => (
-                                    <div key={idx} className="bg-purple-50 rounded-lg p-3 border border-purple-200 flex items-center justify-between">
-                                      <div className="flex-1">
-                                        <h6 className="font-medium text-gray-900 text-sm mb-1">{assessment.title}</h6>
-                                        <div className="flex items-center space-x-3 text-xs text-gray-600">
-                                          <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded-full">
-                                            {assessment.questions?.length || 0} questions
-                                          </span>
-                                          <span>Type: {assessment.type || 'quiz'}</span>
-                                          <span>Passing Score: {assessment.passingScore || 80}%</span>
+                                <div className="space-y-3">
+                                  {module.assessments.map((assessment, idx) => {
+                                    const isExpanded = expandedQuizId === assessment.id;
+                                    
+                                    return (
+                                      <div key={idx} className="bg-white rounded-lg border border-purple-200 overflow-hidden">
+                                        <div className="p-3 flex items-center justify-between">
+                                          <div className="flex-1">
+                                            <h6 className="font-medium text-gray-900 text-sm mb-1">{assessment.title}</h6>
+                                            <div className="flex items-center space-x-3 text-xs text-gray-600">
+                                              <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded-full">
+                                                {assessment.questions?.length || 0} questions
+                                              </span>
+                                              <span>Type: {assessment.type || 'quiz'}</span>
+                                              <span>Passing Score: {assessment.passingScore || 80}%</span>
+                                            </div>
+                                          </div>
+                                          <div className="flex items-center space-x-2">
+                                            <CheckCircle className="h-4 w-4 text-purple-600" />
+                                            <button
+                                              onClick={() => setExpandedQuizId(isExpanded ? null : assessment.id)}
+                                              className="ml-2 px-3 py-1 text-xs text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                                            >
+                                              {isExpanded ? 'Hide' : 'View Questions'}
+                                            </button>
+                                          </div>
                                         </div>
+                                        
+                                        {/* Expanded Quiz Details */}
+                                        {isExpanded && assessment.questions && (
+                                          <div className="border-t border-purple-200 p-4 bg-gray-50">
+                                            <div className="space-y-4 max-h-96 overflow-y-auto">
+                                              {assessment.questions.map((question, qIdx) => {
+                                                const questionKey = `${assessment.id}-q${qIdx}`;
+                                                const isEditing = editingQuestionId === questionKey;
+                                                const editedQuestion = editedQuestions[questionKey] || question;
+                                                
+                                                return (
+                                                  <div key={qIdx} className="bg-white rounded-lg p-4 border border-gray-200">
+                                                    <div className="flex items-start justify-between mb-2">
+                                                      {isEditing ? (
+                                                        <div className="flex-1">
+                                                          <input
+                                                            type="text"
+                                                            value={editedQuestion.text}
+                                                            onChange={(e) => setEditedQuestions({
+                                                              ...editedQuestions,
+                                                              [questionKey]: { ...editedQuestion, text: e.target.value }
+                                                            })}
+                                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-3"
+                                                            placeholder="Question text"
+                                                          />
+                                                          <div className="space-y-2">
+                                                            {editedQuestion.options?.map((option, optIdx) => (
+                                                              <div key={optIdx} className="flex items-center space-x-2">
+                                                                <input
+                                                                  type="radio"
+                                                                  name={`correct-${questionKey}`}
+                                                                  checked={option === editedQuestion.correctAnswer}
+                                                                  onChange={() => setEditedQuestions({
+                                                                    ...editedQuestions,
+                                                                    [questionKey]: { ...editedQuestion, correctAnswer: option }
+                                                                  })}
+                                                                  className="text-green-600"
+                                                                />
+                                                                <input
+                                                                  type="text"
+                                                                  value={option}
+                                                                  onChange={(e) => {
+                                                                    const newOptions = [...(editedQuestion.options || [])];
+                                                                    newOptions[optIdx] = e.target.value;
+                                                                    setEditedQuestions({
+                                                                      ...editedQuestions,
+                                                                      [questionKey]: { ...editedQuestion, options: newOptions }
+                                                                    });
+                                                                  }}
+                                                                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg"
+                                                                  placeholder={`Option ${String.fromCharCode(65 + optIdx)}`}
+                                                                />
+                                                              </div>
+                                                            ))}
+                                                          </div>
+                                                          <textarea
+                                                            value={editedQuestion.explanation || ''}
+                                                            onChange={(e) => setEditedQuestions({
+                                                              ...editedQuestions,
+                                                              [questionKey]: { ...editedQuestion, explanation: e.target.value }
+                                                            })}
+                                                            className="w-full mt-3 px-3 py-2 border border-gray-300 rounded-lg"
+                                                            placeholder="Explanation (optional)"
+                                                            rows={2}
+                                                          />
+                                                          <div className="flex items-center space-x-2 mt-3">
+                                                            <button
+                                                              onClick={() => saveQuestionEdit(module.id, assessment.id, qIdx, editedQuestion)}
+                                                              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2"
+                                                            >
+                                                              <Save className="h-4 w-4" />
+                                                              <span>Save</span>
+                                                            </button>
+                                                            <button
+                                                              onClick={() => {
+                                                                setEditingQuestionId(null);
+                                                                setEditedQuestions({});
+                                                              }}
+                                                              className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors flex items-center space-x-2"
+                                                            >
+                                                              <XIcon className="h-4 w-4" />
+                                                              <span>Cancel</span>
+                                                            </button>
+                                                          </div>
+                                                        </div>
+                                                      ) : (
+                                                        <>
+                                                          <div className="flex-1">
+                                                            <h5 className="font-medium text-gray-900 text-sm">
+                                                              Question {qIdx + 1}: {question.text}
+                                                            </h5>
+                                                          </div>
+                                                          <div className="flex items-center space-x-2">
+                                                            <span className="text-xs text-gray-500">{question.points || 10} pts</span>
+                                                            <button
+                                                              onClick={() => {
+                                                                setEditingQuestionId(questionKey);
+                                                                setEditedQuestions({ [questionKey]: { ...question } });
+                                                              }}
+                                                              className="p-1 text-purple-600 hover:bg-purple-50 rounded transition-colors"
+                                                              title="Edit question"
+                                                            >
+                                                              <Edit3 className="h-4 w-4" />
+                                                            </button>
+                                                          </div>
+                                                        </>
+                                                      )}
+                                                    </div>
+                                                    {!isEditing && (
+                                                      <>
+                                                        <div className="space-y-2 mt-3">
+                                                          {question.options?.map((option, optIdx) => (
+                                                            <div
+                                                              key={optIdx}
+                                                              className={`p-2 rounded text-sm ${
+                                                                option === question.correctAnswer
+                                                                  ? 'bg-green-100 border border-green-300'
+                                                                  : 'bg-gray-50 border border-gray-200'
+                                                              }`}
+                                                            >
+                                                              <div className="flex items-center space-x-2">
+                                                                <span className="text-xs font-medium">
+                                                                  {String.fromCharCode(65 + optIdx)}.
+                                                                </span>
+                                                                <span className="text-xs">{option}</span>
+                                                                {option === question.correctAnswer && (
+                                                                  <CheckCircle className="h-3 w-3 text-green-600 ml-auto" />
+                                                                )}
+                                                              </div>
+                                                            </div>
+                                                          ))}
+                                                        </div>
+                                                        {question.explanation && (
+                                                          <div className="mt-3 p-2 bg-blue-50 rounded border border-blue-200">
+                                                            <p className="text-xs text-blue-900">
+                                                              <strong>Explanation:</strong> {question.explanation}
+                                                            </p>
+                                                          </div>
+                                                        )}
+                                                      </>
+                                                    )}
+                                                  </div>
+                                                );
+                                              })}
+                                            </div>
+                                          </div>
+                                        )}
                                       </div>
-                                      <CheckCircle className="h-4 w-4 text-purple-600" />
-                                    </div>
-                                  ))}
+                                    );
+                                  })}
                                 </div>
                               ) : (
                                 <div className="text-center py-4 text-gray-500 text-sm">
                                   <FileQuestion className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-                                  <p>Aucun quiz généré pour ce module</p>
-                                  <p className="text-xs mt-1">Cliquez sur "Générer Quiz" pour créer un quiz avec l'IA</p>
+                                  <p>No quiz generated for this module</p>
+                                  <p className="text-xs mt-1">Click on "Generate Quiz" to create a quiz with AI</p>
                                 </div>
                               )}
                             </div>
