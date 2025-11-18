@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Users, TrendingUp, AlertTriangle, Award, Calendar, Brain, Target, MessageSquare, Loader2 } from 'lucide-react';
 import { TrainerDashboard as TrainerDashboardType, Rep, AIInsight } from '../../types';
 import { JourneyService } from '../../infrastructure/services/JourneyService';
+import { OnboardingService } from '../../infrastructure/services/OnboardingService';
 import Cookies from 'js-cookie';
 
 interface TrainerDashboardProps {
@@ -15,6 +16,7 @@ export default function TrainerDashboard({ dashboard: propDashboard, onTraineeSe
   const [selectedTab, setSelectedTab] = useState('overview');
   const [dashboard, setDashboard] = useState<TrainerDashboardType | null>(null);
   const [journeys, setJourneys] = useState<any[]>([]);
+  const [gigMap, setGigMap] = useState<Map<string, string>>(new Map()); // Map gigId -> gigTitle
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,6 +37,24 @@ export default function TrainerDashboard({ dashboard: propDashboard, onTraineeSe
         
         if (!effectiveCompanyId) {
           throw new Error('Company ID is required');
+        }
+
+        // Fetch gigs to create a map of gigId -> gigTitle
+        try {
+          const gigsResponse = await OnboardingService.fetchGigsByCompany(effectiveCompanyId);
+          if (gigsResponse.data && gigsResponse.data.length > 0) {
+            const gigMap = new Map<string, string>();
+            gigsResponse.data.forEach((gig: any) => {
+              if (gig._id && gig.title) {
+                gigMap.set(gig._id, gig.title);
+              }
+            });
+            setGigMap(gigMap);
+            console.log('[TrainerDashboard] Loaded gig map:', gigMap.size, 'gigs');
+          }
+        } catch (err) {
+          console.warn('[TrainerDashboard] Could not fetch gigs:', err);
+          // Continue even if gigs fetch fails
         }
 
         // Fetch journeys using the new endpoints
@@ -433,7 +453,13 @@ export default function TrainerDashboard({ dashboard: propDashboard, onTraineeSe
                             <span className="font-medium text-gray-900">{journey.enrolledRepIds.length} trainees</span>
                           </div>
                         )}
-                        {journey.gigId && (
+                        {journey.gigTitle && (
+                          <div className="flex items-center space-x-2">
+                            <span className="text-gray-600">Gig:</span>
+                            <span className="font-medium text-gray-900 text-sm">{journey.gigTitle}</span>
+                          </div>
+                        )}
+                        {!journey.gigTitle && journey.gigId && (
                           <div className="flex items-center space-x-2">
                             <span className="text-gray-600">Gig ID:</span>
                             <span className="font-medium text-gray-900 text-xs truncate">{journey.gigId}</span>
