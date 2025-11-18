@@ -35,7 +35,7 @@ export class JourneyService {
    * Get all training journeys
    */
   static async getAllJourneys(): Promise<any[]> {
-    const response = await ApiClient.get('/journeys');
+    const response = await ApiClient.get('/training_journeys');
     return response.data;
   }
 
@@ -43,7 +43,7 @@ export class JourneyService {
    * Get a specific journey by ID
    */
   static async getJourneyById(id: string): Promise<any> {
-    const response = await ApiClient.get(`/journeys/${id}`);
+    const response = await ApiClient.get(`/training_journeys/${id}`);
     return response.data;
   }
 
@@ -51,7 +51,7 @@ export class JourneyService {
    * Get journeys by status
    */
   static async getJourneysByStatus(status: string): Promise<any[]> {
-    const response = await ApiClient.get(`/journeys/status/${status}`);
+    const response = await ApiClient.get(`/training_journeys/status/${status}`);
     return response.data;
   }
 
@@ -83,7 +83,7 @@ export class JourneyService {
       }))
     };
 
-    const response = await ApiClient.post('/journeys', payload);
+    const response = await ApiClient.post('/training_journeys', payload);
     return response.data;
   }
 
@@ -143,7 +143,7 @@ export class JourneyService {
       enrolledRepIds: request.enrolledRepIds
     };
 
-    const response = await ApiClient.post('/journeys/launch', payload);
+    const response = await ApiClient.post('/training_journeys/launch', payload);
     
     if (!response.data.success) {
       throw new Error(response.data.error || 'Failed to launch journey');
@@ -156,7 +156,7 @@ export class JourneyService {
    * Archive a journey
    */
   static async archiveJourney(id: string): Promise<any> {
-    const response = await ApiClient.post(`/journeys/${id}/archive`);
+    const response = await ApiClient.post(`/training_journeys/${id}/archive`);
     return response.data;
   }
 
@@ -164,8 +164,40 @@ export class JourneyService {
    * Delete a journey
    */
   static async deleteJourney(id: string): Promise<any> {
-    const response = await ApiClient.delete(`/journeys/${id}`);
+    const response = await ApiClient.delete(`/training_journeys/${id}`);
     return response.data;
+  }
+
+  /**
+   * Get journeys by company ID
+   */
+  static async getJourneysByCompany(companyId: string): Promise<any> {
+    const endpoint = `/training_journeys/trainer/companyId/${companyId}`;
+    console.log('[JourneyService] Fetching journeys by company from:', endpoint);
+    try {
+      const response = await ApiClient.get(endpoint);
+      console.log('[JourneyService] Response:', response);
+      return response.data;
+    } catch (error: any) {
+      console.error('[JourneyService] Error fetching journeys by company:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get journeys by company ID and gig ID
+   */
+  static async getJourneysByCompanyAndGig(companyId: string, gigId: string): Promise<any> {
+    const endpoint = `/training_journeys/trainer/companyId/${companyId}/gigId/${gigId}`;
+    console.log('[JourneyService] Fetching journeys by company and gig from:', endpoint);
+    try {
+      const response = await ApiClient.get(endpoint);
+      console.log('[JourneyService] Response:', response);
+      return response.data;
+    } catch (error: any) {
+      console.error('[JourneyService] Error fetching journeys by company and gig:', error);
+      throw error;
+    }
   }
 
   /**
@@ -176,7 +208,7 @@ export class JourneyService {
     if (gigId) {
       params.append('gigId', gigId);
     }
-    const endpoint = `/journeys/trainer/dashboard?${params.toString()}`;
+    const endpoint = `/training_journeys/trainer/dashboard?${params.toString()}`;
     console.log('[JourneyService] Fetching trainer dashboard from:', endpoint);
     try {
       const response = await ApiClient.get(endpoint);

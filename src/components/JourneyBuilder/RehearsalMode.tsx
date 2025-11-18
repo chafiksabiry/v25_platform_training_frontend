@@ -811,7 +811,7 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
       case 'document':
         if (content?.file && content.file.url) {
           console.log('✅ Rendering DocumentViewer with URL:', content.file.url);
-          return (
+    return (
             <div className="w-full h-full" style={{ minHeight: '400px' }}>
               <DocumentViewer
                 fileUrl={content.file.url}
@@ -985,7 +985,7 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
                   </div>
                   <h1 className="text-2xl font-bold text-gray-900">{journey.name}</h1>
                   <p className="text-gray-600">Test and review your training journey before launch</p>
-                  </div>
+                </div>
                 </div>
               
                 <div className="text-right">
@@ -1039,7 +1039,7 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
                     Module {currentModuleIndex + 1} of {updatedModules.length}
                   </h3>
                   <div className="flex items-center space-x-2">
-                    <button
+                <button
                       onClick={handlePreviousModule}
                       disabled={currentModuleIndex === 0}
                       className="px-3 py-1 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
@@ -1238,14 +1238,14 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
                                     <>
                                       <Loader2 className="h-4 w-4 animate-spin" />
                                       <span>Generating...</span>
-                                    </>
-                                  ) : (
-                                    <>
+                    </>
+                  ) : (
+                    <>
                                       <FileQuestion className="h-4 w-4" />
                                       <span>{hasRegularQuiz ? 'Regenerate Quiz' : 'Generate Quiz'}</span>
-                                    </>
-                                  )}
-                                </button>
+                    </>
+                  )}
+                </button>
                                 {isLastModule && (
                                   <button
                                     onClick={() => showQuizConfig(currentModule, true)}
@@ -1268,8 +1268,8 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
                               </>
                             );
                           })()}
-                        </div>
-                      </div>
+              </div>
+            </div>
                       {currentModule.assessments && currentModule.assessments.length > 0 ? (
                         <div className="space-y-3">
                           {currentModule.assessments.map((assessment, idx) => {
@@ -1329,7 +1329,7 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
                                                     className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-3"
                                                     placeholder="Question text"
                                                   />
-                                                  <div className="space-y-2">
+            <div className="space-y-2">
                                                     {editedQuestion.options?.map((option, optIdx) => (
                                                       <div key={optIdx} className="flex items-center space-x-2">
                                                         <input
@@ -1356,7 +1356,7 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
                                                           className="flex-1 px-3 py-2 border border-gray-300 rounded-lg"
                                                           placeholder={`Option ${String.fromCharCode(65 + optIdx)}`}
                                                         />
-                                                      </div>
+              </div>
                                                     ))}
                                                   </div>
                                                   <textarea
@@ -1563,10 +1563,10 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
                       >
                         Cancel
                       </button>
-                    </div>
-                  </div>
-                )}
               </div>
+            </div>
+                )}
+          </div>
 
               {/* Feedback List */}
               <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-6">
@@ -1626,19 +1626,19 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
                   {overallRating === 5 && 'Outstanding quality'}
                 </div>
 
-                <button
+                    <button
                   onClick={handleFinishRehearsal}
                   disabled={overallRating === 0}
                   className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                >
+                    >
                   <Rocket className="h-4 w-4" />
                   <span>Finish Rehearsal</span>
-                </button>
+                    </button>
               </div>
             </div>
           </div>
-        </div>
-      </div>
+                  </div>
+                </div>
 
       {/* Quiz Configuration Modal */}
       {showQuizConfigModal && quizConfigModuleId && (
@@ -1787,10 +1787,10 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
                       <p className="text-xs text-red-600 mt-1">
                         The sum must equal the total number of questions
                       </p>
-                    )}
-                  </div>
-                </div>
-              </div>
+            )}
+          </div>
+        </div>
+      </div>
             </div>
 
             {/* Modal Actions */}
