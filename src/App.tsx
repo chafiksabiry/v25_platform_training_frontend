@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { User, Sparkles, Zap, Upload, Wand2, Rocket, Eye, Target } from 'lucide-react';
 // import { useAuth } from './hooks/useAuth';
 import JourneyBuilder from './components/JourneyBuilder/JourneyBuilder';
@@ -51,6 +52,7 @@ import {
 import { useTrainingProgress } from './hooks/useTrainingProgress';
 import { Company, TrainingJourney, TrainingModule, Rep } from './types';
 import { getCurrentUserName } from './utils/userUtils';
+import Cookies from 'js-cookie';
 
 function App() {
   // const { user, signOut } = useAuth();
@@ -713,6 +715,65 @@ function App() {
         return <div>Page not found</div>;
     }
   };
+
+  const location = useLocation();
+  
+  // Check if we're on a route that should use routing instead of state-based navigation
+  const isRouteBased = location.pathname === '/trainer/dashboard' || 
+                       location.pathname === '/trainee/dashboard';
+  
+  // If we're on a route-based path, render the routes
+  if (isRouteBased) {
+    return (
+      <Routes>
+        <Route path="/trainer/dashboard" element={
+          <div className="min-h-screen bg-gray-50">
+            <Header 
+              repName={getCurrentUserName()} 
+              onMenuToggle={() => setSidebarOpen(!sidebarOpen)}
+            />
+            <TrainerDashboard 
+              companyId={Cookies.get('companyId') || undefined}
+              gigId={new URLSearchParams(location.search).get('gigId') || undefined}
+              onTraineeSelect={(trainee) => {
+                console.log('Selected trainee:', trainee);
+              }}
+            />
+          </div>
+        } />
+        <Route path="/trainee/dashboard" element={
+          <div className="min-h-screen bg-gray-50">
+            <Header 
+              repName={getCurrentUserName()} 
+              onMenuToggle={() => setSidebarOpen(!sidebarOpen)}
+            />
+            <div className="flex">
+              <Sidebar 
+                activeTab={activeTab} 
+                onTabChange={setActiveTab}
+                isOpen={sidebarOpen}
+                onClose={() => setSidebarOpen(false)}
+              />
+              <main className="flex-1 p-6">
+                <div className="max-w-7xl mx-auto">
+                  <ProgressOverview stats={progressStats} />
+                  <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div className="lg:col-span-2">
+                      <CurrentGig />
+                      <OnboardingSteps steps={mockOnboardingSteps} />
+                    </div>
+                    <div>
+                      <TrainingModules modules={progress.modules} onModuleSelect={setSelectedModule} />
+                    </div>
+                  </div>
+                </div>
+              </main>
+            </div>
+          </div>
+        } />
+      </Routes>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
