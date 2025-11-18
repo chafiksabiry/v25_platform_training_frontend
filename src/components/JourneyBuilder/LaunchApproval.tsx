@@ -16,6 +16,7 @@ interface LaunchApprovalProps {
   onBackToRehearsal: () => void;
   onBack: () => void;
   gigId?: string | null;
+  company?: { industry?: string } | null;
 }
 
 export default function LaunchApproval({ 
@@ -26,7 +27,8 @@ export default function LaunchApproval({
   onLaunch, 
   onBackToRehearsal,
   onBack,
-  gigId 
+  gigId,
+  company 
 }: LaunchApprovalProps) {
   const [selectedReps, setSelectedReps] = useState<string[]>([]);
   const [expandedModules, setExpandedModules] = useState<string[]>([]);
@@ -287,8 +289,14 @@ export default function LaunchApproval({
       const companyId = Cookies.get('companyId');
       
       // ✅ Sauvegarder dans MongoDB with companyId and gigId
+      // Add industry to journey if available from company
+      const journeyWithIndustry = {
+        ...updatedJourney,
+        industry: company?.industry || (updatedJourney as any).industry || null
+      };
+      
       const launchResponse = await JourneyService.launchJourney({
-        journey: updatedJourney,
+        journey: journeyWithIndustry,
         modules: updatedModules, // Use updated modules with quizzes
         enrolledRepIds: enrolledReps.map(r => r.id),
         launchSettings: launchSettings,

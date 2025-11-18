@@ -158,6 +158,7 @@ export default function JourneyBuilder({ onComplete }: JourneyBuilderProps) {
               onBackToRehearsal={() => setShowLaunchApproval(false)}
               onBack={() => setCurrentStep(2)}
               gigId={selectedGigId}
+              company={company}
             />
           ) : null;
         }

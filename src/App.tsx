@@ -50,6 +50,7 @@ import {
 } from './data/mockData';
 import { useTrainingProgress } from './hooks/useTrainingProgress';
 import { Company, TrainingJourney, TrainingModule, Rep } from './types';
+import { getCurrentUserName } from './utils/userUtils';
 
 function App() {
   // const { user, signOut } = useAuth();
@@ -777,7 +778,7 @@ function App() {
         </div>
         
         <Header 
-          repName={mockRep.name} 
+          repName={getCurrentUserName()} 
           onMenuToggle={() => setSidebarOpen(!sidebarOpen)}
         />
         

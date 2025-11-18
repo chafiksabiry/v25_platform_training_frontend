@@ -93,12 +93,14 @@ export class JourneyService {
   static async launchJourney(request: LaunchJourneyRequest): Promise<LaunchJourneyResponse> {
     const payload = {
       journey: {
-        title: request.journey.title,
+        // Map name to title (frontend uses 'name', backend expects 'title')
+        title: (request.journey as any).title || request.journey.name || 'Untitled Journey',
         description: request.journey.description,
-        industry: request.journey.industry,
+        // Get industry from journey or company if available
+        industry: (request.journey as any).industry || (request.journey as any).company?.industry || null,
         status: 'active',
-        company: request.journey.company,
-        vision: request.journey.vision,
+        company: (request.journey as any).company,
+        vision: (request.journey as any).vision,
         launchSettings: request.launchSettings,
         rehearsalData: request.rehearsalData,
         companyId: request.companyId,
