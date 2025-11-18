@@ -34,8 +34,12 @@ export default function JourneySuccess({
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
-  const totalDuration = modules.reduce((sum, module) => sum + (module.duration || 0), 0);
-  const totalAssessments = modules.reduce((sum, module) => sum + (module.assessments?.length || 0), 0);
+  const totalDuration = (modules || []).reduce((sum, module) => sum + (module.duration || 0), 0);
+  const totalAssessments = (modules || []).reduce((sum, module) => sum + (module.assessments?.length || 0), 0);
+  
+  // Safe defaults for optional arrays
+  const safeEnrolledReps = enrolledReps || [];
+  const safeTargetRoles = journey.targetRoles || [];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50 flex items-center justify-center p-4">
@@ -67,13 +71,13 @@ export default function JourneySuccess({
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
             <div className="text-center p-6 bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl border border-blue-200">
               <Users className="h-10 w-10 text-blue-600 mx-auto mb-3" />
-              <div className="text-2xl font-bold text-blue-600 mb-1">{enrolledReps.length}</div>
+              <div className="text-2xl font-bold text-blue-600 mb-1">{safeEnrolledReps.length}</div>
               <div className="text-sm text-gray-600">Team Members Enrolled</div>
             </div>
             
             <div className="text-center p-6 bg-gradient-to-br from-purple-50 to-indigo-50 rounded-xl border border-purple-200">
               <Rocket className="h-10 w-10 text-purple-600 mx-auto mb-3" />
-              <div className="text-2xl font-bold text-purple-600 mb-1">{modules.length}</div>
+              <div className="text-2xl font-bold text-purple-600 mb-1">{(modules || []).length}</div>
               <div className="text-sm text-gray-600">Enhanced Modules</div>
             </div>
             
@@ -99,26 +103,36 @@ export default function JourneySuccess({
               <div>
                 <h4 className="font-medium text-gray-900 mb-2">Target Roles:</h4>
                 <div className="flex flex-wrap gap-2">
-                  {journey.targetRoles.map((role, index) => (
-                    <span key={index} className="px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full">
-                      {role}
-                    </span>
-                  ))}
+                  {safeTargetRoles.length > 0 ? (
+                    safeTargetRoles.map((role, index) => (
+                      <span key={index} className="px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full">
+                        {role}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-sm text-gray-500">No target roles specified</span>
+                  )}
                 </div>
               </div>
               
               <div>
                 <h4 className="font-medium text-gray-900 mb-2">Enrolled Team Members:</h4>
                 <div className="flex flex-wrap gap-2">
-                  {enrolledReps.slice(0, 5).map((rep) => (
-                    <span key={rep.id} className="px-3 py-1 bg-green-100 text-green-800 text-sm rounded-full">
-                      {rep.name}
-                    </span>
-                  ))}
-                  {enrolledReps.length > 5 && (
-                    <span className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-full">
-                      +{enrolledReps.length - 5} more
-                    </span>
+                  {safeEnrolledReps.length > 0 ? (
+                    <>
+                      {safeEnrolledReps.slice(0, 5).map((rep) => (
+                        <span key={rep.id} className="px-3 py-1 bg-green-100 text-green-800 text-sm rounded-full">
+                          {rep.name}
+                        </span>
+                      ))}
+                      {safeEnrolledReps.length > 5 && (
+                        <span className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-full">
+                          +{safeEnrolledReps.length - 5} more
+                        </span>
+                      )}
+                    </>
+                  ) : (
+                    <span className="text-sm text-gray-500">No team members enrolled yet</span>
                   )}
                 </div>
               </div>
@@ -137,11 +151,11 @@ export default function JourneySuccess({
             </p>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="text-center p-3 bg-white rounded-lg">
-                <div className="text-lg font-bold text-blue-600">{enrolledReps.length}</div>
+                <div className="text-lg font-bold text-blue-600">{safeEnrolledReps.length}</div>
                 <div className="text-xs text-gray-600">Email Notifications</div>
               </div>
               <div className="text-center p-3 bg-white rounded-lg">
-                <div className="text-lg font-bold text-blue-600">{enrolledReps.length}</div>
+                <div className="text-lg font-bold text-blue-600">{safeEnrolledReps.length}</div>
                 <div className="text-xs text-gray-600">Dashboard Updates</div>
               </div>
               <div className="text-center p-3 bg-white rounded-lg">

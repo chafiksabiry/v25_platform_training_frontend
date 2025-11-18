@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { Upload, FileText, Video, Music, Image, File, CheckCircle, Clock, AlertCircle, AlertTriangle, X, Sparkles, Zap, BarChart3, Eye, Wand2, Loader2 } from 'lucide-react';
+import { Upload, FileText, Video, Music, Image, File, CheckCircle, Clock, AlertCircle, AlertTriangle, X, Sparkles, Zap, BarChart3, Eye, Wand2 } from 'lucide-react';
 import { ContentUpload, ContentAnalysis } from '../../types/core';
 import { AIService } from '../../infrastructure/services/AIService';
 import { cloudinaryService } from '../../lib/cloudinaryService';
@@ -239,13 +239,13 @@ export default function ContentUploader({ onComplete, onBack }: ContentUploaderP
       case 'analyzed':
         return <CheckCircle className="h-5 w-5 text-green-500" />;
       case 'processing':
-        return <Loader2 className="h-5 w-5 text-blue-500 animate-spin" />;
+        return <Wand2 className="h-5 w-5 text-blue-500 animate-spin" />;
       case 'uploading':
-        return <Loader2 className="h-5 w-5 text-blue-500 animate-spin" />;
+        return <Wand2 className="h-5 w-5 text-blue-500 animate-spin" />;
       case 'error':
         return <AlertCircle className="h-5 w-5 text-red-500" />;
       default:
-        return <Loader2 className="h-5 w-5 text-gray-400 animate-spin" />;
+        return <Wand2 className="h-5 w-5 text-gray-400 animate-spin" />;
     }
   };
 
@@ -368,9 +368,6 @@ export default function ContentUploader({ onComplete, onBack }: ContentUploaderP
                   <p className="text-gray-600">Extracting key concepts, learning objectives, and structure...</p>
                 </div>
               </div>
-              <div className="mt-4 w-full bg-gray-200 rounded-full h-2">
-                <div className="bg-gradient-to-r from-blue-500 to-indigo-500 h-2 rounded-full animate-pulse" style={{ width: '60%' }}></div>
-              </div>
             </div>
           )}
 
@@ -473,20 +470,15 @@ export default function ContentUploader({ onComplete, onBack }: ContentUploaderP
                     )}
                     
                     {(upload.status === 'uploading' || upload.status === 'processing') && (
-                      <div className="space-y-3 mt-4">
-                        <div className="flex items-center justify-center space-x-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                          <Loader2 className="h-6 w-6 text-blue-500 animate-spin" />
-                          <div className="flex-1">
-                            <span className="text-sm text-blue-700 font-medium block">
-                              {upload.status === 'uploading' ? 'Uploading document...' : 'AI is analyzing this file...'}
-                            </span>
-                            <span className="text-xs text-blue-600 block mt-1">
-                              {upload.status === 'uploading' ? 'Please wait while we upload your file' : 'Extracting key concepts and structure...'}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="w-full bg-blue-200 rounded-full h-2">
-                          <div className="bg-gradient-to-r from-blue-500 to-indigo-500 h-2 rounded-full animate-pulse" style={{ width: upload.status === 'uploading' ? '50%' : '70%' }}></div>
+                      <div className="flex items-center justify-center space-x-3 p-4 bg-blue-50 rounded-lg border border-blue-200 mt-4">
+                        <Wand2 className="h-6 w-6 text-blue-500 animate-spin" />
+                        <div className="flex-1">
+                          <span className="text-sm text-blue-700 font-medium block">
+                            {upload.status === 'uploading' ? 'Uploading document...' : 'AI is analyzing this file...'}
+                          </span>
+                          <span className="text-xs text-blue-600 block mt-1">
+                            {upload.status === 'uploading' ? 'Please wait while we upload your file' : 'Extracting key concepts and structure...'}
+                          </span>
                         </div>
                       </div>
                     )}

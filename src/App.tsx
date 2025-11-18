@@ -117,13 +117,20 @@ function App() {
     console.log('🎉 Journey completed, redirecting to success page:', {
       journey: journey.name,
       modules: modules.length,
-      enrolledReps: enrolledReps.length
+      enrolledReps: (enrolledReps || []).length
     });
     // Hide welcome screen and journey builder
     setShowWelcome(false);
     setShowJourneyBuilder(false);
-    // Set journey data and show success page
-    setLaunchedJourney({ journey, modules, enrolledReps });
+    // Set journey data and show success page - ensure arrays are never undefined
+    setLaunchedJourney({ 
+      journey: {
+        ...journey,
+        targetRoles: journey.targetRoles || []
+      }, 
+      modules: modules || [], 
+      enrolledReps: enrolledReps || [] 
+    });
     setShowJourneySuccess(true);
     // Scroll to top when redirecting
     window.scrollTo({ top: 0, behavior: 'smooth' });
