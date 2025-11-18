@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { User, Sparkles, Zap, Upload, Wand2, Rocket, Eye, Target } from 'lucide-react';
 // import { useAuth } from './hooks/useAuth';
 import JourneyBuilder from './components/JourneyBuilder/JourneyBuilder';
@@ -52,7 +51,6 @@ import {
 import { useTrainingProgress } from './hooks/useTrainingProgress';
 import { Company, TrainingJourney, TrainingModule, Rep } from './types';
 import { getCurrentUserName } from './utils/userUtils';
-import Cookies from 'js-cookie';
 
 function App() {
   // const { user, signOut } = useAuth();
@@ -160,6 +158,124 @@ function App() {
     setSelectedTrainee(null);
   };
 
+  // Handlers for JourneySuccess action buttons
+  const handlePreviewAsLearner = () => {
+    if (launchedJourney && launchedJourney.enrolledReps.length > 0) {
+      // Preview as the first enrolled rep
+      setSelectedTrainee(launchedJourney.enrolledReps[0]);
+      setShowTraineePortal(true);
+      setShowJourneySuccess(false);
+    } else {
+      alert('No enrolled participants to preview. Please enroll participants first.');
+    }
+  };
+
+  const handleExportReport = () => {
+    if (!launchedJourney) return;
+    
+    // Create a report object
+    const report = {
+      journey: {
+        name: launchedJourney.journey.name,
+        description: launchedJourney.journey.description,
+        status: launchedJourney.journey.status,
+        createdAt: launchedJourney.journey.createdAt
+      },
+      modules: launchedJourney.modules.map(m => ({
+        title: m.title,
+        description: m.description,
+        duration: m.duration,
+        difficulty: m.difficulty,
+        learningObjectives: m.learningObjectives,
+        assessments: m.assessments?.length || 0
+      })),
+      participants: launchedJourney.enrolledReps.map(r => ({
+        name: r.name,
+        email: r.email,
+        role: r.role,
+        department: r.department
+      })),
+      summary: {
+        totalModules: launchedJourney.modules.length,
+        totalParticipants: launchedJourney.enrolledReps.length,
+        totalDuration: launchedJourney.modules.reduce((sum, m) => sum + (m.duration || 0), 0),
+        totalAssessments: launchedJourney.modules.reduce((sum, m) => sum + (m.assessments?.length || 0), 0)
+      },
+      exportedAt: new Date().toISOString()
+    };
+
+    // Convert to JSON and download
+    const dataStr = JSON.stringify(report, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `training-journey-report-${launchedJourney.journey.name.replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleShareJourney = () => {
+    if (!launchedJourney) return;
+    
+    const journeyUrl = `${window.location.origin}/training/journey/${launchedJourney.journey.id}`;
+    
+    // Try to use Web Share API if available
+    if (navigator.share) {
+      navigator.share({
+        title: `Training Journey: ${launchedJourney.journey.name}`,
+        text: `Check out this training journey: ${launchedJourney.journey.description}`,
+        url: journeyUrl
+      }).catch(err => {
+        console.log('Error sharing:', err);
+        // Fallback to clipboard
+        copyToClipboard(journeyUrl);
+      });
+    } else {
+      // Fallback to clipboard
+      copyToClipboard(journeyUrl);
+    }
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      alert('Journey link copied to clipboard!');
+    }).catch(err => {
+      console.error('Failed to copy:', err);
+      alert('Failed to copy link. Please copy manually: ' + text);
+    });
+  };
+
+  const handleJourneySettings = () => {
+    alert('Journey Settings feature coming soon!\n\nYou will be able to:\n- Edit journey details\n- Modify modules\n- Update launch settings\n- Change notification preferences');
+  };
+
+  const handleManageParticipants = () => {
+    if (!launchedJourney) return;
+    
+    const participantList = launchedJourney.enrolledReps.map(r => `- ${r.name} (${r.email})`).join('\n');
+    const message = `Current Participants (${launchedJourney.enrolledReps.length}):\n\n${participantList}\n\n\nManage Participants feature coming soon!\n\nYou will be able to:\n- Add new participants\n- Remove participants\n- View participant progress\n- Send individual messages`;
+    alert(message);
+  };
+
+  const handleSendReminder = () => {
+    if (!launchedJourney) return;
+    
+    const participantCount = launchedJourney.enrolledReps.length;
+    if (participantCount === 0) {
+      alert('No participants enrolled in this journey.');
+      return;
+    }
+
+    if (confirm(`Send reminder to ${participantCount} participant(s)?`)) {
+      // Simulate sending reminders
+      console.log('Sending reminders to:', launchedJourney.enrolledReps.map(r => r.email));
+      alert(`Reminders sent successfully to ${participantCount} participant(s)!`);
+    }
+  };
+
   // Scroll to top when welcome screen is shown
   useEffect(() => {
     if (!hasCompletedSetup && showWelcome && !showJourneyBuilder && !showManualTraining && !showJourneySuccess) {
@@ -255,7 +371,7 @@ function App() {
               Skip setup and explore the platform
             </button>
           </div>
-        </div>
+          </div>
         </div>
       </div>
     );
@@ -298,6 +414,12 @@ function App() {
         enrolledReps={launchedJourney.enrolledReps}
         onViewDashboard={handleViewDashboard}
         onCreateAnother={handleCreateAnotherJourney}
+        onPreviewAsLearner={handlePreviewAsLearner}
+        onExportReport={handleExportReport}
+        onShareJourney={handleShareJourney}
+        onJourneySettings={handleJourneySettings}
+        onManageParticipants={handleManageParticipants}
+        onSendReminder={handleSendReminder}
       />
     );
   }
@@ -715,65 +837,6 @@ function App() {
         return <div>Page not found</div>;
     }
   };
-
-  const location = useLocation();
-  
-  // Check if we're on a route that should use routing instead of state-based navigation
-  const isRouteBased = location.pathname === '/trainer/dashboard' || 
-                       location.pathname === '/trainee/dashboard';
-  
-  // If we're on a route-based path, render the routes
-  if (isRouteBased) {
-    return (
-      <Routes>
-        <Route path="/trainer/dashboard" element={
-          <div className="min-h-screen bg-gray-50">
-            <Header 
-              repName={getCurrentUserName()} 
-              onMenuToggle={() => setSidebarOpen(!sidebarOpen)}
-            />
-            <TrainerDashboard 
-              companyId={Cookies.get('companyId') || undefined}
-              gigId={new URLSearchParams(location.search).get('gigId') || undefined}
-              onTraineeSelect={(trainee) => {
-                console.log('Selected trainee:', trainee);
-              }}
-            />
-          </div>
-        } />
-        <Route path="/trainee/dashboard" element={
-          <div className="min-h-screen bg-gray-50">
-            <Header 
-              repName={getCurrentUserName()} 
-              onMenuToggle={() => setSidebarOpen(!sidebarOpen)}
-            />
-            <div className="flex">
-              <Sidebar 
-                activeTab={activeTab} 
-                onTabChange={setActiveTab}
-                isOpen={sidebarOpen}
-                onClose={() => setSidebarOpen(false)}
-              />
-              <main className="flex-1 p-6">
-                <div className="max-w-7xl mx-auto">
-                  <ProgressOverview stats={progressStats} />
-                  <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <div className="lg:col-span-2">
-                      <CurrentGig />
-                      <OnboardingSteps steps={mockOnboardingSteps} />
-                    </div>
-                    <div>
-                      <TrainingModules modules={progress.modules} onModuleSelect={setSelectedModule} />
-                    </div>
-                  </div>
-                </div>
-              </main>
-            </div>
-          </div>
-        } />
-      </Routes>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex">

@@ -8,6 +8,12 @@ interface JourneySuccessProps {
   enrolledReps: Rep[];
   onViewDashboard: () => void;
   onCreateAnother: () => void;
+  onPreviewAsLearner?: () => void;
+  onExportReport?: () => void;
+  onShareJourney?: () => void;
+  onJourneySettings?: () => void;
+  onManageParticipants?: () => void;
+  onSendReminder?: () => void;
 }
 
 export default function JourneySuccess({ 
@@ -15,7 +21,13 @@ export default function JourneySuccess({
   modules, 
   enrolledReps, 
   onViewDashboard, 
-  onCreateAnother 
+  onCreateAnother,
+  onPreviewAsLearner,
+  onExportReport,
+  onShareJourney,
+  onJourneySettings,
+  onManageParticipants,
+  onSendReminder
 }: JourneySuccessProps) {
   // Scroll to top when component mounts
   useEffect(() => {
@@ -164,32 +176,50 @@ export default function JourneySuccess({
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Manage Your Training Journey</h3>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <button className="flex items-center space-x-3 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
+            <button 
+              onClick={onPreviewAsLearner}
+              className="flex items-center space-x-3 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+            >
               <Eye className="h-5 w-5" />
               <span>Preview as Learner</span>
             </button>
             
-            <button className="flex items-center space-x-3 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
+            <button 
+              onClick={onExportReport}
+              className="flex items-center space-x-3 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+            >
               <Download className="h-5 w-5" />
               <span>Export Report</span>
             </button>
             
-            <button className="flex items-center space-x-3 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
+            <button 
+              onClick={onShareJourney}
+              className="flex items-center space-x-3 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+            >
               <Share2 className="h-5 w-5" />
               <span>Share Journey</span>
             </button>
             
-            <button className="flex items-center space-x-3 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
+            <button 
+              onClick={onJourneySettings}
+              className="flex items-center space-x-3 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+            >
               <Settings className="h-5 w-5" />
               <span>Journey Settings</span>
             </button>
             
-            <button className="flex items-center space-x-3 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
+            <button 
+              onClick={onManageParticipants}
+              className="flex items-center space-x-3 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+            >
               <Users className="h-5 w-5" />
               <span>Manage Participants</span>
             </button>
             
-            <button className="flex items-center space-x-3 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
+            <button 
+              onClick={onSendReminder}
+              className="flex items-center space-x-3 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+            >
               <Bell className="h-5 w-5" />
               <span>Send Reminder</span>
             </button>

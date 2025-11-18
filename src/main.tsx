@@ -6,7 +6,6 @@ console.log('[Training] main.tsx is being executed');
 
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import ErrorBoundary from './components/ErrorBoundary/ErrorBoundary';
 import './index.css';
@@ -102,9 +101,7 @@ function render(props: { container?: HTMLElement }) {
     root.render(
       <StrictMode>
         <ErrorBoundary>
-          <BrowserRouter basename="/training">
-            <App />
-          </BrowserRouter>
+          <App />
         </ErrorBoundary>
       </StrictMode>
     );

@@ -316,7 +316,7 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
                     >
                       <option value="">Select the industry for training</option>
                       {industries.map((industry) => (
-                        <option key={industry._id} value={industry.name}>
+                        <option key={industry._id} value={industry._id}>
                           {industry.name}
                         </option>
                       ))}

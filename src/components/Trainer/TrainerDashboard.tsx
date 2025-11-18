@@ -435,10 +435,16 @@ export default function TrainerDashboard({ dashboard: propDashboard, onTraineeSe
                         </span>
                       </div>
                       <div className="space-y-2 text-sm">
-                        {journey.industry && (
+                        {journey.industryTitle && (
                           <div className="flex items-center space-x-2">
                             <span className="text-gray-600">Industry:</span>
-                            <span className="font-medium text-gray-900">{journey.industry}</span>
+                            <span className="font-medium text-gray-900">{journey.industryTitle}</span>
+                          </div>
+                        )}
+                        {!journey.industryTitle && journey.industry && (
+                          <div className="flex items-center space-x-2">
+                            <span className="text-gray-600">Industry ID:</span>
+                            <span className="font-medium text-gray-900 text-xs truncate">{journey.industry}</span>
                           </div>
                         )}
                         {journey.modules && (
