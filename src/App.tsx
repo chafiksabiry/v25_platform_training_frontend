@@ -402,7 +402,7 @@ function App() {
     if (userRole === 'trainer') {
       switch (activeTab) {
         case 'dashboard':
-          return <TrainerDashboard dashboard={mockTrainerDashboard} onTraineeSelect={(trainee) => console.log('Selected trainee:', trainee)} />;
+          return <TrainerDashboard onTraineeSelect={(trainee) => console.log('Selected trainee:', trainee)} />;
         case 'training':
           return <TrainingModules modules={progress.modules} onModuleSelect={setSelectedModule} />;
         case 'assessments':

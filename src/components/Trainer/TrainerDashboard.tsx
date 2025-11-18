@@ -13,18 +13,14 @@ interface TrainerDashboardProps {
 
 export default function TrainerDashboard({ dashboard: propDashboard, onTraineeSelect, companyId, gigId }: TrainerDashboardProps) {
   const [selectedTab, setSelectedTab] = useState('overview');
-  const [dashboard, setDashboard] = useState<TrainerDashboardType | null>(propDashboard || null);
-  const [loading, setLoading] = useState(!propDashboard);
+  const [dashboard, setDashboard] = useState<TrainerDashboardType | null>(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // If dashboard is provided as prop, use it
-    if (propDashboard) {
-      setDashboard(propDashboard);
-      return;
-    }
-
-    // Otherwise, fetch from API
+    // Always fetch from API - ignore propDashboard to use real data
+    // If you need to use mock data for testing, pass it as propDashboard
+    // but by default we fetch from API
     const fetchDashboard = async () => {
       try {
         setLoading(true);
@@ -109,7 +105,7 @@ export default function TrainerDashboard({ dashboard: propDashboard, onTraineeSe
     };
 
     fetchDashboard();
-  }, [companyId, gigId, propDashboard]);
+  }, [companyId, gigId]); // Removed propDashboard to always fetch from API
 
   const tabs = [
     { id: 'overview', label: 'Overview', icon: TrendingUp },
