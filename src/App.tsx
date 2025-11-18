@@ -515,7 +515,7 @@ function App() {
             />
           );
         default:
-          return <TrainerDashboard dashboard={mockTrainerDashboard} onTraineeSelect={(trainee) => console.log('Selected trainee:', trainee)} />;
+          return <TrainerDashboard onTraineeSelect={(trainee) => console.log('Selected trainee:', trainee)} />;
       }
     }
 

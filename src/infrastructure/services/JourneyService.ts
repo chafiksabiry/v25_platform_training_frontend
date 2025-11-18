@@ -176,8 +176,16 @@ export class JourneyService {
     if (gigId) {
       params.append('gigId', gigId);
     }
-    const response = await ApiClient.get(`/journeys/trainer/dashboard?${params.toString()}`);
-    return response.data;
+    const endpoint = `/journeys/trainer/dashboard?${params.toString()}`;
+    console.log('[JourneyService] Fetching trainer dashboard from:', endpoint);
+    try {
+      const response = await ApiClient.get(endpoint);
+      console.log('[JourneyService] Response:', response);
+      return response.data;
+    } catch (error: any) {
+      console.error('[JourneyService] Error fetching trainer dashboard:', error);
+      throw error;
+    }
   }
 }
 

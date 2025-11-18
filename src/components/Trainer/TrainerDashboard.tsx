@@ -31,11 +31,17 @@ export default function TrainerDashboard({ dashboard: propDashboard, onTraineeSe
         setError(null);
         
         const effectiveCompanyId = companyId || Cookies.get('companyId');
+        console.log('[TrainerDashboard] Fetching dashboard with:', { 
+          companyId: effectiveCompanyId, 
+          gigId 
+        });
+        
         if (!effectiveCompanyId) {
           throw new Error('Company ID is required');
         }
 
         const response = await JourneyService.getTrainerDashboard(effectiveCompanyId, gigId);
+        console.log('[TrainerDashboard] API Response:', response);
         
         if (response.success && response.data) {
           // Map backend DTO to frontend type
@@ -83,8 +89,20 @@ export default function TrainerDashboard({ dashboard: propDashboard, onTraineeSe
           throw new Error(response.error || 'Failed to load dashboard');
         }
       } catch (err: any) {
-        console.error('Error fetching trainer dashboard:', err);
-        setError(err.message || 'Failed to load dashboard data');
+        console.error('[TrainerDashboard] Error fetching dashboard:', err);
+        const errorMessage = err?.message || err?.response?.data?.error || 'Failed to load dashboard data';
+        setError(errorMessage);
+        // Set empty dashboard to prevent blank screen
+        setDashboard({
+          totalTrainees: 0,
+          activeTrainees: 0,
+          completionRate: 0,
+          averageEngagement: 0,
+          topPerformers: [],
+          strugglingTrainees: [],
+          aiInsights: [],
+          upcomingDeadlines: []
+        });
       } finally {
         setLoading(false);
       }
