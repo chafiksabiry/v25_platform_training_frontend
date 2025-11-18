@@ -132,7 +132,15 @@ export class AIService {
   /**
    * Génère des questions de quiz avec l'IA
    */
-  static async generateQuiz(content: string | object, count: number = 5): Promise<QuizQuestion[]> {
+  static async generateQuiz(
+    content: string | object, 
+    count: number = 5,
+    questionDistribution?: {
+      multipleChoice?: number;
+      trueFalse?: number;
+      multipleCorrect?: number;
+    }
+  ): Promise<QuizQuestion[]> {
     // If content is a string, convert it to the expected format
     let moduleContent: any;
     if (typeof content === 'string') {
@@ -147,16 +155,31 @@ export class AIService {
       moduleContent = content;
     }
 
-    const response = await ApiClient.post('/api/ai/generate-quiz', { 
+    // Build question types configuration
+    const questionTypes: any = {
+      multipleChoice: questionDistribution?.multipleChoice !== undefined ? questionDistribution.multipleChoice > 0 : true,
+      trueFalse: questionDistribution?.trueFalse !== undefined ? questionDistribution.trueFalse > 0 : true,
+      shortAnswer: false,
+      multipleCorrect: questionDistribution?.multipleCorrect !== undefined ? questionDistribution.multipleCorrect > 0 : false
+    };
+
+    const requestBody: any = {
       moduleContent: moduleContent,
       numberOfQuestions: count,
       difficulty: 'medium',
-      questionTypes: {
-        multipleChoice: true,
-        trueFalse: true,
-        shortAnswer: false
-      }
-    });
+      questionTypes: questionTypes
+    };
+
+    // Add question distribution if provided
+    if (questionDistribution) {
+      requestBody.questionDistribution = {
+        multipleChoice: questionDistribution.multipleChoice || 0,
+        trueFalse: questionDistribution.trueFalse || 0,
+        multipleCorrect: questionDistribution.multipleCorrect || 0
+      };
+    }
+
+    const response = await ApiClient.post('/api/ai/generate-quiz', requestBody);
     
     if (!response.data.success) {
       throw new Error(response.data.error || response.data.message || 'Quiz generation failed');

@@ -96,8 +96,8 @@ export default function JourneySuccess({
 
           {/* Journey Details */}
           <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl p-6 mb-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">{journey.name}</h3>
-            <p className="text-gray-700 mb-4">{journey.description}</p>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">{journey.name || journey.title || 'Untitled Journey'}</h3>
+            <p className="text-gray-700 mb-4">{journey.description || 'No description available'}</p>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
