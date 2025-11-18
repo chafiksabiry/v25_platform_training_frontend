@@ -14,6 +14,7 @@ interface TrainerDashboardProps {
 export default function TrainerDashboard({ dashboard: propDashboard, onTraineeSelect, companyId, gigId }: TrainerDashboardProps) {
   const [selectedTab, setSelectedTab] = useState('overview');
   const [dashboard, setDashboard] = useState<TrainerDashboardType | null>(null);
+  const [journeys, setJourneys] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -36,17 +37,39 @@ export default function TrainerDashboard({ dashboard: propDashboard, onTraineeSe
           throw new Error('Company ID is required');
         }
 
+        // Fetch journeys using the new endpoints
+        let journeysResponse;
+        if (gigId) {
+          console.log('[TrainerDashboard] Fetching journeys by company and gig');
+          journeysResponse = await JourneyService.getJourneysByCompanyAndGig(effectiveCompanyId, gigId);
+        } else {
+          console.log('[TrainerDashboard] Fetching journeys by company');
+          journeysResponse = await JourneyService.getJourneysByCompany(effectiveCompanyId);
+        }
+        
+        if (journeysResponse.success && journeysResponse.data) {
+          setJourneys(journeysResponse.data);
+          console.log('[TrainerDashboard] Found journeys:', journeysResponse.data.length);
+        } else {
+          setJourneys([]);
+          console.log('[TrainerDashboard] No journeys found');
+        }
+
+        // Fetch dashboard statistics
         const response = await JourneyService.getTrainerDashboard(effectiveCompanyId, gigId);
         console.log('[TrainerDashboard] API Response:', response);
         
-        if (response.success && response.data) {
+        // The response structure is: {success: true, data: {...}}
+        const dashboardData = response.success ? response.data : response;
+        
+        if (response.success && dashboardData) {
           // Map backend DTO to frontend type
           const mappedDashboard: TrainerDashboardType = {
-            totalTrainees: response.data.totalTrainees || 0,
-            activeTrainees: response.data.activeTrainees || 0,
-            completionRate: Math.round(response.data.completionRate || 0),
-            averageEngagement: Math.round(response.data.averageEngagement || 0),
-            topPerformers: (response.data.topPerformers || []).map((tp: any) => ({
+            totalTrainees: dashboardData.totalTrainees || 0,
+            activeTrainees: dashboardData.activeTrainees || 0,
+            completionRate: Math.round(dashboardData.completionRate || 0),
+            averageEngagement: Math.round(dashboardData.averageEngagement || 0),
+            topPerformers: (dashboardData.topPerformers || []).map((tp: any) => ({
               id: tp.id,
               name: tp.name,
               email: tp.email,
@@ -55,7 +78,7 @@ export default function TrainerDashboard({ dashboard: propDashboard, onTraineeSe
               enrolledJourneys: [],
               progress: []
             })),
-            strugglingTrainees: (response.data.strugglingTrainees || []).map((st: any) => ({
+            strugglingTrainees: (dashboardData.strugglingTrainees || []).map((st: any) => ({
               id: st.id,
               name: st.name,
               email: st.email,
@@ -64,14 +87,14 @@ export default function TrainerDashboard({ dashboard: propDashboard, onTraineeSe
               enrolledJourneys: [],
               progress: []
             })),
-            aiInsights: (response.data.aiInsights || []).map((insight: any) => ({
+            aiInsights: (dashboardData.aiInsights || []).map((insight: any) => ({
               id: insight.id,
               title: insight.title,
               description: insight.description,
               priority: insight.priority as 'high' | 'medium' | 'low',
               suggestedActions: insight.suggestedActions || []
             })),
-            upcomingDeadlines: (response.data.upcomingDeadlines || []).map((deadline: any) => ({
+            upcomingDeadlines: (dashboardData.upcomingDeadlines || []).map((deadline: any) => ({
               traineeId: deadline.traineeId,
               traineeName: deadline.traineeName,
               task: deadline.task,
@@ -80,6 +103,7 @@ export default function TrainerDashboard({ dashboard: propDashboard, onTraineeSe
             }))
           };
           
+          console.log('[TrainerDashboard] Mapped dashboard:', mappedDashboard);
           setDashboard(mappedDashboard);
         } else {
           throw new Error(response.error || 'Failed to load dashboard');
@@ -110,6 +134,7 @@ export default function TrainerDashboard({ dashboard: propDashboard, onTraineeSe
   const tabs = [
     { id: 'overview', label: 'Overview', icon: TrendingUp },
     { id: 'trainees', label: 'Trainees', icon: Users },
+    { id: 'journeys', label: 'Journeys', icon: Target },
     { id: 'insights', label: 'AI Insights', icon: Brain },
     { id: 'deadlines', label: 'Deadlines', icon: Calendar },
   ];
@@ -345,6 +370,78 @@ export default function TrainerDashboard({ dashboard: propDashboard, onTraineeSe
                         </div>
                       </div>
                     ))
+                )}
+              </div>
+            </div>
+          )}
+
+          {selectedTab === 'journeys' && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-gray-900">Training Journeys</h3>
+                <span className="text-sm text-gray-600">
+                  {journeys.length} {journeys.length === 1 ? 'journey' : 'journeys'} found
+                  {gigId && ` for this gig`}
+                </span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {journeys.length === 0 ? (
+                  <div className="col-span-full text-center py-8 text-gray-500">
+                    No training journeys found
+                    {gigId ? ' for this gig' : ' for this company'}
+                  </div>
+                ) : (
+                  journeys.map((journey: any) => (
+                    <div
+                      key={journey.id || journey._id}
+                      className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+                    >
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-gray-900 mb-1">
+                            {journey.title || journey.name || 'Untitled Journey'}
+                          </h4>
+                          <p className="text-sm text-gray-600 line-clamp-2">
+                            {journey.description || 'No description'}
+                          </p>
+                        </div>
+                        <span className={`ml-2 px-2 py-1 rounded-full text-xs font-medium ${
+                          journey.status === 'active' ? 'bg-green-100 text-green-700' :
+                          journey.status === 'completed' ? 'bg-blue-100 text-blue-700' :
+                          journey.status === 'draft' ? 'bg-gray-100 text-gray-700' :
+                          'bg-amber-100 text-amber-700'
+                        }`}>
+                          {journey.status || 'unknown'}
+                        </span>
+                      </div>
+                      <div className="space-y-2 text-sm">
+                        {journey.industry && (
+                          <div className="flex items-center space-x-2">
+                            <span className="text-gray-600">Industry:</span>
+                            <span className="font-medium text-gray-900">{journey.industry}</span>
+                          </div>
+                        )}
+                        {journey.modules && (
+                          <div className="flex items-center space-x-2">
+                            <span className="text-gray-600">Modules:</span>
+                            <span className="font-medium text-gray-900">{journey.modules.length}</span>
+                          </div>
+                        )}
+                        {journey.enrolledRepIds && (
+                          <div className="flex items-center space-x-2">
+                            <span className="text-gray-600">Enrolled:</span>
+                            <span className="font-medium text-gray-900">{journey.enrolledRepIds.length} trainees</span>
+                          </div>
+                        )}
+                        {journey.gigId && (
+                          <div className="flex items-center space-x-2">
+                            <span className="text-gray-600">Gig ID:</span>
+                            <span className="font-medium text-gray-900 text-xs truncate">{journey.gigId}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))
                 )}
               </div>
             </div>

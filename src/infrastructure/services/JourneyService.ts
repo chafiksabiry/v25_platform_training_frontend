@@ -213,6 +213,9 @@ export class JourneyService {
     try {
       const response = await ApiClient.get(endpoint);
       console.log('[JourneyService] Response:', response);
+      // The backend returns {success: true, data: {...}}
+      // ApiClient wraps it in response.data, so we have response.data = {success: true, data: {...}}
+      // Return the full response structure
       return response.data;
     } catch (error: any) {
       console.error('[JourneyService] Error fetching trainer dashboard:', error);
