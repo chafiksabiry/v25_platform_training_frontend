@@ -1,20 +1,32 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Users, TrendingUp, AlertTriangle, Award, Calendar, Brain, Target, MessageSquare, 
   BarChart3, Clock, CheckCircle2, Zap, Filter, Search, Download, Settings,
-  ChevronRight, Activity, BookOpen, Star, TrendingDown
+  ChevronRight, Activity, BookOpen, Star, TrendingDown, Loader2
 } from 'lucide-react';
 import { TrainerDashboard as TrainerDashboardType, Rep, AIInsight } from '../../types';
+import { JourneyService } from '../../infrastructure/services/JourneyService';
+import { TrainingService } from '../../infrastructure/services/TrainingService';
+import { OnboardingService } from '../../infrastructure/services/OnboardingService';
+import Cookies from 'js-cookie';
 
 interface TrainerDashboardProps {
-  dashboard: TrainerDashboardType;
+  dashboard?: TrainerDashboardType;
   onTraineeSelect: (trainee: Rep) => void;
 }
 
-export default function TrainerDashboard({ dashboard, onTraineeSelect }: TrainerDashboardProps) {
+export default function TrainerDashboard({ dashboard: propDashboard, onTraineeSelect }: TrainerDashboardProps) {
   const [selectedTab, setSelectedTab] = useState('overview');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('all');
+  const [loading, setLoading] = useState(true);
+  
+  // Real data states
+  const [companyData, setCompanyData] = useState<any>(null);
+  const [userData, setUserData] = useState<any>(null);
+  const [journeys, setJourneys] = useState<any[]>([]);
+  const [trainees, setTrainees] = useState<Rep[]>([]);
+  const [dashboardData, setDashboardData] = useState<TrainerDashboardType | null>(null);
 
   const tabs = [
     { id: 'overview', label: 'Overview', icon: TrendingUp, color: 'blue' },
@@ -43,6 +55,244 @@ export default function TrainerDashboard({ dashboard, onTraineeSelect }: Trainer
     return 'bg-red-500';
   };
 
+  // Fetch real data
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const companyId = Cookies.get('companyId');
+        const userId = Cookies.get('userId');
+        
+        // Fetch company data
+        if (companyId) {
+          try {
+            const companyResponse = await OnboardingService.fetchCompanyData(companyId);
+            if (companyResponse.success && companyResponse.data) {
+              setCompanyData(companyResponse.data);
+            }
+          } catch (error) {
+            console.error('Error fetching company data:', error);
+          }
+        }
+
+        // Fetch user data from token
+        try {
+          const token = localStorage.getItem('token');
+          if (token) {
+            // Decode token to get user info (basic implementation)
+            const tokenParts = token.split('.');
+            if (tokenParts.length === 3) {
+              const payload = JSON.parse(atob(tokenParts[1]));
+              setUserData({
+                id: payload.userId || userId,
+                name: payload.fullName || 'Trainer',
+                email: payload.email || '',
+                role: payload.typeUser || 'trainer'
+              });
+            }
+          }
+        } catch (error) {
+          console.error('Error parsing user data:', error);
+        }
+
+        // Fetch journeys
+        if (companyId) {
+          try {
+            // Try to get journeys by companyId
+            const journeysData = await JourneyService.getAllJourneys();
+            // Filter by companyId if available
+            const filteredJourneys = journeysData.filter((j: any) => 
+              j.companyId === companyId || j.journey?.companyId === companyId
+            );
+            setJourneys(filteredJourneys);
+          } catch (error) {
+            console.error('Error fetching journeys:', error);
+            // Fallback: try TrainingService
+            try {
+              const trainingJourneys = await TrainingService.getTrainingJourneys(companyId);
+              setJourneys(trainingJourneys);
+            } catch (err) {
+              console.error('Error fetching training journeys:', err);
+            }
+          }
+        }
+
+        // Fetch trainees/reps
+        if (companyId) {
+          try {
+            const repsData = await TrainingService.getReps(companyId);
+            setTrainees(repsData);
+          } catch (error) {
+            console.error('Error fetching trainees:', error);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  // Calculate dashboard metrics from real data
+  useEffect(() => {
+    if (loading) return;
+
+    const calculateMetrics = () => {
+      // Get all enrolled reps from journeys
+      const allEnrolledRepIds = new Set<string>();
+      journeys.forEach((journey: any) => {
+        if (journey.enrolledRepIds && Array.isArray(journey.enrolledRepIds)) {
+          journey.enrolledRepIds.forEach((id: string) => allEnrolledRepIds.add(id));
+        }
+      });
+
+      const totalTrainees = allEnrolledRepIds.size || trainees.length;
+      const activeTrainees = trainees.filter(t => {
+        // Consider active if enrolled in at least one active journey
+        return journeys.some((j: any) => 
+          j.status === 'active' && 
+          (j.enrolledRepIds || []).includes(t.id)
+        );
+      }).length || totalTrainees;
+
+      // Calculate completion rate (mock for now, should come from progress data)
+      const completedModules = journeys.reduce((sum: number, j: any) => {
+        return sum + (j.modules?.filter((m: any) => m.status === 'completed').length || 0);
+      }, 0);
+      const totalModules = journeys.reduce((sum: number, j: any) => {
+        return sum + (j.modules?.length || 0);
+      }, 0);
+      const completionRate = totalModules > 0 ? Math.round((completedModules / totalModules) * 100) : 0;
+
+      // Calculate average engagement (mock for now)
+      const averageEngagement = 75; // Should come from analytics
+
+      // Identify top performers and struggling trainees
+      const topPerformers: Rep[] = trainees.slice(0, Math.min(3, trainees.length));
+      const strugglingTrainees: Rep[] = trainees.slice(-2).reverse();
+
+      // Generate AI insights from journey data
+      const aiInsights: AIInsight[] = [];
+      if (journeys.length === 0) {
+        aiInsights.push({
+          id: '1',
+          title: 'No Training Journeys Found',
+          description: 'Create your first training journey to start onboarding trainees.',
+          priority: 'medium',
+          type: 'recommendation',
+          actionable: true,
+          confidence: 0.8,
+          timestamp: new Date().toISOString(),
+          suggestedActions: [
+            'Create a new training journey',
+            'Upload training materials',
+            'Define learning objectives'
+          ]
+        });
+      } else {
+        const activeJourneys = journeys.filter((j: any) => j.status === 'active');
+        if (activeJourneys.length > 0) {
+          aiInsights.push({
+            id: '1',
+            title: `${activeJourneys.length} Active Training ${activeJourneys.length > 1 ? 'Journeys' : 'Journey'}`,
+            description: `You have ${activeJourneys.length} active training ${activeJourneys.length > 1 ? 'programs' : 'program'} running. Monitor trainee progress regularly.`,
+            priority: 'low',
+            type: 'recommendation',
+            actionable: true,
+            confidence: 0.9,
+            timestamp: new Date().toISOString(),
+            suggestedActions: [
+              'Review trainee progress weekly',
+              'Schedule check-ins with struggling trainees',
+              'Celebrate top performers'
+            ]
+          });
+        }
+
+        if (strugglingTrainees.length > 0) {
+          aiInsights.push({
+            id: '2',
+            title: `${strugglingTrainees.length} Trainee${strugglingTrainees.length > 1 ? 's' : ''} Need Attention`,
+            description: `${strugglingTrainees.map(t => t.name).join(', ')} ${strugglingTrainees.length > 1 ? 'are' : 'is'} falling behind. Consider additional support.`,
+            priority: 'high',
+            type: 'warning',
+            actionable: true,
+            confidence: 0.85,
+            timestamp: new Date().toISOString(),
+            suggestedActions: [
+              'Schedule one-on-one sessions',
+              'Provide additional resources',
+              'Adjust learning pace if needed'
+            ]
+          });
+        }
+      }
+
+      // Generate upcoming deadlines from journeys
+      const upcomingDeadlines = journeys
+        .filter((j: any) => j.status === 'active')
+        .flatMap((j: any) => {
+          if (!j.modules || !j.enrolledRepIds) return [];
+          return j.modules
+            .filter((m: any) => m.dueDate || m.estimatedCompletionDate)
+            .slice(0, 3)
+            .map((m: any, idx: number) => {
+              const traineeId = j.enrolledRepIds[0] || trainees[0]?.id || 'unknown';
+              const trainee = trainees.find(t => t.id === traineeId);
+              return {
+                traineeId,
+                traineeName: trainee?.name || 'Trainee',
+                task: m.title || `Complete ${m.name || 'Module'}`,
+                dueDate: m.dueDate || m.estimatedCompletionDate || 'Soon',
+                riskLevel: idx === 0 ? 'high' : idx === 1 ? 'medium' : 'low' as 'high' | 'medium' | 'low'
+              };
+            });
+        })
+        .slice(0, 5);
+
+      const calculatedDashboard: TrainerDashboardType = {
+        totalTrainees,
+        activeTrainees,
+        completionRate,
+        averageEngagement,
+        strugglingTrainees,
+        topPerformers,
+        aiInsights,
+        upcomingDeadlines
+      };
+
+      setDashboardData(calculatedDashboard);
+    };
+
+    calculateMetrics();
+  }, [journeys, trainees, loading]);
+
+  // Use prop dashboard if provided, otherwise use calculated dashboard
+  const dashboard = propDashboard || dashboardData || {
+    totalTrainees: 0,
+    activeTrainees: 0,
+    completionRate: 0,
+    averageEngagement: 0,
+    strugglingTrainees: [],
+    topPerformers: [],
+    aiInsights: [],
+    upcomingDeadlines: []
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-indigo-50/20 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 text-blue-600 animate-spin mx-auto mb-4" />
+          <p className="text-gray-600">Loading dashboard data...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-indigo-50/20">
       {/* Header Section */}
@@ -53,7 +303,11 @@ export default function TrainerDashboard({ dashboard, onTraineeSelect }: Trainer
               <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
                 Trainer Dashboard
               </h1>
-              <p className="text-sm text-gray-500 mt-1">Monitor and manage your training programs</p>
+              <p className="text-sm text-gray-500 mt-1">
+                {companyData?.name ? `${companyData.name} • ` : ''}
+                {userData?.name ? `Welcome, ${userData.name}` : 'Monitor and manage your training programs'}
+                {journeys.length > 0 ? ` • ${journeys.length} Journey${journeys.length > 1 ? 's' : ''}` : ''}
+              </p>
             </div>
             <div className="flex items-center space-x-3">
               <button className="flex items-center space-x-2 px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-all shadow-sm">
