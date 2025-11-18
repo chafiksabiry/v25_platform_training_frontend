@@ -117,13 +117,46 @@ export default function TrainerDashboard({ dashboard: propDashboard, onTraineeSe
           }
         }
 
-        // Fetch trainees/reps
+        // Fetch trainees/reps from journeys (enrolledRepIds)
         if (companyId) {
           try {
-            const repsData = await TrainingService.getReps(companyId);
-            setTrainees(repsData);
+            // Try to get reps from TrainingService
+            try {
+              const repsData = await TrainingService.getReps(companyId);
+              setTrainees(repsData);
+            } catch (repsError) {
+              console.warn('Could not fetch reps from API, extracting from journeys:', repsError);
+              // Fallback: Extract trainee IDs from journeys and create basic Rep objects
+              const enrolledRepIdsSet = new Set<string>();
+              journeys.forEach((journey: any) => {
+                if (journey.enrolledRepIds && Array.isArray(journey.enrolledRepIds)) {
+                  journey.enrolledRepIds.forEach((id: string) => enrolledRepIdsSet.add(id));
+                }
+              });
+              
+              // Create basic Rep objects from enrolled IDs
+              const basicTrainees: Rep[] = Array.from(enrolledRepIdsSet).map((id: string) => ({
+                id,
+                name: `Trainee ${id.slice(-4)}`,
+                email: `trainee-${id}@company.com`,
+                role: 'trainee' as const,
+                department: 'Training',
+                joinDate: new Date().toISOString(),
+                skills: [],
+                learningStyle: 'visual' as const,
+                aiPersonalityProfile: {
+                  strengths: [],
+                  improvementAreas: [],
+                  preferredLearningPace: 'medium' as const,
+                  motivationFactors: []
+                }
+              }));
+              setTrainees(basicTrainees);
+            }
           } catch (error) {
             console.error('Error fetching trainees:', error);
+            // Set empty array as fallback
+            setTrainees([]);
           }
         }
       } catch (error) {
@@ -149,14 +182,36 @@ export default function TrainerDashboard({ dashboard: propDashboard, onTraineeSe
         }
       });
 
-      const totalTrainees = allEnrolledRepIds.size || trainees.length;
-      const activeTrainees = trainees.filter(t => {
-        // Consider active if enrolled in at least one active journey
-        return journeys.some((j: any) => 
-          j.status === 'active' && 
-          (j.enrolledRepIds || []).includes(t.id)
-        );
-      }).length || totalTrainees;
+      // Use enrolled IDs from journeys if trainees list is empty
+      const totalTrainees = allEnrolledRepIds.size > 0 ? allEnrolledRepIds.size : trainees.length;
+      
+      // Calculate active trainees
+      let activeTrainees = 0;
+      if (trainees.length > 0) {
+        activeTrainees = trainees.filter(t => {
+          // Consider active if enrolled in at least one active journey
+          return journeys.some((j: any) => 
+            j.status === 'active' && 
+            (j.enrolledRepIds || []).includes(t.id)
+          );
+        }).length;
+      } else {
+        // If no trainees list, count unique IDs in active journeys
+        const activeJourneyRepIds = new Set<string>();
+        journeys
+          .filter((j: any) => j.status === 'active')
+          .forEach((j: any) => {
+            if (j.enrolledRepIds && Array.isArray(j.enrolledRepIds)) {
+              j.enrolledRepIds.forEach((id: string) => activeJourneyRepIds.add(id));
+            }
+          });
+        activeTrainees = activeJourneyRepIds.size;
+      }
+      
+      // Fallback to total if no active found
+      if (activeTrainees === 0 && totalTrainees > 0) {
+        activeTrainees = totalTrainees;
+      }
 
       // Calculate completion rate (mock for now, should come from progress data)
       const completedModules = journeys.reduce((sum: number, j: any) => {
@@ -171,8 +226,49 @@ export default function TrainerDashboard({ dashboard: propDashboard, onTraineeSe
       const averageEngagement = 75; // Should come from analytics
 
       // Identify top performers and struggling trainees
-      const topPerformers: Rep[] = trainees.slice(0, Math.min(3, trainees.length));
-      const strugglingTrainees: Rep[] = trainees.slice(-2).reverse();
+      // If we have real trainees, use them; otherwise create from enrolled IDs
+      let topPerformers: Rep[] = [];
+      let strugglingTrainees: Rep[] = [];
+      
+      if (trainees.length > 0) {
+        topPerformers = trainees.slice(0, Math.min(3, trainees.length));
+        strugglingTrainees = trainees.slice(-2).reverse();
+      } else if (allEnrolledRepIds.size > 0) {
+        // Create basic Rep objects from enrolled IDs for display
+        const enrolledIds = Array.from(allEnrolledRepIds);
+        topPerformers = enrolledIds.slice(0, Math.min(3, enrolledIds.length)).map((id: string) => ({
+          id,
+          name: `Trainee ${id.slice(-4)}`,
+          email: `trainee-${id}@company.com`,
+          role: 'trainee' as const,
+          department: 'Training',
+          joinDate: new Date().toISOString(),
+          skills: [],
+          learningStyle: 'visual' as const,
+          aiPersonalityProfile: {
+            strengths: [],
+            improvementAreas: [],
+            preferredLearningPace: 'medium' as const,
+            motivationFactors: []
+          }
+        }));
+        strugglingTrainees = enrolledIds.slice(-2).reverse().map((id: string) => ({
+          id,
+          name: `Trainee ${id.slice(-4)}`,
+          email: `trainee-${id}@company.com`,
+          role: 'trainee' as const,
+          department: 'Training',
+          joinDate: new Date().toISOString(),
+          skills: [],
+          learningStyle: 'visual' as const,
+          aiPersonalityProfile: {
+            strengths: [],
+            improvementAreas: [],
+            preferredLearningPace: 'medium' as const,
+            motivationFactors: []
+          }
+        }));
+      }
 
       // Generate AI insights from journey data
       const aiInsights: AIInsight[] = [];
