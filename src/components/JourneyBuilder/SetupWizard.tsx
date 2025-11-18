@@ -479,7 +479,14 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
                 </h5>
                 <ul className="space-y-2 text-sm text-gray-700">
                   <li>• {companyData?.name || company.name || 'N/A'}</li>
-                  <li>• {company.industry || 'N/A'}</li>
+                  <li>• {(() => {
+                    // Find industry name by ID
+                    if (company.industry) {
+                      const industry = industries.find(ind => ind._id === company.industry);
+                      return industry ? industry.name : company.industry;
+                    }
+                    return 'N/A';
+                  })()}</li>
                   <li>• {company.size || 'N/A'} company</li>
                 </ul>
               </div>

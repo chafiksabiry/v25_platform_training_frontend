@@ -441,12 +441,7 @@ export default function TrainerDashboard({ dashboard: propDashboard, onTraineeSe
                             <span className="font-medium text-gray-900">{journey.industryTitle}</span>
                           </div>
                         )}
-                        {!journey.industryTitle && journey.industry && (
-                          <div className="flex items-center space-x-2">
-                            <span className="text-gray-600">Industry ID:</span>
-                            <span className="font-medium text-gray-900 text-xs truncate">{journey.industry}</span>
-                          </div>
-                        )}
+                        {/* Don't display industry ID - only show if we have the title */}
                         {journey.modules && (
                           <div className="flex items-center space-x-2">
                             <span className="text-gray-600">Modules:</span>

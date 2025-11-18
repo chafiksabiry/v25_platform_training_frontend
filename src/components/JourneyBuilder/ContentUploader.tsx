@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Upload, FileText, Video, Music, Image, File, CheckCircle, Clock, AlertCircle, AlertTriangle, X, Sparkles, Zap, BarChart3, Eye, Wand2 } from 'lucide-react';
 import { ContentUpload, ContentAnalysis } from '../../types/core';
 import { AIService } from '../../infrastructure/services/AIService';
@@ -15,6 +15,11 @@ export default function ContentUploader({ onComplete, onBack }: ContentUploaderP
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentProcessing, setCurrentProcessing] = useState<string | null>(null);
   const [urlInput, setUrlInput] = useState('');
+
+  // Scroll to top when component mounts
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
 
   const getFileIcon = (type: ContentUpload['type']) => {
     switch (type) {
