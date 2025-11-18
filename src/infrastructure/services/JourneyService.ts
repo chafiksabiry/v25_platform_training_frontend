@@ -167,5 +167,17 @@ export class JourneyService {
     const response = await ApiClient.delete(`/journeys/${id}`);
     return response.data;
   }
+
+  /**
+   * Get trainer dashboard statistics
+   */
+  static async getTrainerDashboard(companyId: string, gigId?: string): Promise<any> {
+    const params = new URLSearchParams({ companyId });
+    if (gigId) {
+      params.append('gigId', gigId);
+    }
+    const response = await ApiClient.get(`/journeys/trainer/dashboard?${params.toString()}`);
+    return response.data;
+  }
 }
 
