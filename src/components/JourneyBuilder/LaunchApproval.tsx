@@ -102,15 +102,22 @@ export default function LaunchApproval({
     multipleCorrect: number;
   }) => {
     const moduleId = module.id;
-    setGeneratingQuizForModule(moduleId);
-    if (isFinalExam) {
+    
+    // Only set generatingQuizForModule if it's NOT a final exam
+    if (!isFinalExam) {
+      setGeneratingQuizForModule(moduleId);
+    } else {
       setGeneratingFinalExam(true);
     }
 
     // Default configuration if not provided
+    // Final Exam: 30 questions (12 QCM, 9 True/False, 9 Multiple Correct Answers)
+    // Module Quiz: 10 questions (4 QCM, 3 True/False, 3 Multiple Correct Answers)
     const finalConfig = config || (isFinalExam 
       ? { totalQuestions: 30, passingScore: 70, multipleChoice: 12, trueFalse: 9, multipleCorrect: 9 }
       : { totalQuestions: 10, passingScore: 70, multipleChoice: 4, trueFalse: 3, multipleCorrect: 3 });
+    
+    console.log(`📊 ${isFinalExam ? 'Final Exam' : 'Quiz'} Configuration: ${finalConfig.totalQuestions} questions (${finalConfig.multipleChoice} QCM, ${finalConfig.trueFalse} True/False, ${finalConfig.multipleCorrect} Multiple Correct Answers)`);
 
     try {
       // Prepare module content in the format expected by the backend
@@ -245,13 +252,16 @@ export default function LaunchApproval({
         // Continue even if save fails - quiz is still available locally
       }
 
-      console.log(`✅ ${isFinalExam ? 'Final exam' : 'Quiz'} generated successfully`);
+      console.log(`✅ ${isFinalExam ? 'Final exam' : 'Quiz'} generated successfully with ${assessmentQuestions.length} questions`);
     } catch (error) {
       console.error(`❌ Error generating ${isFinalExam ? 'final exam' : 'quiz'}:`, error);
       alert(`Erreur lors de la génération du ${isFinalExam ? 'examen final' : 'quiz'}. Veuillez réessayer.`);
     } finally {
-      setGeneratingQuizForModule(null);
-      setGeneratingFinalExam(false);
+      if (!isFinalExam) {
+        setGeneratingQuizForModule(null);
+      } else {
+        setGeneratingFinalExam(false);
+      }
     }
   };
 
