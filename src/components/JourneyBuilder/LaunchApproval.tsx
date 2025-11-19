@@ -156,11 +156,17 @@ export default function LaunchApproval({
           questionType = 'multiple-correct';
         }
         
+        // Ensure True/False questions always have ['True', 'False'] options
+        let finalOptions = q.options || [];
+        if (questionType === 'true-false' && (!finalOptions || finalOptions.length === 0)) {
+          finalOptions = ['True', 'False'];
+        }
+        
         return {
           id: `q${index + 1}`,
           text: q.text || q.question,
           type: questionType,
-          options: q.options || [],
+          options: finalOptions,
           correctAnswer: Array.isArray(q.correctAnswer) ? q.correctAnswer : q.correctAnswer,
           explanation: q.explanation || '',
           points: q.points || 10
@@ -833,45 +839,88 @@ export default function LaunchApproval({
                                                     {!isEditing && (
                                                       <>
                                                         <div className="space-y-2 mt-3">
-                                                          {question.options?.map((option, optIdx) => {
-                                                            const isCorrect = option === question.correctAnswer;
-                                                            return (
-                                                              <div
-                                                                key={optIdx}
-                                                                className={`p-3 rounded-lg transition-all ${
-                                                                  isCorrect
-                                                                    ? 'bg-green-50 border-2 border-green-500 shadow-sm'
-                                                                    : 'bg-gray-50 border border-gray-200'
-                                                                }`}
-                                                              >
-                                                                <div className="flex items-center space-x-3">
-                                                                  {isCorrect && (
-                                                                    <div className="flex-shrink-0 w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
-                                                                      <CheckCircle className="h-3 w-3 text-white" fill="currentColor" />
-                                                                    </div>
-                                                                  )}
-                                                                  {!isCorrect && (
-                                                                    <div className="flex-shrink-0 w-5 h-5 border-2 border-gray-300 rounded-full"></div>
-                                                                  )}
-                                                                  <span className={`text-xs font-medium ${
-                                                                    isCorrect ? 'text-green-800 font-semibold' : 'text-gray-700'
-                                                                  }`}>
-                                                                    {String.fromCharCode(65 + optIdx)}.
-                                                                  </span>
-                                                                  <span className={`text-xs flex-1 ${
-                                                                    isCorrect ? 'text-green-900 font-medium' : 'text-gray-700'
-                                                                  }`}>
-                                                                    {option}
-                                                                  </span>
-                                                                  {isCorrect && (
-                                                                    <span className="flex-shrink-0 px-2 py-1 bg-green-500 text-white text-xs font-semibold rounded-full">
-                                                                      Correct
+                                                          {(() => {
+                                                            // Get options based on question type
+                                                            let options: string[] = [];
+                                                            const isMultipleCorrect = question.type === 'multiple-correct';
+                                                            const isTrueFalse = question.type === 'true-false';
+                                                            
+                                                            if (isTrueFalse) {
+                                                              // True/False questions always have these options
+                                                              options = ['True', 'False'];
+                                                            } else if (question.options && question.options.length > 0) {
+                                                              options = question.options;
+                                                            }
+                                                            
+                                                            // Determine if an option is correct
+                                                            const isOptionCorrect = (option: string, optIdx: number) => {
+                                                              if (isMultipleCorrect) {
+                                                                // For multiple correct, correctAnswer is an array
+                                                                return Array.isArray(question.correctAnswer) 
+                                                                  ? question.correctAnswer.includes(option) || question.correctAnswer.includes(optIdx)
+                                                                  : false;
+                                                              } else if (isTrueFalse) {
+                                                                // For True/False, correctAnswer might be boolean, string, or index
+                                                                const correct = question.correctAnswer;
+                                                                if (typeof correct === 'boolean') {
+                                                                  return (option === 'True' && correct) || (option === 'False' && !correct);
+                                                                } else if (typeof correct === 'string') {
+                                                                  return option.toLowerCase() === correct.toLowerCase();
+                                                                } else {
+                                                                  return optIdx === correct;
+                                                                }
+                                                              } else {
+                                                                // For single choice, compare directly
+                                                                return option === question.correctAnswer || optIdx === question.correctAnswer;
+                                                              }
+                                                            };
+                                                            
+                                                            return options.length > 0 ? options.map((option, optIdx) => {
+                                                              const isCorrect = isOptionCorrect(option, optIdx);
+                                                              const inputType = isMultipleCorrect ? 'checkbox' : 'radio';
+                                                              const isChecked = isCorrect; // Pre-select correct answers
+                                                              
+                                                              return (
+                                                                <div
+                                                                  key={optIdx}
+                                                                  className={`p-3 rounded-lg transition-all ${
+                                                                    isCorrect
+                                                                      ? 'bg-green-50 border-2 border-green-500 shadow-sm'
+                                                                      : 'bg-gray-50 border border-gray-200'
+                                                                  }`}
+                                                                >
+                                                                  <div className="flex items-center space-x-3">
+                                                                    <input
+                                                                      type={inputType}
+                                                                      name={`question-${questionKey}`}
+                                                                      checked={isChecked}
+                                                                      readOnly
+                                                                      className={isMultipleCorrect ? 'w-4 h-4 text-green-600' : 'w-4 h-4 text-green-600'}
+                                                                    />
+                                                                    <span className={`text-xs font-medium ${
+                                                                      isCorrect ? 'text-green-800 font-semibold' : 'text-gray-700'
+                                                                    }`}>
+                                                                      {String.fromCharCode(65 + optIdx)}.
                                                                     </span>
-                                                                  )}
+                                                                    <span className={`text-xs flex-1 ${
+                                                                      isCorrect ? 'text-green-900 font-medium' : 'text-gray-700'
+                                                                    }`}>
+                                                                      {option}
+                                                                    </span>
+                                                                    {isCorrect && (
+                                                                      <span className="flex-shrink-0 px-2 py-1 bg-green-500 text-white text-xs font-semibold rounded-full">
+                                                                        Correct
+                                                                      </span>
+                                                                    )}
+                                                                  </div>
                                                                 </div>
+                                                              );
+                                                            }) : (
+                                                              <div className="text-xs text-gray-500 italic">
+                                                                {isTrueFalse ? 'True/False question (options not defined)' : 'No options available'}
                                                               </div>
                                                             );
-                                                          })}
+                                                          })()}
                                                         </div>
                                                         {question.explanation && (
                                                           <div className="mt-3 p-2 bg-blue-50 rounded border border-blue-200">
