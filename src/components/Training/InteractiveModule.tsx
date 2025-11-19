@@ -383,7 +383,6 @@ export default function InteractiveModule({ module, onProgress, onComplete }: In
             <ChevronRight className="h-5 w-5" />
           </button>
         </div>
-      </div>
     </div>
   );
 }
