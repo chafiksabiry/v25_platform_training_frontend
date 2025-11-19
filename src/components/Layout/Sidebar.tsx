@@ -22,7 +22,7 @@ interface SidebarProps {
 
 const menuItems = [
   { id: 'dashboard', label: 'Dashboard', icon: Home },
-  { id: 'training', label: 'Training Modules', icon: BookOpen },
+  { id: 'training', label: 'Journey Training', icon: BookOpen },
   { id: 'assessments', label: 'Assessments', icon: CheckSquare },
   { id: 'live-sessions', label: 'Live Training', icon: Users },
   { id: 'knowledge-base', label: 'Knowledge Base', icon: FileText },

@@ -18,7 +18,7 @@ export default function TrainingModules({ modules, onModuleSelect }: TrainingMod
     <div className="space-y-6">
       {/* Header Section */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Training Modules</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Journey Training</h1>
         <div className="text-sm text-gray-600 font-medium">
           {completedCount} of {totalCount} completed
         </div>
@@ -166,7 +166,7 @@ export default function TrainingModules({ modules, onModuleSelect }: TrainingMod
       {modules.length === 0 && (
         <div className="text-center py-12 bg-white rounded-xl border border-gray-200">
           <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-600">No training modules available yet.</p>
+          <p className="text-gray-600">No journey training modules available yet.</p>
         </div>
       )}
     </div>

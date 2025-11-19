@@ -101,20 +101,17 @@ function App() {
         const response = await JourneyService.getJourneysByCompany(companyId);
         console.log('[App] Raw response from JourneyService:', response);
         
-        // Handle different response formats: 
-        // JourneyService returns response.data which is {data: [...], success: true, count: 31}
-        // So we need to access response.data
+        // Handle response format: {data: [...], success: true, count: 31}
+        // JourneyService.getJourneysByCompany returns response.data which is the backend response
         let journeys: any[] = [];
         if (Array.isArray(response)) {
           journeys = response;
-        } else if (response?.data) {
-          if (Array.isArray(response.data)) {
-            journeys = response.data;
-          } else if (response.data?.data && Array.isArray(response.data.data)) {
-            journeys = response.data.data;
-          } else if (response.data?.journeys && Array.isArray(response.data.journeys)) {
-            journeys = response.data.journeys;
-          }
+        } else if (response?.data && Array.isArray(response.data)) {
+          // Direct array in data field
+          journeys = response.data;
+        } else if (response?.data?.data && Array.isArray(response.data.data)) {
+          // Nested data structure
+          journeys = response.data.data;
         } else if (response?.journeys && Array.isArray(response.journeys)) {
           journeys = response.journeys;
         }
