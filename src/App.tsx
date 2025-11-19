@@ -99,16 +99,31 @@ function App() {
         }
 
         const response = await JourneyService.getJourneysByCompany(companyId);
-        // Handle different response formats: {data: [...], success: true} or just [...]
-        const journeys = Array.isArray(response) 
-          ? response 
-          : (response?.data && Array.isArray(response.data) 
-              ? response.data 
-              : (response?.journeys && Array.isArray(response.journeys) 
-                  ? response.journeys 
-                  : []));
+        console.log('[App] Raw response from JourneyService:', response);
         
-        console.log('[App] Raw journeys response:', journeys.length, 'journeys');
+        // Handle different response formats: 
+        // JourneyService returns response.data which is {data: [...], success: true, count: 31}
+        // So we need to access response.data
+        let journeys: any[] = [];
+        if (Array.isArray(response)) {
+          journeys = response;
+        } else if (response?.data) {
+          if (Array.isArray(response.data)) {
+            journeys = response.data;
+          } else if (response.data?.data && Array.isArray(response.data.data)) {
+            journeys = response.data.data;
+          } else if (response.data?.journeys && Array.isArray(response.data.journeys)) {
+            journeys = response.data.journeys;
+          }
+        } else if (response?.journeys && Array.isArray(response.journeys)) {
+          journeys = response.journeys;
+        }
+        
+        console.log('[App] Extracted journeys:', journeys.length, 'journeys');
+        if (journeys.length > 0) {
+          console.log('[App] Sample journey:', journeys[0]);
+          console.log('[App] Sample journey modules:', journeys[0]?.modules?.length || 0, 'modules');
+        }
         
         // Transform journeys into modules
         const modules: TrainingModule[] = journeys
@@ -132,19 +147,27 @@ function App() {
                 // Calculate duration from sections or use default
                 let duration = 0;
                 if (typeof module.duration === 'number') {
-                  duration = module.duration;
+                  duration = module.duration; // Duration is in minutes
                 } else if (typeof module.estimatedDuration === 'number') {
                   duration = module.estimatedDuration;
                 } else if (Array.isArray(module.sections)) {
                   // Estimate 30 minutes per section
                   duration = Math.ceil(module.sections.length * 0.5);
+                } else if (Array.isArray(module.content) && module.content.length > 0) {
+                  // Sum up durations from content sections
+                  duration = module.content.reduce((sum: number, item: any) => {
+                    return sum + (item.duration || 0);
+                  }, 0);
                 }
+                
+                // Convert duration to hours (number) for the TrainingModule interface
+                const durationHours = duration > 0 ? Math.round(duration / 60 * 10) / 10 : 0;
                 
                 return {
                   id: module.id || module._id || `module-${journey.id || journey._id}-${index}`,
                   title: module.title || journey.title || journey.name || 'Untitled Module',
                   description: module.description || journey.description || '',
-                  duration: duration,
+                  duration: durationHours, // Store as number (hours) for TrainingModule interface
                   difficulty: (module.difficulty || 'beginner') as 'beginner' | 'intermediate' | 'advanced',
                   prerequisites: Array.isArray(module.prerequisites) ? module.prerequisites : [],
                   learningObjectives: Array.isArray(module.learningObjectives) 
@@ -183,6 +206,11 @@ function App() {
 
         setRealModules(modules);
         console.log('[App] Loaded', modules.length, 'modules from', journeys.length, 'journeys');
+        if (modules.length > 0) {
+          console.log('[App] First module sample:', modules[0]);
+        } else {
+          console.warn('[App] No modules found! Check journey structure.');
+        }
       } catch (error) {
         console.error('[App] Error loading training journeys:', error);
         setRealModules([]);
@@ -196,12 +224,16 @@ function App() {
 
   // Use real modules if available, otherwise fallback to mock
   const modulesToUse = realModules.length > 0 ? realModules : mockTrainingModules;
+  
+  console.log('[App] Using', modulesToUse.length, 'modules (real:', realModules.length, ', mock:', mockTrainingModules.length, ')');
 
   const { progress, updateModuleProgress, updateStepProgress, updateAssessmentResult } = useTrainingProgress({
     modules: modulesToUse,
     steps: mockOnboardingSteps,
     assessments: mockAssessments,
   });
+  
+  console.log('[App] Progress modules count:', progress.modules.length);
 
   const progressStats = {
     completed: progress.steps.filter(step => step.status === 'completed').length,
@@ -655,7 +687,10 @@ function App() {
                 <span className="ml-3 text-gray-600">Loading training modules...</span>
               </div>
             ) : (
-              <TrainingModules modules={progress.modules} onModuleSelect={setSelectedModule} />
+              <>
+                {console.log('[App] Rendering TrainingModules with', progress.modules.length, 'modules')}
+                <TrainingModules modules={progress.modules} onModuleSelect={setSelectedModule} />
+              </>
             )
           );
         case 'assessments':
@@ -784,7 +819,10 @@ function App() {
                 <span className="ml-3 text-gray-600">Loading training modules...</span>
               </div>
             ) : (
-              <TrainingModules modules={progress.modules} onModuleSelect={setSelectedModule} />
+              <>
+                {console.log('[App] Rendering TrainingModules with', progress.modules.length, 'modules')}
+                <TrainingModules modules={progress.modules} onModuleSelect={setSelectedModule} />
+              </>
             )
           );
         case 'assessments':
@@ -933,7 +971,10 @@ function App() {
                 <span className="ml-3 text-gray-600">Loading training modules...</span>
               </div>
             ) : (
-              <TrainingModules modules={progress.modules} onModuleSelect={setSelectedModule} />
+              <>
+                {console.log('[App] Rendering TrainingModules with', progress.modules.length, 'modules')}
+                <TrainingModules modules={progress.modules} onModuleSelect={setSelectedModule} />
+              </>
             )}
           </div>
         );

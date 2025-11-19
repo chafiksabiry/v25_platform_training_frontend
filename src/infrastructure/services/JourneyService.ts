@@ -179,6 +179,9 @@ export class JourneyService {
     try {
       const response = await ApiClient.get(endpoint);
       console.log('[JourneyService] Response:', response);
+      // ApiClient.get returns {data: {...}, status: 200}
+      // The backend returns {data: [...], success: true, count: N}
+      // So we need to return response.data which contains {data: [...], success: true}
       return response.data;
     } catch (error: any) {
       console.error('[JourneyService] Error fetching journeys by company:', error);
