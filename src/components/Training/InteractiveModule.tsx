@@ -183,7 +183,7 @@ export default function InteractiveModule({ module, onProgress, onComplete }: In
   };
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden flex flex-col" style={{ height: 'calc(100vh - 250px)', minHeight: '600px' }}>
+    <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden flex flex-col h-full">
       {/* Header */}
       <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-6 flex-shrink-0">
         <div className="flex items-center justify-between">
@@ -210,7 +210,7 @@ export default function InteractiveModule({ module, onProgress, onComplete }: In
       </div>
 
       {/* Content Area */}
-      <div className="p-6 flex-1 overflow-y-auto">
+      <div className="p-6 flex-1 overflow-y-auto min-h-0">
         {/* Show Quizzes or Sections */}
         {showQuizzes && currentQuiz ? (
           <div className="mb-6">
@@ -332,8 +332,8 @@ export default function InteractiveModule({ module, onProgress, onComplete }: In
               <div className="mb-4">
                 {/* Check if section has a file/document */}
                 {currentSectionData.content?.file?.url ? (
-                <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-                  <div className="bg-gray-50 px-4 py-2 border-b border-gray-200">
+                <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden flex flex-col h-full">
+                  <div className="bg-gray-50 px-4 py-2 border-b border-gray-200 flex-shrink-0">
                     <div className="flex items-center space-x-2">
                       <FileText className="h-4 w-4 text-gray-500" />
                       <span className="text-sm font-medium text-gray-700">
@@ -341,7 +341,7 @@ export default function InteractiveModule({ module, onProgress, onComplete }: In
                       </span>
                     </div>
                   </div>
-                  <div className="w-full" style={{ height: 'calc(100vh - 400px)', minHeight: '600px' }}>
+                  <div className="w-full flex-1 overflow-hidden min-h-0">
                     <DocumentViewer
                       fileUrl={currentSectionData.content.file.url}
                       fileName={currentSectionData.content.file.name}

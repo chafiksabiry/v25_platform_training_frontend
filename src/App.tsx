@@ -192,7 +192,7 @@ function App() {
       } else {
         // Last module completed, redirect to journey training list
         console.log('[App] All modules completed, redirecting to journey training');
-        setSelectedModule(null);
+    setSelectedModule(null);
         setSelectedJourney(null);
         setSelectedJourneyModules([]);
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -611,22 +611,24 @@ function App() {
         || progress.modules.find(m => m.id === selectedModule);
       if (module) {
         return (
-          <div className="space-y-6">
+          <div className="h-full flex flex-col">
             <button
               onClick={() => {
                 setSelectedModule(null);
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
-              className="flex items-center space-x-2 px-4 py-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors font-medium"
+              className="flex items-center space-x-2 px-4 py-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors font-medium mb-4 flex-shrink-0"
             >
               <span>←</span>
               <span>Back to Training Modules</span>
             </button>
-            <InteractiveModule
-              module={module}
-              onProgress={(progress) => handleModuleProgress(selectedModule, progress)}
-              onComplete={() => handleModuleComplete(selectedModule)}
-            />
+            <div className="flex-1 overflow-hidden">
+              <InteractiveModule
+                module={module}
+                onProgress={(progress) => handleModuleProgress(selectedModule, progress)}
+                onComplete={() => handleModuleComplete(selectedModule)}
+              />
+            </div>
           </div>
         );
       }
@@ -1073,7 +1075,7 @@ function App() {
                 }} 
               />
             ) : (
-              <TrainingModules modules={progress.modules} onModuleSelect={setSelectedModule} />
+            <TrainingModules modules={progress.modules} onModuleSelect={setSelectedModule} />
             )}
           </div>
         );
@@ -1185,14 +1187,14 @@ function App() {
         
         {/* Fixed Header */}
         <div className="sticky top-[42px] z-20">
-          <Header 
+        <Header 
             repName={getCurrentUserName()} 
-            onMenuToggle={() => setSidebarOpen(!sidebarOpen)}
-          />
+          onMenuToggle={() => setSidebarOpen(!sidebarOpen)}
+        />
         </div>
         
-        <main className="flex-1 p-6 flex gap-6">
-          <div className="flex-1">
+        <main className="flex-1 p-6 flex gap-6 overflow-hidden">
+          <div className="flex-1 overflow-hidden">
             {renderContent()}
           </div>
           
