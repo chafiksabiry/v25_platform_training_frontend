@@ -48,8 +48,8 @@ export default function LaunchedJourneyDashboard({
     completionRate: 30,
     dropoutRate: 5,
     averageTimeToComplete: '2.3 weeks',
-    topPerformers: enrolledReps.slice(0, 3),
-    strugglingLearners: enrolledReps.slice(-2),
+    topPerformers: Array.isArray(enrolledReps) ? enrolledReps.slice(0, 3) : [],
+    strugglingLearners: Array.isArray(enrolledReps) ? enrolledReps.slice(-2) : [],
     moduleCompletionRates: modules.map(module => ({
       moduleId: module.id,
       moduleName: module.title,

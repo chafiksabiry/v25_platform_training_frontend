@@ -34,12 +34,17 @@ export default function JourneySuccess({
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
+  // Ensure journey exists
+  if (!journey) {
+    return <div>Error: Journey data not available</div>;
+  }
+
   const totalDuration = (modules || []).reduce((sum, module) => sum + (module.duration || 0), 0);
   const totalAssessments = (modules || []).reduce((sum, module) => sum + (module.assessments?.length || 0), 0);
   
-  // Safe defaults for optional arrays
-  const safeEnrolledReps = enrolledReps || [];
-  const safeTargetRoles = journey.targetRoles || [];
+  // Safe defaults for optional arrays - ensure they are always arrays
+  const safeEnrolledReps = Array.isArray(enrolledReps) ? enrolledReps.filter(rep => rep != null && rep !== undefined) : [];
+  const safeTargetRoles = Array.isArray(journey?.targetRoles) ? journey.targetRoles.filter(role => role != null && role !== undefined && typeof role === 'string') : [];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50 flex items-center justify-center p-4">
@@ -121,8 +126,8 @@ export default function JourneySuccess({
                   {safeEnrolledReps.length > 0 ? (
                     <>
                       {safeEnrolledReps.slice(0, 5).map((rep) => (
-                        <span key={rep.id} className="px-3 py-1 bg-green-100 text-green-800 text-sm rounded-full">
-                          {rep.name}
+                        <span key={rep?.id || Math.random()} className="px-3 py-1 bg-green-100 text-green-800 text-sm rounded-full">
+                          {rep?.name || 'Unknown'}
                         </span>
                       ))}
                       {safeEnrolledReps.length > 5 && (

@@ -409,12 +409,12 @@ function App() {
   }
 
   // Check for JourneySuccess first (after launch)
-  if (showJourneySuccess && launchedJourney) {
+  if (showJourneySuccess && launchedJourney && launchedJourney.journey) {
     return (
       <JourneySuccess
         journey={launchedJourney.journey}
-        modules={launchedJourney.modules}
-        enrolledReps={launchedJourney.enrolledReps}
+        modules={Array.isArray(launchedJourney.modules) ? launchedJourney.modules : []}
+        enrolledReps={Array.isArray(launchedJourney.enrolledReps) ? launchedJourney.enrolledReps.filter(rep => rep != null) : []}
         onViewDashboard={handleViewDashboard}
         onCreateAnother={handleCreateAnotherJourney}
         onPreviewAsLearner={handlePreviewAsLearner}
