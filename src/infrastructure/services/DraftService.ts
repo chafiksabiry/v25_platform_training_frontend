@@ -33,7 +33,7 @@ export class DraftService {
         lastSaved: new Date().toISOString()
       };
       localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(updatedDraft));
-      console.log('[DraftService] Draft saved locally:', updatedDraft);
+      // Removed verbose logging
     } catch (error) {
       console.error('[DraftService] Error saving draft locally:', error);
     }
@@ -109,7 +109,7 @@ export class DraftService {
               // Sauvegarder l'ID du brouillon
               updatedDraft.draftId = response.journey.id;
               this.saveDraftLocally(updatedDraft);
-              console.log('[DraftService] Draft saved to backend:', response.journey.id);
+              // Draft saved successfully
             }
           } catch (error) {
             console.warn('[DraftService] Could not save draft to backend (will retry):', error);
@@ -164,7 +164,7 @@ export class DraftService {
           if (response.success && response.journey?.id) {
             updatedDraft.draftId = response.journey.id;
             this.saveDraftLocally(updatedDraft);
-            console.log('[DraftService] Draft saved immediately to backend:', response.journey.id);
+            // Draft saved immediately
           }
         } catch (error) {
           console.warn('[DraftService] Could not save draft immediately to backend:', error);
@@ -192,7 +192,7 @@ export class DraftService {
         clearTimeout(this.saveTimeout);
         this.saveTimeout = null;
       }
-      console.log('[DraftService] Draft cleared');
+      // Draft cleared
     } catch (error) {
       console.error('[DraftService] Error clearing draft:', error);
     }

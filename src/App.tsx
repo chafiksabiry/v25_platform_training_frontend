@@ -114,11 +114,7 @@ function App() {
   };
 
   const handleJourneyComplete = (journey: TrainingJourney, modules: TrainingModule[], enrolledReps: Rep[]) => {
-    console.log('🎉 Journey completed, redirecting to success page:', {
-      journey: journey.name,
-      modules: modules.length,
-      enrolledReps: (enrolledReps || []).length
-    });
+    // Removed verbose logging
     // Hide welcome screen and journey builder
     setShowWelcome(false);
     setShowJourneyBuilder(false);
@@ -879,7 +875,7 @@ function App() {
                         : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                     }`}
                   >
-                    {role.charAt(0).toUpperCase() + role.slice(1)}
+                    {role ? role.charAt(0).toUpperCase() + role.slice(1) : ''}
                   </button>
                 ))}
               </div>

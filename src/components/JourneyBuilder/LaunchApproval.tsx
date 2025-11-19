@@ -133,8 +133,10 @@ export default function LaunchApproval({
         })) || []
       };
 
-      console.log(`📝 Generating ${isFinalExam ? 'final exam' : 'quiz'} for module: ${module.title}`);
-      console.log(`📊 Configuration: ${finalConfig.totalQuestions} questions (${finalConfig.multipleChoice} QCM, ${finalConfig.trueFalse} True/False, ${finalConfig.multipleCorrect} Multiple Correct Answers)`);
+      // Log only for final exam to track the issue
+      if (isFinalExam) {
+        console.log(`[Final Exam] Requesting ${finalConfig.totalQuestions} questions (${finalConfig.multipleChoice} QCM, ${finalConfig.trueFalse} True/False, ${finalConfig.multipleCorrect} Multiple Correct)`);
+      }
 
       // Generate quiz using AI service with question type distribution
       const questions = await AIService.generateQuiz(
@@ -146,6 +148,15 @@ export default function LaunchApproval({
           multipleCorrect: finalConfig.multipleCorrect
         }
       );
+
+      // Verify we received the expected number of questions
+      if (questions.length < finalConfig.totalQuestions) {
+        console.error(`[Final Exam] ⚠️ Received only ${questions.length} questions out of ${finalConfig.totalQuestions} requested`);
+        if (isFinalExam) {
+          // For final exam, this is critical - alert the user
+          alert(`Warning: Only ${questions.length} questions were generated instead of ${finalConfig.totalQuestions}. The AI may have hit token limits. Please try regenerating.`);
+        }
+      }
 
       // Convert to Assessment format, preserving question types
       const assessmentQuestions: Question[] = questions.map((q: any, index: number) => {
@@ -252,7 +263,12 @@ export default function LaunchApproval({
         // Continue even if save fails - quiz is still available locally
       }
 
-      console.log(`✅ ${isFinalExam ? 'Final exam' : 'Quiz'} generated successfully with ${assessmentQuestions.length} questions`);
+      if (isFinalExam) {
+        console.log(`[Final Exam] Generated ${assessmentQuestions.length} questions (requested: ${finalConfig.totalQuestions})`);
+        if (assessmentQuestions.length !== finalConfig.totalQuestions) {
+          console.error(`[Final Exam] ❌ ERROR: Expected ${finalConfig.totalQuestions} questions but got ${assessmentQuestions.length}`);
+        }
+      }
     } catch (error) {
       console.error(`❌ Error generating ${isFinalExam ? 'final exam' : 'quiz'}:`, error);
       alert(`Erreur lors de la génération du ${isFinalExam ? 'examen final' : 'quiz'}. Veuillez réessayer.`);

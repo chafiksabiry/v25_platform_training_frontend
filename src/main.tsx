@@ -1,8 +1,7 @@
 import React from 'react';
 import './public-path';  // For proper Qiankun integration
 import { qiankunWindow } from 'vite-plugin-qiankun/dist/helper';
-
-console.log('[Training] main.tsx is being executed');
+import { logger } from './utils/logger';
 
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -37,17 +36,16 @@ let companyId = Cookies.get('companyId');
 if (!companyId) {
   companyId = '68cab073cfa9381f0ed56393'; // Default company ID
   Cookies.set('companyId', companyId, { expires: 365 });
-  console.log('[Training] Set default companyId in cookie:', companyId);
+  logger.log('[Training] Set default companyId in cookie:', companyId);
 }
 
-console.log('[Training] Stored userId from cookie:', userId);
-console.log('[Training] Stored companyId from cookie:', companyId);
-console.log('[Training] Stored token from localStorage:', token);
+logger.log('[Training] Stored userId from cookie:', userId);
+logger.log('[Training] Stored companyId from cookie:', companyId);
+logger.log('[Training] Stored token from localStorage:', token ? 'Present' : 'Not found');
 
 // Check authentication - redirect if not logged in (check both userId and token)
 if (!token || !userId){
-  console.log('[Training] Authentication failed - userId:', userId, 'token:', token ? 'Present' : 'Not found');
-  console.log('[Training] Redirecting to login page');
+  logger.warn('[Training] Authentication failed - redirecting to login');
   
   // Redirect to main app login page
   if (window.location.hostname === 'training.harx.ai') {
@@ -60,13 +58,7 @@ if (!token || !userId){
 } else {
   // Decode token and get user info
   const userInfo = decodeToken(token);
-  console.log('[Training] Decoded user info from token:', userInfo);
-  
-  if (userInfo) {
-    console.log('[Training] User ID:', userInfo.userId || userInfo.id || userInfo.sub);
-    console.log('[Training] User email:', userInfo.email);
-    console.log('[Training] User name:', userInfo.name || userInfo.fullName);
-    console.log('[Training] Token expiry:', userInfo.exp ? new Date(userInfo.exp * 1000) : 'Not available');
+  logger.log('[Training] User authenticated:', userInfo?.name || userInfo?.fullName || 'Unknown');
     
     // Check if token is expired
     if (userInfo.exp && userInfo.exp * 1000 < Date.now()) {
@@ -83,21 +75,17 @@ let root: ReturnType<typeof createRoot> | null = null;
 
 function render(props: { container?: HTMLElement }) {
   const { container } = props;
-  console.log('[Training] Render function called with props:', props);
-  console.log('[Training] Container provided:', container);
+  logger.debug('[Training] Rendering app');
   
   const rootElement = container
     ? container.querySelector('#root')
     : document.getElementById('root');
 
   if (rootElement) {
-    console.log('[Training] Rendering in container:', rootElement);
     // Create the root instance if it doesn't exist
     if (!root) {
-      console.log('[Training] Creating new root instance');
       root = createRoot(rootElement);
     }
-    console.log('[Training] Rendering App component');
     root.render(
       <StrictMode>
         <ErrorBoundary>
@@ -105,53 +93,32 @@ function render(props: { container?: HTMLElement }) {
         </ErrorBoundary>
       </StrictMode>
     );
-    console.log('[Training] App component rendered');
   } else {
-    console.warn('[Training] Root element not found!');
-    console.log('[Training] Document body:', document.body.innerHTML);
+    logger.error('[Training] Root element not found!');
   }
 }
 
 export async function bootstrap() {
-  console.time('[Training] bootstrap');
-  console.log('[Training] Bootstrapping...');
-  
-  try {
-    // Immediate resolution to avoid timeouts
-    console.log('[Training] Bootstrap completed successfully');
-    console.timeEnd('[Training] bootstrap');
-  } catch (error) {
-    console.error('[Training] Bootstrap failed:', error);
-    console.timeEnd('[Training] bootstrap');
-    throw error;
-  }
+  logger.debug('[Training] Bootstrapping...');
+  return Promise.resolve();
 }
 
 export async function mount(props: any) {
-  console.log('[Training] Mounting...', props);
-  const { container } = props;
-  if (container) {
-    console.log('[Training] Found container for mounting:', container);
-  } else {
-    console.warn('[Training] No container found for mounting');
-  }
+  logger.debug('[Training] Mounting...');
   render(props);
   return Promise.resolve();
 }
 
 export async function unmount(props: any) {
-  console.log('[Training] Unmounting...', props);
+  logger.debug('[Training] Unmounting...');
   const { container } = props;
   const rootElement = container
     ? container.querySelector('#root')
     : document.getElementById('root');
 
   if (rootElement && root) {
-    console.log('[Training] Unmounting from container:', rootElement);
     root.unmount();
     root = null;  // Reset the root instance
-  } else {
-    console.warn('[Training] Root element not found for unmounting!');
   }
   return Promise.resolve();
 }
@@ -163,25 +130,22 @@ window.addEventListener('error', (event) => {
 
 // Standalone mode: If the app is running outside Qiankun, it will use this code
 if (!qiankunWindow.__POWERED_BY_QIANKUN__) {
-  console.log('[Training] Running in standalone mode');
-  console.log('[Training] Document ready state:', document.readyState);
+  logger.debug('[Training] Running in standalone mode');
   
   // Wait for the DOM to be fully loaded
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
-      console.log('[Training] DOM content loaded, rendering app');
       render({});
     });
   } else {
-    console.log('[Training] DOM already loaded, rendering app immediately');
     try {
       render({});
     } catch (error) {
-      console.error('[Training] Error rendering app:', error);
+      logger.error('[Training] Error rendering app:', error);
     }
   }
 } else {
-  console.log('[Training] Running inside Qiankun');
+  logger.debug('[Training] Running inside Qiankun');
   // Qiankun will control the lifecycle
   render({});
 }

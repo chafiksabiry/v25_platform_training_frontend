@@ -85,8 +85,7 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
 
   // Convert uploads to sections if modules don't have sections
   const modulesWithSections = useMemo(() => {
-    console.log('🔍 Building modulesWithSections:', {
-      modulesCount: updatedModules.length,
+    // Removed verbose logging
       uploadsCount: uploads.length,
       modulesWithSections: updatedModules.map(m => ({
         id: m.id,
@@ -102,14 +101,11 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
       
       // If module already has sections, use them
       if (moduleWithSections.sections && moduleWithSections.sections.length > 0) {
-        console.log(`✅ Module ${moduleIndex} (${module.title}) already has ${moduleWithSections.sections.length} sections`);
         // Check if sections have URLs
         moduleWithSections.sections.forEach((section, idx) => {
           const fileUrl = section.content?.file?.url;
           if (!fileUrl) {
             console.warn(`⚠️ Section ${idx} in module ${moduleIndex} has no file URL`);
-          } else {
-            console.log(`  📄 Section ${idx} URL:`, fileUrl);
           }
         });
         return moduleWithSections;
@@ -425,8 +421,10 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
         })) || []
       };
 
-      console.log(`📝 Generating ${isFinalExam ? 'final exam' : 'quiz'} for module: ${module.title}`);
-      console.log(`📊 Configuration: ${finalConfig.totalQuestions} questions (${finalConfig.multipleChoice} QCM, ${finalConfig.trueFalse} True/False, ${finalConfig.multipleCorrect} Multiple Correct Answers)`);
+      // Log only for final exam to track the issue
+      if (isFinalExam) {
+        console.log(`[Final Exam] Requesting ${finalConfig.totalQuestions} questions (${finalConfig.multipleChoice} QCM, ${finalConfig.trueFalse} True/False, ${finalConfig.multipleCorrect} Multiple Correct)`);
+      }
 
       // Generate quiz using AI service with question type distribution
       const questions = await AIService.generateQuiz(
@@ -438,6 +436,15 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
           multipleCorrect: finalConfig.multipleCorrect
         }
       );
+
+      // Verify we received the expected number of questions
+      if (questions.length < finalConfig.totalQuestions) {
+        console.error(`[Final Exam] ⚠️ Received only ${questions.length} questions out of ${finalConfig.totalQuestions} requested`);
+        if (isFinalExam) {
+          // For final exam, this is critical - alert the user
+          alert(`Warning: Only ${questions.length} questions were generated instead of ${finalConfig.totalQuestions}. The AI may have hit token limits. Please try regenerating.`);
+        }
+      }
 
       // Convert to Assessment format, preserving question types
       const assessmentQuestions: Question[] = questions.map((q: any, index: number) => {
@@ -544,7 +551,12 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
         // Continue even if save fails - quiz is still available locally
       }
 
-      console.log(`✅ ${isFinalExam ? 'Final exam' : 'Quiz'} generated successfully with ${assessmentQuestions.length} questions`);
+      if (isFinalExam) {
+        console.log(`[Final Exam] Generated ${assessmentQuestions.length} questions (requested: ${finalConfig.totalQuestions})`);
+        if (assessmentQuestions.length !== finalConfig.totalQuestions) {
+          console.error(`[Final Exam] ❌ ERROR: Expected ${finalConfig.totalQuestions} questions but got ${assessmentQuestions.length}`);
+        }
+      }
     } catch (error) {
       console.error(`❌ Error generating ${isFinalExam ? 'final exam' : 'quiz'}:`, error);
       alert(`Error generating ${isFinalExam ? 'final exam' : 'quiz'}. Please try again.`);
@@ -843,20 +855,9 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
   const renderSectionContent = (section: TrainingSection) => {
     const content = section.content;
     
-    console.log('🎨 renderSectionContent called:', {
-      sectionType: section.type,
-      sectionTitle: section.title,
-      hasContent: !!content,
-      hasFile: !!content?.file,
-      fileUrl: content?.file?.url,
-      fileName: content?.file?.name,
-      mimeType: content?.file?.mimeType
-    });
-    
     switch (section.type) {
       case 'document':
         if (content?.file && content.file.url) {
-          console.log('✅ Rendering DocumentViewer with URL:', content.file.url);
     return (
             <div className="w-full h-full" style={{ minHeight: '400px' }}>
               <DocumentViewer

@@ -31,7 +31,7 @@ export default function JourneyBuilder({ onComplete }: JourneyBuilderProps) {
     const restoreDraft = () => {
       if (DraftService.hasDraft()) {
         const draft = DraftService.getDraft();
-        console.log('[JourneyBuilder] Restoring draft:', draft);
+        // Restoring draft silently
         
         setIsRestoringDraft(true);
         

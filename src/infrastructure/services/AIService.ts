@@ -179,21 +179,21 @@ export class AIService {
       };
     }
 
-    // Log the request to verify it's correct
-    console.log('[AIService] Generating quiz with:', {
-      numberOfQuestions: count,
-      questionDistribution: requestBody.questionDistribution,
-      questionTypes: questionTypes
-    });
-
     const response = await ApiClient.post('/api/ai/generate-quiz', requestBody);
     
     // Log the response to verify number of questions returned
     const questions = response.data.data?.questions || response.data.questions || [];
-    console.log(`[AIService] Received ${questions.length} questions (requested: ${count})`);
     
+    // Always log mismatch as error for debugging
     if (questions.length !== count) {
-      console.warn(`[AIService] ⚠️ Mismatch: Requested ${count} questions but received ${questions.length}`);
+      console.error(`[AIService] ⚠️ Mismatch: Requested ${count} questions but received ${questions.length}`);
+      console.error(`[AIService] Request body:`, {
+        numberOfQuestions: count,
+        questionDistribution: requestBody.questionDistribution
+      });
+    } else if (count >= 20) {
+      // Log success for large quizzes (like final exams)
+      console.log(`[AIService] ✅ Successfully received ${questions.length} questions`);
     }
     
     if (!response.data.success) {

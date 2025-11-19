@@ -105,7 +105,7 @@ export default function DocumentViewer({ fileUrl, fileName, mimeType }: Document
               onLoad={() => {
                 // Scroll to top when iframe loads
                 window.scrollTo({ top: 0, behavior: 'smooth' });
-                console.log('✅ PDF loaded successfully via PDF.js');
+                // PDF loaded successfully
               }}
             />
           )}
