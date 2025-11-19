@@ -30,8 +30,6 @@ import DocumentTransformer from './components/DocumentTransformer/DocumentTransf
 import LaunchedJourneyDashboard from './components/Dashboard/LaunchedJourneyDashboard';
 import JourneySuccess from './components/JourneyBuilder/JourneySuccess';
 import TraineePortal from './components/Trainee/TraineePortal';
-import PPTExportTester from './components/Demo/PPTExportTester';
-import QuickPPTExport from './components/Demo/QuickPPTExport';
 import { TrainingMethodology } from './types/methodology';
 import { healthInsuranceMethodology } from './data/healthInsuranceMethodology';
 import { 
@@ -192,8 +190,12 @@ function App() {
         window.scrollTo({ top: 0, behavior: 'smooth' });
         console.log('[App] Module completed, moving to next module:', nextModule.title);
       } else {
-        // Last module completed, stay on current module (user can click "Back to Training Modules" if needed)
-        console.log('[App] All modules completed');
+        // Last module completed, redirect to journey training list
+        console.log('[App] All modules completed, redirecting to journey training');
+        setSelectedModule(null);
+        setSelectedJourney(null);
+        setSelectedJourneyModules([]);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     } else {
       // No journey modules, just complete and return to list
@@ -1134,9 +1136,6 @@ function App() {
           onClick={() => setSidebarOpen(false)}
         />
       )}
-      
-      {/* Bouton flottant pour export PPT */}
-      <QuickPPTExport />
       
       <div className="flex-1 flex flex-col md:ml-64 transition-all duration-300">
         {/* Fixed Top Bar */}

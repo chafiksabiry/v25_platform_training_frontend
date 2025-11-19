@@ -1,7 +1,5 @@
 import React from 'react';
-import { User, Bell, Search, Menu, Download } from 'lucide-react';
-import { useState } from 'react';
-import ExportModal from '../Export/ExportModal';
+import { User, Bell, Search, Menu } from 'lucide-react';
 
 interface HeaderProps {
   repName: string;
@@ -9,10 +7,7 @@ interface HeaderProps {
 }
 
 export default function Header({ repName, onMenuToggle }: HeaderProps) {
-  const [showExportModal, setShowExportModal] = useState(false);
-
   return (
-    <>
     <header className="bg-white border-b border-gray-200 px-6 py-4 shadow-sm">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
@@ -45,15 +40,6 @@ export default function Header({ repName, onMenuToggle }: HeaderProps) {
             <span className="absolute top-1.5 right-1.5 bg-red-500 text-white text-xs rounded-full h-2 w-2"></span>
           </button>
           
-          {/* Export Button */}
-          <button 
-            onClick={() => setShowExportModal(true)}
-            className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-sm hover:shadow-md"
-          >
-            <Download className="h-4 w-4" />
-            <span className="font-medium">Export</span>
-          </button>
-          
           {/* User Profile */}
           <div className="flex items-center space-x-2 pl-3 border-l border-gray-200">
             <div className="w-9 h-9 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center shadow-sm">
@@ -64,11 +50,5 @@ export default function Header({ repName, onMenuToggle }: HeaderProps) {
         </div>
       </div>
     </header>
-    
-    <ExportModal 
-      isOpen={showExportModal} 
-      onClose={() => setShowExportModal(false)} 
-    />
-    </>
   );
 }
