@@ -185,7 +185,7 @@ export default function InteractiveModule({ module, onProgress, onComplete }: In
   return (
     <div className="bg-white overflow-hidden flex flex-col w-full h-full" style={{ height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
       {/* Content Area - Only Document */}
-      <div className="flex-1 overflow-hidden min-h-0 flex flex-col w-full" style={{ flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+      <div className="flex-1 overflow-hidden min-h-0 flex flex-col w-full" style={{ flex: '1 1 auto', minHeight: 0, height: 'calc(100% - 80px)', display: 'flex', flexDirection: 'column' }}>
         {/* Show Quizzes or Sections */}
         {showQuizzes && currentQuiz ? (
           <div className="p-6 flex-1 overflow-y-auto">
@@ -293,7 +293,7 @@ export default function InteractiveModule({ module, onProgress, onComplete }: In
           /* Current Section - Only Document */
           sections.length > 0 && currentSectionData ? (
             currentSectionData.content?.file?.url ? (
-              <div className="flex-1 overflow-hidden min-h-0 w-full" style={{ flex: '1 1 auto', minHeight: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
+              <div className="flex-1 overflow-hidden min-h-0 w-full" style={{ flex: '1 1 auto', minHeight: 'calc(100vh - 300px)', height: '100%', display: 'flex', flexDirection: 'column' }}>
                 <DocumentViewer
                   fileUrl={currentSectionData.content.file.url}
                   fileName={currentSectionData.content.file.name}
