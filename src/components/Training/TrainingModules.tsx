@@ -18,7 +18,7 @@ export default function TrainingModules({ modules, onModuleSelect }: TrainingMod
     <div className="space-y-6">
       {/* Header Section */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Journey Training</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Training Modules</h1>
         <div className="text-sm text-gray-600 font-medium">
           {completedCount} of {totalCount} completed
         </div>
