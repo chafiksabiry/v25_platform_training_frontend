@@ -1122,7 +1122,8 @@ function App() {
       <QuickPPTExport />
       
       <div className="flex-1 flex flex-col md:ml-64 transition-all duration-300">
-        <div className="bg-white border-b border-gray-200">
+        {/* Fixed Top Bar */}
+        <div className="bg-white border-b border-gray-200 sticky top-0 z-20">
           <div className="flex items-center justify-between px-6 py-2">
             <div className="flex items-center space-x-4">
               <span className="text-sm text-gray-600">View as:</span>
@@ -1166,10 +1167,13 @@ function App() {
           </div>
         </div>
         
-        <Header 
-          repName={getCurrentUserName()} 
-          onMenuToggle={() => setSidebarOpen(!sidebarOpen)}
-        />
+        {/* Fixed Header */}
+        <div className="sticky top-[42px] z-20">
+          <Header 
+            repName={getCurrentUserName()} 
+            onMenuToggle={() => setSidebarOpen(!sidebarOpen)}
+          />
+        </div>
         
         <main className="flex-1 p-6 flex gap-6">
           <div className="flex-1">
