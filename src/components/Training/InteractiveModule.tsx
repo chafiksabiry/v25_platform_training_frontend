@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Play, Pause, RotateCcw, CheckCircle, Brain, Zap, Target } from 'lucide-react';
+import { Play, Pause, RotateCcw, CheckCircle, Brain, Zap, Target, ChevronLeft, ChevronRight, FileText } from 'lucide-react';
 import { TrainingModule, Exercise, Quiz } from '../../types';
 import { useTrainingProgress } from '../../hooks/useTrainingProgress';
+import DocumentViewer from '../DocumentViewer/DocumentViewer';
 
 interface InteractiveModuleProps {
   module: TrainingModule;
@@ -20,6 +21,34 @@ export default function InteractiveModule({ module, onProgress, onComplete }: In
   const [engagementScore, setEngagementScore] = useState(0);
   const [userInteractions, setUserInteractions] = useState(0);
   const [lastInteraction, setLastInteraction] = useState(Date.now());
+
+  // Get sections from module.content or module.sections
+  const sections = (module.sections && Array.isArray(module.sections) && module.sections.length > 0)
+    ? module.sections
+    : (module.content && Array.isArray(module.content) && module.content.length > 0)
+      ? module.content
+      : [];
+
+  // Get current section data
+  const currentSectionData = sections[currentSection] || null;
+
+  // Debug log
+  useEffect(() => {
+    console.log('[InteractiveModule] Module sections:', {
+      sectionsCount: sections.length,
+      currentSection: currentSection,
+      currentSectionData: currentSectionData,
+      hasFile: !!currentSectionData?.content?.file?.url,
+      fileUrl: currentSectionData?.content?.file?.url,
+      moduleContent: module.content?.length || 0,
+      moduleSections: module.sections?.length || 0
+    });
+  }, [sections, currentSection, currentSectionData, module.content, module.sections]);
+
+  // Scroll to top when section changes
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [currentSection]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -60,8 +89,20 @@ export default function InteractiveModule({ module, onProgress, onComplete }: In
 
   const handleSectionComplete = () => {
     trackInteraction();
-    if (currentSection < module.topics.length - 1) {
-      setCurrentSection(prev => prev + 1);
+    if (sections.length > 0) {
+      if (currentSection < sections.length - 1) {
+        setCurrentSection(prev => prev + 1);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else {
+        onComplete();
+      }
+    } else if (module.topics && module.topics.length > 0) {
+      if (currentSection < module.topics.length - 1) {
+        setCurrentSection(prev => prev + 1);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else {
+        onComplete();
+      }
     } else {
       onComplete();
     }
@@ -150,7 +191,12 @@ export default function InteractiveModule({ module, onProgress, onComplete }: In
         <div className="mb-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-gray-900">
-              Section {currentSection + 1}: {module.topics[currentSection]}
+              {sections.length > 0 
+                ? `Section ${currentSection + 1}${currentSectionData?.title ? ': ' + currentSectionData.title : ''}`
+                : module.topics && module.topics[currentSection] 
+                  ? `Section ${currentSection + 1}: ${module.topics[currentSection]}`
+                  : `Section ${currentSection + 1}`
+              }
             </h3>
             <div className="flex items-center space-x-4 text-sm text-gray-600">
               <span>Time: {formatTime(timeSpent)}</span>
@@ -158,20 +204,108 @@ export default function InteractiveModule({ module, onProgress, onComplete }: In
             </div>
           </div>
 
-          {/* Video/Content Player */}
-          <div className="bg-gray-900 rounded-lg aspect-video flex items-center justify-center mb-4">
-            <div className="text-center text-white">
-              <div className="w-16 h-16 bg-white bg-opacity-20 rounded-full flex items-center justify-center mx-auto mb-4">
-                {isPlaying ? (
-                  <Pause className="h-8 w-8" />
-                ) : (
-                  <Play className="h-8 w-8" />
-                )}
-              </div>
-              <p className="text-lg font-medium">{module.topics[currentSection]}</p>
-              <p className="text-gray-300">Interactive content simulation</p>
+          {/* Document/Content Viewer */}
+          {sections.length > 0 && currentSectionData ? (
+            <div className="mb-4">
+              {/* Check if section has a file/document */}
+              {currentSectionData.content?.file?.url ? (
+                <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+                  <div className="bg-gray-50 px-4 py-2 border-b border-gray-200">
+                    <div className="flex items-center space-x-2">
+                      <FileText className="h-4 w-4 text-gray-500" />
+                      <span className="text-sm font-medium text-gray-700">
+                        {currentSectionData.content.file.name || 'Document'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="w-full" style={{ minHeight: '600px' }}>
+                    <DocumentViewer
+                      fileUrl={currentSectionData.content.file.url}
+                      fileName={currentSectionData.content.file.name}
+                      mimeType={currentSectionData.content.file.mimeType}
+                    />
+                  </div>
+                </div>
+              ) : currentSectionData.content?.text ? (
+                <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+                  <div className="prose max-w-none">
+                    {currentSectionData.content.text.split('\n\n').map((paragraph: string, idx: number) => (
+                      <p key={idx} className="text-gray-700 text-base leading-relaxed mb-4">
+                        {paragraph}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-12 text-center">
+                  <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-500">No content available for this section</p>
+                </div>
+              )}
             </div>
-          </div>
+          ) : (
+            /* Fallback: Video/Content Player simulation if no sections */
+            <div className="bg-gray-900 rounded-lg aspect-video flex items-center justify-center mb-4">
+              <div className="text-center text-white">
+                <div className="w-16 h-16 bg-white bg-opacity-20 rounded-full flex items-center justify-center mx-auto mb-4">
+                  {isPlaying ? (
+                    <Pause className="h-8 w-8" />
+                  ) : (
+                    <Play className="h-8 w-8" />
+                  )}
+                </div>
+                <p className="text-lg font-medium">
+                  {module.topics && module.topics[currentSection] 
+                    ? module.topics[currentSection] 
+                    : module.title}
+                </p>
+                <p className="text-gray-300">Interactive content simulation</p>
+              </div>
+            </div>
+          )}
+
+          {/* Section Navigation */}
+          {sections.length > 1 && (
+            <div className="flex items-center justify-between mb-4">
+              <button
+                onClick={() => {
+                  if (currentSection > 0) {
+                    setCurrentSection(currentSection - 1);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }
+                }}
+                disabled={currentSection === 0}
+                className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
+                  currentSection === 0
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                <ChevronLeft className="h-4 w-4" />
+                <span>Previous</span>
+              </button>
+              <span className="text-sm text-gray-600">
+                Section {currentSection + 1} of {sections.length}
+              </span>
+              <button
+                onClick={() => {
+                  if (currentSection < sections.length - 1) {
+                    setCurrentSection(currentSection + 1);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }
+                }}
+                disabled={currentSection === sections.length - 1}
+                className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
+                  currentSection === sections.length - 1
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                <span>Next</span>
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          )}
 
           {/* Controls */}
           <div className="flex items-center justify-between">
