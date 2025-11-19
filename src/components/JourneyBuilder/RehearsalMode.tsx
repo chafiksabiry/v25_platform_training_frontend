@@ -6,6 +6,7 @@ import { TrainingMethodology } from '../../types/methodology';
 import ModuleContentViewer from '../Training/ModuleContentViewer';
 import { TrainingSection, SectionContent, ContentFile } from '../../types/manualTraining';
 import { AIService } from '../../infrastructure/services/AIService';
+import { DraftService } from '../../infrastructure/services/DraftService';
 import axios from 'axios';
 
 interface SlideData {
@@ -458,9 +459,9 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
         };
       });
 
-      // Calculate passing score (70% of total points, minimum 70%)
+      // Calculate passing score (always 70%)
       const totalPoints = assessmentQuestions.reduce((sum, q) => sum + (q.points || 10), 0);
-      const passingScore = Math.ceil(totalPoints * 0.7); // Ensure >= 70% (using ceil to round up)
+      const passingScore = Math.round(totalPoints * 0.7); // Always 70% (rounded to nearest)
 
       // Create assessment
       const assessment: Assessment = {
@@ -499,6 +500,16 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
       });
 
       setUpdatedModules(updatedModulesList);
+
+      // Sauvegarder dans le brouillon immédiatement
+      try {
+        await DraftService.saveDraftImmediately({
+          modules: updatedModulesList
+        });
+        console.log('[RehearsalMode] Draft saved with updated quizzes');
+      } catch (draftError) {
+        console.warn('[RehearsalMode] Could not save draft:', draftError);
+      }
 
       // Save to server (optional - quiz is available locally even if save fails)
       try {
@@ -1306,10 +1317,10 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
                                       <span>Type: {assessment.type || 'quiz'}</span>
                                       <span>Passing Score: {(() => {
                                         const totalPts = assessment.questions?.reduce((sum, q) => sum + (q.points || 10), 0) || 0;
-                                        const minPassing = Math.ceil(totalPts * 0.7);
+                                        const minPassing = Math.round(totalPts * 0.7);
                                         const actualPassing = assessment.passingScore || minPassing;
-                                        const percentage = totalPts > 0 ? Math.round((actualPassing / totalPts) * 100) : 70;
-                                        return `${actualPassing} pts (${percentage}%)`;
+                                        // Always display 70% to match requirement
+                                        return `${actualPassing} pts (70%)`;
                                       })()}</span>
                                     </div>
                                   </div>

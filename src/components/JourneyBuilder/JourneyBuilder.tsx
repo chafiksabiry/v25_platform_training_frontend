@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CheckCircle, Clock, ArrowRight, Sparkles, Upload, Wand2, Rocket } from 'lucide-react';
 import SetupWizard from './SetupWizard';
 import ContentUploader from './ContentUploader';
@@ -7,6 +7,7 @@ import RehearsalMode from './RehearsalMode';
 import LaunchApproval from './LaunchApproval';
 import { Company, TrainingJourney, ContentUpload, TrainingModule, Rep, RehearsalFeedback } from '../../types';
 import { TrainingMethodology } from '../../types/methodology';
+import { DraftService } from '../../infrastructure/services/DraftService';
 
 interface JourneyBuilderProps {
   onComplete: (journey: TrainingJourney, modules: TrainingModule[], enrolledReps: Rep[]) => void;
@@ -23,6 +24,48 @@ export default function JourneyBuilder({ onComplete }: JourneyBuilderProps) {
   const [rehearsalRating, setRehearsalRating] = useState(0);
   const [showLaunchApproval, setShowLaunchApproval] = useState(false);
   const [selectedGigId, setSelectedGigId] = useState<string | null>(null);
+  const [isRestoringDraft, setIsRestoringDraft] = useState(false);
+
+  // Restaurer le brouillon au chargement
+  useEffect(() => {
+    const restoreDraft = () => {
+      if (DraftService.hasDraft()) {
+        const draft = DraftService.getDraft();
+        console.log('[JourneyBuilder] Restoring draft:', draft);
+        
+        setIsRestoringDraft(true);
+        
+        if (draft.company) setCompany(draft.company);
+        if (draft.journey) setJourney(draft.journey);
+        if (draft.methodology) setMethodology(draft.methodology);
+        if (draft.uploads && draft.uploads.length > 0) setUploads(draft.uploads);
+        if (draft.modules && draft.modules.length > 0) setModules(draft.modules);
+        if (draft.selectedGigId) setSelectedGigId(draft.selectedGigId);
+        if (draft.currentStep !== undefined && draft.currentStep > 0) {
+          setCurrentStep(draft.currentStep);
+        }
+        
+        setIsRestoringDraft(false);
+      }
+    };
+
+    restoreDraft();
+  }, []);
+
+  // Sauvegarder automatiquement à chaque changement
+  useEffect(() => {
+    if (!isRestoringDraft && (company || journey || uploads.length > 0 || modules.length > 0)) {
+      DraftService.saveDraftToBackend({
+        company,
+        journey,
+        methodology,
+        uploads,
+        modules,
+        currentStep,
+        selectedGigId
+      });
+    }
+  }, [company, journey, methodology, uploads, modules, currentStep, selectedGigId, isRestoringDraft]);
 
   const steps = [
     { 
@@ -55,7 +98,7 @@ export default function JourneyBuilder({ onComplete }: JourneyBuilderProps) {
     }
   ];
 
-  const handleSetupComplete = (newCompany: Company, newJourney: TrainingJourney, selectedMethodology?: TrainingMethodology, gigId?: string) => {
+  const handleSetupComplete = async (newCompany: Company, newJourney: TrainingJourney, selectedMethodology?: TrainingMethodology, gigId?: string) => {
     setCompany(newCompany);
     setJourney(newJourney);
     if (selectedMethodology) {
@@ -65,23 +108,42 @@ export default function JourneyBuilder({ onComplete }: JourneyBuilderProps) {
       setSelectedGigId(gigId);
     }
     setCurrentStep(1);
+    
+    // Sauvegarder immédiatement après le setup
+    await DraftService.saveDraftImmediately({
+      company: newCompany,
+      journey: newJourney,
+      methodology: selectedMethodology || null,
+      selectedGigId: gigId || null,
+      currentStep: 1
+    });
   };
 
-  const handleUploadComplete = (newUploads: ContentUpload[]) => {
+  const handleUploadComplete = async (newUploads: ContentUpload[]) => {
     setUploads(newUploads);
     setCurrentStep(2); // Go directly to Curriculum Design
+    
+    // Sauvegarder immédiatement après l'upload
+    await DraftService.saveDraftImmediately({
+      uploads: newUploads,
+      currentStep: 2
+    });
   };
 
-  const handleCurriculumComplete = (newModules: TrainingModule[]) => {
+  const handleCurriculumComplete = async (newModules: TrainingModule[]) => {
     // If methodology is selected, enhance modules with methodology-specific content
+    let finalModules = newModules;
     if (methodology) {
-      const enhancedModules = enhanceModulesWithMethodology(newModules, methodology);
-      setModules(enhancedModules);
-    } else {
-      setModules(newModules);
+      finalModules = enhanceModulesWithMethodology(newModules, methodology);
     }
-    setModules(newModules);
+    setModules(finalModules);
     setCurrentStep(3); // Go to Test & Launch
+    
+    // Sauvegarder immédiatement après la création du curriculum
+    await DraftService.saveDraftImmediately({
+      modules: finalModules,
+      currentStep: 3
+    });
   };
 
   const enhanceModulesWithMethodology = (modules: TrainingModule[], methodology: TrainingMethodology): TrainingModule[] => {
@@ -112,6 +174,8 @@ export default function JourneyBuilder({ onComplete }: JourneyBuilderProps) {
   };
 
   const handleLaunch = (finalJourney: TrainingJourney, finalModules: TrainingModule[], enrolledReps: Rep[]) => {
+    // Supprimer le brouillon après le lancement réussi
+    DraftService.clearDraft();
     onComplete(finalJourney, finalModules, enrolledReps);
   };
 
