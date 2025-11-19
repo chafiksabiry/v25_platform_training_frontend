@@ -59,14 +59,14 @@ export class AIService {
    */
   static async analyzeDocument(file: File): Promise<DocumentAnalysis> {
     try {
-      const formData = new FormData();
-      formData.append('file', file);
+    const formData = new FormData();
+    formData.append('file', file);
 
       console.log('📄 Analyzing document:', file.name, 'Size:', file.size, 'Type:', file.type);
 
-      const response = await ApiClient.upload('/api/ai/analyze-document', formData);
-      
-      if (!response.data.success) {
+    const response = await ApiClient.upload('/api/ai/analyze-document', formData);
+    
+    if (!response.data.success) {
         const errorMsg = response.data.error || response.data.message || 'Analysis failed';
         console.error('❌ Analysis failed:', errorMsg);
         throw new Error(errorMsg);
@@ -80,8 +80,8 @@ export class AIService {
       // Provide more specific error messages
       if (error.message?.includes('Failed to fetch') || error.message?.includes('Network error')) {
         throw new Error('Unable to connect to the AI service. Please check your internet connection and try again.');
-      }
-      
+    }
+
       if (error.status === 0) {
         throw new Error('Network error: Unable to reach the server. Please check your connection.');
       }

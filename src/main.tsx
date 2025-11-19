@@ -59,13 +59,13 @@ if (!token || !userId){
   // Decode token and get user info
   const userInfo = decodeToken(token);
   logger.log('[Training] User authenticated:', userInfo?.name || userInfo?.fullName || 'Unknown');
-  
-  // Check if token is expired
+    
+    // Check if token is expired
   if (userInfo && userInfo.exp && userInfo.exp * 1000 < Date.now()) {
     logger.warn('[Training] Token is expired, redirecting to /app1');
-    localStorage.removeItem('token');
-    Cookies.remove('userId');
-    window.location.href = '/app1';
+      localStorage.removeItem('token');
+      Cookies.remove('userId');
+      window.location.href = '/app1';
   }
 }
 

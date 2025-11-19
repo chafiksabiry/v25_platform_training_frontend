@@ -213,7 +213,8 @@ export default function InteractiveModule({ module, onProgress, onComplete }: In
           <div>
             <h4 className="font-semibold text-gray-900 mb-3">Practice Exercises</h4>
             <div className="space-y-2">
-              {module.practicalExercises.slice(0, 3).map((exercise) => (
+              {Array.isArray(module.practicalExercises) && module.practicalExercises.length > 0 ? (
+                module.practicalExercises.slice(0, 3).map((exercise) => (
                 <button
                   key={exercise.id}
                   onClick={() => startExercise(exercise)}
@@ -229,7 +230,10 @@ export default function InteractiveModule({ module, onProgress, onComplete }: In
                     )}
                   </div>
                 </button>
-              ))}
+                ))
+              ) : (
+                <p className="text-sm text-gray-500">No exercises available</p>
+              )}
             </div>
           </div>
 
@@ -237,7 +241,8 @@ export default function InteractiveModule({ module, onProgress, onComplete }: In
           <div>
             <h4 className="font-semibold text-gray-900 mb-3">Knowledge Check</h4>
             <div className="space-y-2">
-              {module.aiGeneratedQuizzes.slice(0, 3).map((quiz, index) => (
+              {Array.isArray(module.aiGeneratedQuizzes) && module.aiGeneratedQuizzes.length > 0 ? (
+                module.aiGeneratedQuizzes.slice(0, 3).map((quiz, index) => (
                 <button
                   key={quiz.id}
                   onClick={() => startQuiz(quiz)}
@@ -253,7 +258,10 @@ export default function InteractiveModule({ module, onProgress, onComplete }: In
                     <Brain className="h-5 w-5 text-blue-500" />
                   </div>
                 </button>
-              ))}
+                ))
+              ) : (
+                <p className="text-sm text-gray-500">No quizzes available</p>
+              )}
             </div>
           </div>
         </div>

@@ -237,7 +237,7 @@ export default function CurriculumDesigner({ uploads, methodology, onComplete, o
               moduleDocumentCounts[moduleIndex]++;
             }
           });
-          
+              
           console.log('📊 Document organization:', {
             mapping: documentModuleMapping,
             counts: moduleDocumentCounts

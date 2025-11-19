@@ -359,7 +359,8 @@ export default function TraineeModulePlayer({
                         <span>Practice Exercises</span>
                       </h3>
                       <div className="space-y-3">
-                        {module.practicalExercises.slice(0, 2).map((exercise) => (
+                        {Array.isArray(module.practicalExercises) && module.practicalExercises.length > 0 ? (
+                          module.practicalExercises.slice(0, 2).map((exercise) => (
                           <button
                             key={exercise.id}
                             onClick={() => handleInteraction()}
@@ -375,12 +376,20 @@ export default function TraineeModulePlayer({
                               )}
                             </div>
                           </button>
-                        ))}
+                          ))
+                        ) : (
+                          <p className="text-sm text-gray-500">No exercises available</p>
+                        )}
                       </div>
                     </div>
 
                     {/* Knowledge Checks / QCM */}
-                    {module.assessments && module.assessments.length > 0 && module.assessments[0].questions && (
+                    {module.assessments && 
+                     Array.isArray(module.assessments) && 
+                     module.assessments.length > 0 && 
+                     module.assessments[0] && 
+                     Array.isArray(module.assessments[0].questions) && 
+                     module.assessments[0].questions.length > 0 && (
                       <div className="bg-gradient-to-br from-purple-50 to-pink-50 border border-purple-200 rounded-xl p-6">
                         <h3 className="font-semibold text-purple-900 mb-4 flex items-center space-x-2">
                           <Brain className="h-5 w-5" />

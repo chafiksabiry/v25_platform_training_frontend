@@ -299,23 +299,25 @@ export default function TraineePortal({
                   </div>
 
                   {/* Module Topics Preview */}
-                  <div className="mt-4 pt-4 border-t border-gray-200">
-                    <div className="flex flex-wrap gap-2">
-                      {module.topics.slice(0, 4).map((topic, topicIndex) => (
-                        <span
-                          key={topicIndex}
-                          className="px-3 py-1 bg-gray-100 text-gray-700 text-xs rounded-full"
-                        >
-                          {topic}
-                        </span>
-                      ))}
-                      {module.topics.length > 4 && (
-                        <span className="px-3 py-1 bg-gray-100 text-gray-700 text-xs rounded-full">
-                          +{module.topics.length - 4} more
-                        </span>
-                      )}
+                  {Array.isArray(module.topics) && module.topics.length > 0 && (
+                    <div className="mt-4 pt-4 border-t border-gray-200">
+                      <div className="flex flex-wrap gap-2">
+                        {module.topics.slice(0, 4).map((topic, topicIndex) => (
+                          <span
+                            key={topicIndex}
+                            className="px-3 py-1 bg-gray-100 text-gray-700 text-xs rounded-full"
+                          >
+                            {topic}
+                          </span>
+                        ))}
+                        {module.topics.length > 4 && (
+                          <span className="px-3 py-1 bg-gray-100 text-gray-700 text-xs rounded-full">
+                            +{module.topics.length - 4} more
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -398,8 +400,9 @@ export default function TraineePortal({
           </div>
           
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {methodology.components.slice(0, 8).map((component, index) => (
-              <div key={component.id} className="bg-white rounded-xl p-4 text-center shadow-sm">
+            {methodology && Array.isArray(methodology.components) && methodology.components.length > 0 ? (
+              methodology.components.slice(0, 8).map((component, index) => (
+                <div key={component.id} className="bg-white rounded-xl p-4 text-center shadow-sm">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center mx-auto mb-2 ${
                   index < traineeProgress.completedModules ? 'bg-green-500 text-white' :
                   index === traineeProgress.completedModules ? 'bg-blue-500 text-white' :
@@ -415,7 +418,10 @@ export default function TraineePortal({
                 <div className="text-xs text-gray-600">{component.estimatedDuration}h</div>
                 <div className="text-xs text-gray-500 capitalize">{component.competencyLevel}</div>
               </div>
-            ))}
+              ))
+            ) : (
+              <p className="text-sm text-gray-500 col-span-full text-center">No methodology components available</p>
+            )}
           </div>
         </div>
       )}

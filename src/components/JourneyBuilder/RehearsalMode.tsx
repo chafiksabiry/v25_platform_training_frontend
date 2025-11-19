@@ -1531,8 +1531,8 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
                                                                 Correct
                                                               </span>
                                                             )}
-                                                          </div>
-                                                        </div>
+              </div>
+            </div>
                                                       );
                                                     }) : (
                                                       <div className="text-sm text-gray-500 italic">
@@ -1567,7 +1567,7 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
                           <p className="text-xs mt-1">Click on "Generate Quiz" to create a quiz with AI</p>
                         </div>
                       )}
-                    </div>
+          </div>
 
                     {/* Prerequisites */}
                     {currentModule.prerequisites && currentModule.prerequisites.length > 0 && (
@@ -1598,13 +1598,13 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Add Feedback</h3>
                 
                 {!showFeedbackForm ? (
-                  <button
+                    <button
                     onClick={() => setShowFeedbackForm(true)}
                     className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all"
-                  >
+                    >
                     <MessageSquare className="h-4 w-4" />
                     <span>Add Feedback</span>
-                  </button>
+                    </button>
                 ) : (
                   <div className="space-y-4">
                     <select
@@ -1637,7 +1637,7 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
                     />
 
                     <div className="flex space-x-2">
-                      <button
+                    <button
                         onClick={addFeedback}
                         className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
                       >
@@ -1648,11 +1648,11 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
                         className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
                       >
                         Cancel
-                      </button>
-              </div>
+                    </button>
+                  </div>
             </div>
                 )}
-          </div>
+                </div>
 
               {/* Feedback List */}
               <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-6">
@@ -1681,9 +1681,9 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
                       <MessageSquare className="h-8 w-8 text-gray-300 mx-auto mb-2" />
                       <p className="text-sm">No feedback yet</p>
                     </div>
-                  )}
-                </div>
-              </div>
+            )}
+          </div>
+        </div>
 
               {/* Overall Rating */}
               <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-6">
@@ -1701,7 +1701,7 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
                       <Star className="h-6 w-6 fill-current" />
                     </button>
                   ))}
-                </div>
+      </div>
                 
                 <div className="text-center text-sm text-gray-600 mb-4">
                   {overallRating === 0 && 'Rate the training journey'}

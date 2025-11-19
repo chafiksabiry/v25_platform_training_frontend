@@ -60,18 +60,24 @@ export default function TrainingModules({ modules, onModuleSelect }: TrainingMod
               <div className="mb-4">
                 <h4 className="text-sm font-medium text-gray-900 mb-2">Topics Covered:</h4>
                 <div className="flex flex-wrap gap-1">
-                  {module.topics.slice(0, 3).map((topic, index) => (
-                    <span
-                      key={index}
-                      className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded"
-                    >
-                      {topic}
-                    </span>
-                  ))}
-                  {module.topics.length > 3 && (
-                    <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded">
-                      +{module.topics.length - 3} more
-                    </span>
+                  {Array.isArray(module.topics) && module.topics.length > 0 ? (
+                    <>
+                      {module.topics.slice(0, 3).map((topic, index) => (
+                        <span
+                          key={index}
+                          className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded"
+                        >
+                          {topic}
+                        </span>
+                      ))}
+                      {module.topics.length > 3 && (
+                        <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded">
+                          +{module.topics.length - 3} more
+                        </span>
+                      )}
+                    </>
+                  ) : (
+                    <span className="text-xs text-gray-500">No topics listed</span>
                   )}
                 </div>
               </div>
