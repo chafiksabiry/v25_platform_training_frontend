@@ -624,17 +624,79 @@ function App() {
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                 <span className="ml-3 text-gray-600">Loading training modules...</span>
               </div>
-            ) : (
-              realJourneys.length > 0 ? (
-                <JourneyTraining 
-                  journeys={realJourneys} 
-                  onJourneySelect={(journeyId) => {
+            ) : selectedJourney && selectedJourneyModules.length > 0 ? (
+              <div className="space-y-4">
+                <div className="flex items-center space-x-4 mb-6">
+                  <button
+                    onClick={() => {
+                      setSelectedJourney(null);
+                      setSelectedJourneyModules([]);
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
+                    className="flex items-center space-x-2 px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+                  >
+                    <span>←</span>
+                    <span>Back to Journeys</span>
+                  </button>
+                  <h2 className="text-xl font-semibold text-gray-900">
+                    {selectedJourney.title || selectedJourney.name || 'Untitled Journey'}
+                  </h2>
+                </div>
+                <TrainingModules modules={selectedJourneyModules} onModuleSelect={setSelectedModule} />
+              </div>
+            ) : realJourneys.length > 0 ? (
+              <JourneyTraining 
+                journeys={realJourneys} 
+                onJourneySelect={(journeyId) => {
+                  const journey = realJourneys.find(j => (j.id || j._id) === journeyId);
+                  if (journey) {
                     console.log('[App] Journey selected:', journeyId);
-                  }} 
-                />
-              ) : (
-                <TrainingModules modules={progress.modules} onModuleSelect={setSelectedModule} />
-              )
+                    setSelectedJourney(journey);
+                    // Transform journey modules to TrainingModule format
+                    const modules: TrainingModule[] = (journey.modules || []).map((module: any, index: number) => {
+                      const topics = Array.isArray(module.topics) 
+                        ? module.topics 
+                        : (Array.isArray(module.learningObjectives) 
+                            ? module.learningObjectives.slice(0, 5).map((obj: any) => typeof obj === 'string' ? obj : obj.text || obj.title || '')
+                            : []);
+                      
+                      let duration = 0;
+                      if (typeof module.duration === 'number') {
+                        duration = module.duration;
+                      } else if (Array.isArray(module.content) && module.content.length > 0) {
+                        duration = module.content.reduce((sum: number, item: any) => {
+                          return sum + (item.duration || 0);
+                        }, 0);
+                      }
+                      const durationHours = duration > 0 ? Math.round(duration / 60 * 10) / 10 : 0;
+                      
+                      return {
+                        id: module.id || module._id || `module-${journey.id || journey._id}-${index}`,
+                        title: module.title || 'Untitled Module',
+                        description: module.description || '',
+                        duration: durationHours,
+                        difficulty: (module.difficulty || 'beginner') as 'beginner' | 'intermediate' | 'advanced',
+                        prerequisites: Array.isArray(module.prerequisites) ? module.prerequisites : [],
+                        learningObjectives: Array.isArray(module.learningObjectives) 
+                          ? module.learningObjectives.map((obj: any) => typeof obj === 'string' ? obj : obj.text || obj.title || '')
+                          : [],
+                        assessments: Array.isArray(module.assessments) ? module.assessments : [],
+                        content: Array.isArray(module.content) ? module.content : [],
+                        sections: Array.isArray(module.sections) ? module.sections : [],
+                        topics: topics,
+                        progress: 0,
+                        completed: false,
+                        order: index
+                      };
+                    });
+                    setSelectedJourneyModules(modules);
+                    console.log('[App] Selected journey:', journey.title || journey.name, 'with', modules.length, 'modules');
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }
+                }} 
+              />
+            ) : (
+              <TrainingModules modules={progress.modules} onModuleSelect={setSelectedModule} />
             )
           );
         case 'assessments':
