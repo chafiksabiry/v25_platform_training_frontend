@@ -1042,7 +1042,7 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen bg-gray-50">
       <Sidebar 
         activeTab={activeTab} 
         onTabChange={setActiveTab}
@@ -1059,7 +1059,7 @@ function App() {
       {/* Bouton flottant pour export PPT */}
       <QuickPPTExport />
       
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col md:ml-64 transition-all duration-300">
         <div className="bg-white border-b border-gray-200">
           <div className="flex items-center justify-between px-6 py-2">
             <div className="flex items-center space-x-4">
