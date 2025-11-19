@@ -13,14 +13,14 @@ export default function Header({ repName, onMenuToggle }: HeaderProps) {
 
   return (
     <>
-    <header className="bg-white border-b border-gray-200 px-6 py-4">
+    <header className="bg-white border-b border-gray-200 px-6 py-4 shadow-sm">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
           <button
             onClick={onMenuToggle}
             className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
           >
-            <Menu className="h-5 w-5" />
+            <Menu className="h-5 w-5 text-gray-600" />
           </button>
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Onboarding Hub</h1>
@@ -28,34 +28,38 @@ export default function Header({ repName, onMenuToggle }: HeaderProps) {
           </div>
         </div>
         
-        <div className="flex items-center space-x-4">
-          <div className="relative">
+        <div className="flex items-center space-x-3">
+          {/* Search Bar */}
+          <div className="relative hidden md:block">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
             <input
               type="text"
               placeholder="Search resources..."
-              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="pl-10 pr-4 py-2 w-64 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
             />
           </div>
           
-          <button className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
+          {/* Notifications */}
+          <button className="relative p-2.5 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
             <Bell className="h-5 w-5" />
-            <span className="absolute top-1 right-1 bg-red-500 text-white text-xs rounded-full h-2 w-2"></span>
+            <span className="absolute top-1.5 right-1.5 bg-red-500 text-white text-xs rounded-full h-2 w-2"></span>
           </button>
           
+          {/* Export Button */}
           <button 
             onClick={() => setShowExportModal(true)}
-            className="flex items-center space-x-2 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+            className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-sm hover:shadow-md"
           >
             <Download className="h-4 w-4" />
-            <span>Export</span>
+            <span className="font-medium">Export</span>
           </button>
           
-          <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-              <User className="h-4 w-4 text-white" />
+          {/* User Profile */}
+          <div className="flex items-center space-x-2 pl-3 border-l border-gray-200">
+            <div className="w-9 h-9 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center shadow-sm">
+              <User className="h-5 w-5 text-white" />
             </div>
-            <span className="text-sm font-medium text-gray-700">{repName}</span>
+            <span className="text-sm font-semibold text-gray-700 hidden lg:block">{repName}</span>
           </div>
         </div>
       </div>
