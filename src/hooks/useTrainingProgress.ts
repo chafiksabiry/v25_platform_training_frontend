@@ -24,6 +24,22 @@ export const useTrainingProgress = (initialData: {
     totalModules: initialData.modules.length,
   }));
 
+  // Update modules when initialData.modules changes
+  useEffect(() => {
+    const currentModuleIds = progress.modules.map(m => m.id).sort().join(',');
+    const newModuleIds = initialData.modules.map(m => m.id).sort().join(',');
+    
+    if (currentModuleIds !== newModuleIds || progress.modules.length !== initialData.modules.length) {
+      setProgress(prev => ({
+        ...prev,
+        modules: initialData.modules,
+        totalModules: initialData.modules.length,
+        completedModules: initialData.modules.filter(m => m.completed).length,
+      }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialData.modules]);
+
   const calculateOverallProgress = useCallback((modules: TrainingModule[], steps: OnboardingStep[]) => {
     const moduleProgress = modules.reduce((sum, module) => sum + module.progress, 0) / modules.length;
     const stepProgress = steps.reduce((sum, step) => sum + step.progress, 0) / steps.length;

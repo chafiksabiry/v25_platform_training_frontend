@@ -11,6 +11,7 @@ import ProgressOverview from './components/Dashboard/ProgressOverview';
 import CurrentGig from './components/Dashboard/CurrentGig';
 import OnboardingSteps from './components/Dashboard/OnboardingSteps';
 import TrainingModules from './components/Training/TrainingModules';
+import JourneyTraining from './components/Training/JourneyTraining';
 import InteractiveModule from './components/Training/InteractiveModule';
 import AssessmentCenter from './components/Assessment/AssessmentCenter';
 import KnowledgeBase from './components/KnowledgeBase/KnowledgeBase';
@@ -83,6 +84,7 @@ function App() {
   const [manualTrainingSetupComplete, setManualTrainingSetupComplete] = useState(false);
   const [manualTrainingSetupData, setManualTrainingSetupData] = useState<any>(null);
   const [realModules, setRealModules] = useState<TrainingModule[]>([]);
+  const [realJourneys, setRealJourneys] = useState<any[]>([]);
   const [loadingModules, setLoadingModules] = useState(true);
 
   // Load real training journeys and convert them to modules
@@ -122,92 +124,23 @@ function App() {
           console.log('[App] Sample journey modules:', journeys[0]?.modules?.length || 0, 'modules');
         }
         
-        // Transform journeys into modules
-        const modules: TrainingModule[] = journeys
-          .filter((journey: any) => {
-            // Include active and completed journeys, or all if status is not set
-            const status = journey.status || journey.journeyStatus;
-            return !status || status === 'active' || status === 'completed';
-          })
-          .flatMap((journey: any) => {
-            // Each journey can have multiple modules
-            const journeyModules = journey.modules || [];
-            if (Array.isArray(journeyModules) && journeyModules.length > 0) {
-              return journeyModules.map((module: any, index: number) => {
-                // Extract topics from learning objectives or sections
-                const topics = Array.isArray(module.topics) 
-                  ? module.topics 
-                  : (Array.isArray(module.learningObjectives) 
-                      ? module.learningObjectives.slice(0, 5).map((obj: any) => typeof obj === 'string' ? obj : obj.text || obj.title || '')
-                      : []);
-                
-                // Calculate duration from sections or use default
-                let duration = 0;
-                if (typeof module.duration === 'number') {
-                  duration = module.duration; // Duration is in minutes
-                } else if (typeof module.estimatedDuration === 'number') {
-                  duration = module.estimatedDuration;
-                } else if (Array.isArray(module.sections)) {
-                  // Estimate 30 minutes per section
-                  duration = Math.ceil(module.sections.length * 0.5);
-                } else if (Array.isArray(module.content) && module.content.length > 0) {
-                  // Sum up durations from content sections
-                  duration = module.content.reduce((sum: number, item: any) => {
-                    return sum + (item.duration || 0);
-                  }, 0);
-                }
-                
-                // Convert duration to hours (number) for the TrainingModule interface
-                const durationHours = duration > 0 ? Math.round(duration / 60 * 10) / 10 : 0;
-                
-                return {
-                  id: module.id || module._id || `module-${journey.id || journey._id}-${index}`,
-                  title: module.title || journey.title || journey.name || 'Untitled Module',
-                  description: module.description || journey.description || '',
-                  duration: durationHours, // Store as number (hours) for TrainingModule interface
-                  difficulty: (module.difficulty || 'beginner') as 'beginner' | 'intermediate' | 'advanced',
-                  prerequisites: Array.isArray(module.prerequisites) ? module.prerequisites : [],
-                  learningObjectives: Array.isArray(module.learningObjectives) 
-                    ? module.learningObjectives.map((obj: any) => typeof obj === 'string' ? obj : obj.text || obj.title || '')
-                    : [],
-                  assessments: Array.isArray(module.assessments) ? module.assessments : [],
-                  content: Array.isArray(module.content) ? module.content : [],
-                  sections: Array.isArray(module.sections) ? module.sections : [],
-                  topics: topics,
-                  progress: 0, // Will be calculated from trainee progress if available
-                  completed: false, // Will be updated from trainee progress
-                  order: index
-                };
-              });
-            } else {
-              // If no modules, create a module from the journey itself
-              const journeyStatus = journey.status || journey.journeyStatus;
-              return [{
-                id: `journey-${journey.id || journey._id}`,
-                title: journey.title || journey.name || 'Untitled Journey',
-                description: journey.description || '',
-                duration: 0,
-                difficulty: 'beginner' as 'beginner' | 'intermediate' | 'advanced',
-                prerequisites: [],
-                learningObjectives: [],
-                assessments: [],
-                content: [],
-                sections: [],
-                topics: [],
-                progress: 0,
-                completed: journeyStatus === 'completed',
-                order: 0
-              }];
-            }
-          });
+        // Filter active and completed journeys
+        const filteredJourneys = journeys.filter((journey: any) => {
+          const status = journey.status || journey.journeyStatus;
+          return !status || status === 'active' || status === 'completed';
+        });
 
-        setRealModules(modules);
-        console.log('[App] Loaded', modules.length, 'modules from', journeys.length, 'journeys');
-        if (modules.length > 0) {
-          console.log('[App] First module sample:', modules[0]);
+        // Store journeys directly instead of transforming to modules
+        setRealJourneys(filteredJourneys);
+        console.log('[App] Loaded', filteredJourneys.length, 'journeys');
+        if (filteredJourneys.length > 0) {
+          console.log('[App] First journey sample:', filteredJourneys[0]);
         } else {
-          console.warn('[App] No modules found! Check journey structure.');
+          console.warn('[App] No journeys found!');
         }
+        
+        // Also keep modules for backward compatibility (empty for now)
+        setRealModules([]);
       } catch (error) {
         console.error('[App] Error loading training journeys:', error);
         setRealModules([]);
@@ -684,10 +617,16 @@ function App() {
                 <span className="ml-3 text-gray-600">Loading training modules...</span>
               </div>
             ) : (
-              <>
-                {console.log('[App] Rendering TrainingModules with', progress.modules.length, 'modules')}
+              realJourneys.length > 0 ? (
+                <JourneyTraining 
+                  journeys={realJourneys} 
+                  onJourneySelect={(journeyId) => {
+                    console.log('[App] Journey selected:', journeyId);
+                  }} 
+                />
+              ) : (
                 <TrainingModules modules={progress.modules} onModuleSelect={setSelectedModule} />
-              </>
+              )
             )
           );
         case 'assessments':
@@ -816,10 +755,16 @@ function App() {
                 <span className="ml-3 text-gray-600">Loading training modules...</span>
               </div>
             ) : (
-              <>
-                {console.log('[App] Rendering TrainingModules with', progress.modules.length, 'modules')}
+              realJourneys.length > 0 ? (
+                <JourneyTraining 
+                  journeys={realJourneys} 
+                  onJourneySelect={(journeyId) => {
+                    console.log('[App] Journey selected:', journeyId);
+                  }} 
+                />
+              ) : (
                 <TrainingModules modules={progress.modules} onModuleSelect={setSelectedModule} />
-              </>
+              )
             )
           );
         case 'assessments':
@@ -965,13 +910,18 @@ function App() {
             {loadingModules ? (
               <div className="flex items-center justify-center py-12">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                <span className="ml-3 text-gray-600">Loading training modules...</span>
+                <span className="ml-3 text-gray-600">Loading journey training...</span>
               </div>
+            ) : realJourneys.length > 0 ? (
+              <JourneyTraining 
+                journeys={realJourneys} 
+                onJourneySelect={(journeyId) => {
+                  console.log('[App] Journey selected:', journeyId);
+                  // TODO: Handle journey selection - could show journey details or modules
+                }} 
+              />
             ) : (
-              <>
-                {console.log('[App] Rendering TrainingModules with', progress.modules.length, 'modules')}
-                <TrainingModules modules={progress.modules} onModuleSelect={setSelectedModule} />
-              </>
+              <TrainingModules modules={progress.modules} onModuleSelect={setSelectedModule} />
             )}
           </div>
         );
