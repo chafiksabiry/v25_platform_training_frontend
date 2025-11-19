@@ -85,17 +85,6 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
 
   // Convert uploads to sections if modules don't have sections
   const modulesWithSections = useMemo(() => {
-    // Removed verbose logging
-      uploadsCount: uploads.length,
-      modulesWithSections: updatedModules.map(m => ({
-        id: m.id,
-        title: m.title,
-        hasSections: !!(m as any).sections,
-        sectionsCount: (m as any).sections?.length || 0,
-        firstSectionUrl: (m as any).sections?.[0]?.content?.file?.url || 'no URL'
-      }))
-    });
-    
     return updatedModules.map((module, moduleIndex) => {
       const moduleWithSections = module as ModuleWithSections;
       
