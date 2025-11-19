@@ -179,7 +179,22 @@ export class AIService {
       };
     }
 
+    // Log the request to verify it's correct
+    console.log('[AIService] Generating quiz with:', {
+      numberOfQuestions: count,
+      questionDistribution: requestBody.questionDistribution,
+      questionTypes: questionTypes
+    });
+
     const response = await ApiClient.post('/api/ai/generate-quiz', requestBody);
+    
+    // Log the response to verify number of questions returned
+    const questions = response.data.data?.questions || response.data.questions || [];
+    console.log(`[AIService] Received ${questions.length} questions (requested: ${count})`);
+    
+    if (questions.length !== count) {
+      console.warn(`[AIService] ⚠️ Mismatch: Requested ${count} questions but received ${questions.length}`);
+    }
     
     if (!response.data.success) {
       throw new Error(response.data.error || response.data.message || 'Quiz generation failed');
