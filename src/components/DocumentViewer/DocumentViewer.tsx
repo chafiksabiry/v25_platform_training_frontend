@@ -81,7 +81,7 @@ export default function DocumentViewer({ fileUrl, fileName, mimeType }: Document
   const isBlobUrl = fileUrl.startsWith("blob:");
 
   return (
-    <div className="w-full h-full flex flex-col" style={{ height: '100%', width: '100%', minHeight: 0, maxHeight: '100%' }}>
+    <div className="w-full h-full flex flex-col" style={{ height: '100%', width: '100%', minHeight: 0, maxHeight: '100%', flex: '1 1 auto', display: 'flex', flexDirection: 'column' }}>
       {/* PDF VIEWER */}
       {type === "pdf" && (
         <>
@@ -89,8 +89,8 @@ export default function DocumentViewer({ fileUrl, fileName, mimeType }: Document
             <embed
               src={fileUrl}
               type="application/pdf"
-              className="w-full h-full rounded-lg shadow"
-              style={{ height: '100%', width: '100%', flex: '1 1 auto', minHeight: 0 }}
+              className="w-full h-full"
+              style={{ height: '100%', width: '100%', flex: '1 1 auto', minHeight: 0, border: 'none' }}
               onLoad={() => {
                 // Scroll to top when embed loads
                 window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -99,9 +99,9 @@ export default function DocumentViewer({ fileUrl, fileName, mimeType }: Document
           ) : (
             <iframe
               src={`https://mozilla.github.io/pdf.js/web/viewer.html?file=${encodeURIComponent(fileUrl)}`}
-              className="w-full h-full border-0 rounded-lg shadow"
+              className="w-full h-full border-0"
               title="PDF Viewer"
-              style={{ height: '100%', width: '100%', flex: '1 1 auto', minHeight: 0 }}
+              style={{ height: '100%', width: '100%', flex: '1 1 auto', minHeight: 0, border: 'none' }}
               onLoad={() => {
                 // Scroll to top when iframe loads
                 window.scrollTo({ top: 0, behavior: 'smooth' });

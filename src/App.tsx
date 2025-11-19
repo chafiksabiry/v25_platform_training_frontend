@@ -611,7 +611,7 @@ function App() {
         || progress.modules.find(m => m.id === selectedModule);
       if (module) {
         return (
-          <div className="h-full flex flex-col" style={{ height: '100%', minHeight: 0 }}>
+          <div className="h-full flex flex-col" style={{ height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
             <button
               onClick={() => {
                 setSelectedModule(null);
@@ -622,12 +622,12 @@ function App() {
               <span>←</span>
               <span>Back to Training Modules</span>
             </button>
-            <div className="flex-1 overflow-hidden" style={{ height: '100%', minHeight: 0 }}>
-            <InteractiveModule
-              module={module}
-              onProgress={(progress) => handleModuleProgress(selectedModule, progress)}
-              onComplete={() => handleModuleComplete(selectedModule)}
-            />
+            <div className="flex-1 overflow-hidden" style={{ height: '100%', minHeight: 0, flex: '1 1 auto', display: 'flex', flexDirection: 'column' }}>
+              <InteractiveModule
+                module={module}
+                onProgress={(progress) => handleModuleProgress(selectedModule, progress)}
+                onComplete={() => handleModuleComplete(selectedModule)}
+              />
             </div>
           </div>
         );
@@ -1193,8 +1193,8 @@ function App() {
         />
         </div>
         
-        <main className="flex-1 p-6 flex gap-6 overflow-hidden">
-          <div className="flex-1 overflow-hidden">
+        <main className={`flex-1 flex gap-6 overflow-hidden ${selectedModule ? 'p-6 pb-0' : 'p-6'}`} style={{ display: 'flex', flexDirection: 'row', height: '100%', minHeight: 0 }}>
+          <div className="flex-1 overflow-hidden" style={{ height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
             {renderContent()}
           </div>
           
