@@ -184,201 +184,145 @@ export default function InteractiveModule({ module, onProgress, onComplete }: In
 
   return (
     <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden flex flex-col h-full">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-6 flex-shrink-0">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            {getModuleTypeIcon()}
-            <div>
-              <h2 className="text-xl font-semibold">{module.title}</h2>
-            </div>
-          </div>
-          <div className="text-right">
-            <div className="text-2xl font-bold">{realProgress}%</div>
-            <div className="text-sm text-blue-100">Complete</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Progress Bar */}
-      <div className="bg-gray-200 h-2">
-        <div
-          className="bg-gradient-to-r from-green-400 to-green-500 h-2 transition-all duration-300"
-          style={{ width: `${realProgress}%` }}
-        />
-      </div>
-
-      {/* Content Area */}
-      <div className="p-6 flex-1 overflow-y-auto min-h-0">
+      {/* Content Area - Only Document */}
+      <div className="flex-1 overflow-hidden min-h-0 flex flex-col">
         {/* Show Quizzes or Sections */}
         {showQuizzes && currentQuiz ? (
-          <div className="mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">
-                Quiz {currentQuizIndex + 1} of {quizzes.length}
-              </h3>
-            </div>
-            
-            {/* Quiz Content */}
-            <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
-              <p className="text-gray-700 mb-6 text-lg font-medium">{currentQuiz.question}</p>
-              
-              {currentQuiz.options && currentQuiz.options.length > 0 ? (
-              <div className="space-y-3 mb-6">
-                {currentQuiz.options.map((option, index) => {
-                  const isMultipleCorrect = currentQuiz.type === 'multiple-correct';
-                  const isChecked = Array.isArray(quizAnswer) 
-                    ? quizAnswer.includes(index)
-                    : quizAnswer === index;
-                  
-                  return (
-                    <button
-                      key={index}
-                      onClick={() => {
-                        if (isMultipleCorrect) {
-                          setQuizAnswer(prev => {
-                            const prevArray = Array.isArray(prev) ? prev : [];
-                            if (prevArray.includes(index)) {
-                              return prevArray.filter(i => i !== index);
-                            } else {
-                              return [...prevArray, index];
-                            }
-                          });
-                        } else {
-                          setQuizAnswer(index);
-                        }
-                      }}
-                      className={`w-full text-left p-4 border-2 rounded-lg transition-colors ${
-                        isChecked
-                          ? 'border-blue-500 bg-blue-50'
-                          : 'border-gray-200 hover:bg-gray-50'
-                      }`}
-                    >
-                      <div className="flex items-center space-x-3">
-                        <input
-                          type={isMultipleCorrect ? 'checkbox' : 'radio'}
-                          checked={isChecked}
-                          onChange={() => {}}
-                          className="h-4 w-4"
-                        />
-                        <span className="text-gray-700">{option}</span>
-                      </div>
-                    </button>
-                  );
-                })}
+          <div className="p-6 flex-1 overflow-y-auto">
+            <div className="mb-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Quiz {currentQuizIndex + 1} of {quizzes.length}
+                </h3>
               </div>
-              ) : (
-                <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <p className="text-yellow-800">No options available for this quiz</p>
+              
+              {/* Quiz Content */}
+              <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+                <p className="text-gray-700 mb-6 text-lg font-medium">{currentQuiz.question}</p>
+                
+                {currentQuiz.options && currentQuiz.options.length > 0 ? (
+                <div className="space-y-3 mb-6">
+                  {currentQuiz.options.map((option, index) => {
+                    const isMultipleCorrect = currentQuiz.type === 'multiple-correct';
+                    const isChecked = Array.isArray(quizAnswer) 
+                      ? quizAnswer.includes(index)
+                      : quizAnswer === index;
+                    
+                    return (
+                      <button
+                        key={index}
+                        onClick={() => {
+                          if (isMultipleCorrect) {
+                            setQuizAnswer(prev => {
+                              const prevArray = Array.isArray(prev) ? prev : [];
+                              if (prevArray.includes(index)) {
+                                return prevArray.filter(i => i !== index);
+                              } else {
+                                return [...prevArray, index];
+                              }
+                            });
+                          } else {
+                            setQuizAnswer(index);
+                          }
+                        }}
+                        className={`w-full text-left p-4 border-2 rounded-lg transition-colors ${
+                          isChecked
+                            ? 'border-blue-500 bg-blue-50'
+                            : 'border-gray-200 hover:bg-gray-50'
+                        }`}
+                      >
+                        <div className="flex items-center space-x-3">
+                          <input
+                            type={isMultipleCorrect ? 'checkbox' : 'radio'}
+                            checked={isChecked}
+                            onChange={() => {}}
+                            className="h-4 w-4"
+                          />
+                          <span className="text-gray-700">{option}</span>
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
-              )}
+                ) : (
+                  <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <p className="text-yellow-800">No options available for this quiz</p>
+                  </div>
+                )}
 
-              {showQuizResult && (
-                <div className={`p-4 rounded-lg mb-4 ${
-                  (Array.isArray(quizAnswer)
-                    ? JSON.stringify([...quizAnswer].sort()) === JSON.stringify([...(Array.isArray(currentQuiz.correctAnswer) ? currentQuiz.correctAnswer : [currentQuiz.correctAnswer])].sort())
-                    : quizAnswer === currentQuiz.correctAnswer)
-                    ? 'bg-green-50 border border-green-200'
-                    : 'bg-red-50 border border-red-200'
-                }`}>
-                  <p className={`font-medium ${
+                {showQuizResult && (
+                  <div className={`p-4 rounded-lg mb-4 ${
                     (Array.isArray(quizAnswer)
                       ? JSON.stringify([...quizAnswer].sort()) === JSON.stringify([...(Array.isArray(currentQuiz.correctAnswer) ? currentQuiz.correctAnswer : [currentQuiz.correctAnswer])].sort())
                       : quizAnswer === currentQuiz.correctAnswer)
-                      ? 'text-green-800'
-                      : 'text-red-800'
+                      ? 'bg-green-50 border border-green-200'
+                      : 'bg-red-50 border border-red-200'
                   }`}>
-                    {(Array.isArray(quizAnswer)
-                      ? JSON.stringify([...quizAnswer].sort()) === JSON.stringify([...(Array.isArray(currentQuiz.correctAnswer) ? currentQuiz.correctAnswer : [currentQuiz.correctAnswer])].sort())
-                      : quizAnswer === currentQuiz.correctAnswer)
-                      ? 'Correct!'
-                      : 'Incorrect'}
-                  </p>
-                  {currentQuiz.explanation && (
-                    <p className="text-sm text-gray-700 mt-2">{currentQuiz.explanation}</p>
-                  )}
-                </div>
-              )}
+                    <p className={`font-medium ${
+                      (Array.isArray(quizAnswer)
+                        ? JSON.stringify([...quizAnswer].sort()) === JSON.stringify([...(Array.isArray(currentQuiz.correctAnswer) ? currentQuiz.correctAnswer : [currentQuiz.correctAnswer])].sort())
+                        : quizAnswer === currentQuiz.correctAnswer)
+                        ? 'text-green-800'
+                        : 'text-red-800'
+                    }`}>
+                      {(Array.isArray(quizAnswer)
+                        ? JSON.stringify([...quizAnswer].sort()) === JSON.stringify([...(Array.isArray(currentQuiz.correctAnswer) ? currentQuiz.correctAnswer : [currentQuiz.correctAnswer])].sort())
+                        : quizAnswer === currentQuiz.correctAnswer)
+                        ? 'Correct!'
+                        : 'Incorrect'}
+                    </p>
+                    {currentQuiz.explanation && (
+                      <p className="text-sm text-gray-700 mt-2">{currentQuiz.explanation}</p>
+                    )}
+                  </div>
+                )}
 
-              {!showQuizResult && (
-                <button
-                  onClick={submitQuizAnswer}
-                  disabled={quizAnswer === null}
-                  className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
-                >
-                  Submit Answer
-                </button>
-              )}
+                {!showQuizResult && (
+                  <button
+                    onClick={submitQuizAnswer}
+                    disabled={quizAnswer === null}
+                    className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+                  >
+                    Submit Answer
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         ) : (
-          /* Current Section */
-          <div className="mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">
-                {sections.length > 0 
-                  ? `Section ${currentSection + 1}${currentSectionData?.title ? ': ' + currentSectionData.title : ''}`
-                  : module.topics && module.topics[currentSection] 
-                    ? `Section ${currentSection + 1}: ${module.topics[currentSection]}`
-                    : `Section ${currentSection + 1}`
-                }
-              </h3>
-            </div>
-
-            {/* Document/Content Viewer */}
-            {sections.length > 0 ? (
-              currentSectionData ? (
-              <div className="mb-4">
-                {/* Check if section has a file/document */}
-                {currentSectionData.content?.file?.url ? (
-                <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden flex flex-col h-full">
-                  <div className="bg-gray-50 px-4 py-2 border-b border-gray-200 flex-shrink-0">
-                    <div className="flex items-center space-x-2">
-                      <FileText className="h-4 w-4 text-gray-500" />
-                      <span className="text-sm font-medium text-gray-700">
-                        {currentSectionData.content.file.name || 'Document'}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="w-full flex-1 overflow-hidden min-h-0">
-                    <DocumentViewer
-                      fileUrl={currentSectionData.content.file.url}
-                      fileName={currentSectionData.content.file.name}
-                      mimeType={currentSectionData.content.file.mimeType}
-                    />
-                  </div>
+          /* Current Section - Only Document */
+          sections.length > 0 && currentSectionData ? (
+            currentSectionData.content?.file?.url ? (
+              <div className="flex-1 overflow-hidden min-h-0">
+                <DocumentViewer
+                  fileUrl={currentSectionData.content.file.url}
+                  fileName={currentSectionData.content.file.name}
+                  mimeType={currentSectionData.content.file.mimeType}
+                />
+              </div>
+            ) : currentSectionData.content?.text ? (
+              <div className="p-6 flex-1 overflow-y-auto">
+                <div className="prose max-w-none">
+                  {currentSectionData.content.text.split('\n\n').map((paragraph: string, idx: number) => (
+                    <p key={idx} className="text-gray-700 text-base leading-relaxed mb-4">
+                      {paragraph}
+                    </p>
+                  ))}
                 </div>
-              ) : currentSectionData.content?.text ? (
-                <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
-                  <div className="prose max-w-none">
-                    {currentSectionData.content.text.split('\n\n').map((paragraph: string, idx: number) => (
-                      <p key={idx} className="text-gray-700 text-base leading-relaxed mb-4">
-                        {paragraph}
-                      </p>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <div className="bg-gray-50 border border-gray-200 rounded-lg p-12 text-center">
+              </div>
+            ) : (
+              <div className="flex-1 flex items-center justify-center">
+                <div className="text-center">
                   <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                   <p className="text-gray-500">No content available for this section</p>
                 </div>
-              )}
               </div>
-              ) : (
-                <div className="bg-gray-50 border border-gray-200 rounded-lg p-12 text-center mb-4">
-                  <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-500">Section data not available</p>
-                </div>
-              )
-            ) : (
-              /* No sections available */
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-12 text-center mb-4">
+            )
+          ) : (
+            <div className="flex-1 flex items-center justify-center">
+              <div className="text-center">
                 <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-500 mb-2">No sections available in this module</p>
-                <p className="text-sm text-gray-400">
-                  Module: {module.title || 'Untitled'}
-                </p>
                 {quizzes.length > 0 && (
                   <button
                     onClick={() => {
@@ -392,12 +336,12 @@ export default function InteractiveModule({ module, onProgress, onComplete }: In
                   </button>
                 )}
               </div>
-            )}
-          </div>
+            </div>
+          )
         )}
 
         {/* Navigation Buttons */}
-        <div className="flex items-center justify-between mt-6">
+        <div className="flex items-center justify-between p-4 border-t border-gray-200 bg-white flex-shrink-0">
           <button
             onClick={handlePrevious}
             disabled={!showQuizzes && currentSection === 0}
@@ -438,7 +382,6 @@ export default function InteractiveModule({ module, onProgress, onComplete }: In
             <ChevronRight className="h-5 w-5" />
           </button>
         </div>
-
       </div>
     </div>
   );
