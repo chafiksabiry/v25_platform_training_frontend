@@ -74,9 +74,9 @@ export default function InteractiveModule({ module, onProgress, onComplete }: In
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [currentSection]);
 
-  // Update progress when sections are completed
+  // Update progress when sections are completed (this is now handled in handleNext, but keep for initial state)
   useEffect(() => {
-    if (sections.length > 0) {
+    if (sections.length > 0 && completedSections.size > 0) {
       const progress = (completedSections.size / sections.length) * 100;
       onProgress(progress);
     }
@@ -93,6 +93,12 @@ export default function InteractiveModule({ module, onProgress, onComplete }: In
         window.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
         // All quizzes completed, finish module
+        // Mark all sections as completed for final progress update
+        if (sections.length > 0) {
+          const allSectionsCompleted = new Set(Array.from({ length: sections.length }, (_, i) => i));
+          setCompletedSections(allSectionsCompleted);
+          onProgress(100);
+        }
         onComplete();
       }
     } else {
@@ -107,7 +113,11 @@ export default function InteractiveModule({ module, onProgress, onComplete }: In
       
       // Mark current section as completed
       if (sections.length > 0) {
-        setCompletedSections(prev => new Set([...prev, currentSection]));
+        const newCompletedSections = new Set([...completedSections, currentSection]);
+        setCompletedSections(newCompletedSections);
+        // Update progress immediately
+        const newProgress = (newCompletedSections.size / sections.length) * 100;
+        onProgress(newProgress);
       }
       
       // Check if this is the last section
@@ -123,6 +133,9 @@ export default function InteractiveModule({ module, onProgress, onComplete }: In
           window.scrollTo({ top: 0, behavior: 'smooth' });
         } else {
           // No quizzes, complete module
+          if (sections.length > 0) {
+            onProgress(100);
+          }
           onComplete();
         }
       }

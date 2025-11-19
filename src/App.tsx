@@ -181,7 +181,24 @@ function App() {
 
   const handleModuleComplete = (moduleId: string) => {
     updateModuleProgress(moduleId, 100);
-    setSelectedModule(null);
+    
+    // Find current module index in selectedJourneyModules
+    if (selectedJourneyModules.length > 0) {
+      const currentIndex = selectedJourneyModules.findIndex(m => m.id === moduleId);
+      if (currentIndex !== -1 && currentIndex < selectedJourneyModules.length - 1) {
+        // Move to next module automatically
+        const nextModule = selectedJourneyModules[currentIndex + 1];
+        setSelectedModule(nextModule.id);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        console.log('[App] Module completed, moving to next module:', nextModule.title);
+      } else {
+        // Last module completed, stay on current module (user can click "Back to Training Modules" if needed)
+        console.log('[App] All modules completed');
+      }
+    } else {
+      // No journey modules, just complete and return to list
+      setSelectedModule(null);
+    }
   };
 
   const handleAssessmentComplete = (assessmentId: string, result: any) => {
