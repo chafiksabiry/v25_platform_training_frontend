@@ -52,16 +52,22 @@ export default function InteractiveModule({ module, onProgress, onComplete }: In
 
   // Debug log
   useEffect(() => {
-    console.log('[InteractiveModule] Module sections:', {
+    console.log('[InteractiveModule] Module state:', {
+      moduleTitle: module.title,
       sectionsCount: sections.length,
       currentSection: currentSection,
       currentSectionData: currentSectionData,
       hasFile: !!currentSectionData?.content?.file?.url,
       fileUrl: currentSectionData?.content?.file?.url,
       moduleContent: module.content?.length || 0,
-      moduleSections: module.sections?.length || 0
+      moduleSections: module.sections?.length || 0,
+      showQuizzes: showQuizzes,
+      quizzesCount: quizzes.length,
+      currentQuiz: currentQuiz,
+      realProgress: realProgress,
+      completedSections: Array.from(completedSections)
     });
-  }, [sections, currentSection, currentSectionData, module.content, module.sections]);
+  }, [sections, currentSection, currentSectionData, module.content, module.sections, showQuizzes, quizzes, currentQuiz, realProgress, completedSections]);
 
   // Scroll to top when section changes
   useEffect(() => {
@@ -84,13 +90,25 @@ export default function InteractiveModule({ module, onProgress, onComplete }: In
         setCurrentQuizIndex(prev => prev + 1);
         setQuizAnswer(null);
         setShowQuizResult(false);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
         // All quizzes completed, finish module
         onComplete();
       }
     } else {
+      // If no sections but quizzes available, start quizzes
+      if (sections.length === 0 && quizzes.length > 0) {
+        setShowQuizzes(true);
+        setCurrentQuizIndex(0);
+        setCurrentQuiz(quizzes[0]);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+      
       // Mark current section as completed
-      setCompletedSections(prev => new Set([...prev, currentSection]));
+      if (sections.length > 0) {
+        setCompletedSections(prev => new Set([...prev, currentSection]));
+      }
       
       // Check if this is the last section
       if (currentSection < sections.length - 1) {
@@ -191,8 +209,9 @@ export default function InteractiveModule({ module, onProgress, onComplete }: In
             
             {/* Quiz Content */}
             <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
-              <p className="text-gray-700 mb-6 text-lg">{currentQuiz.question}</p>
+              <p className="text-gray-700 mb-6 text-lg font-medium">{currentQuiz.question}</p>
               
+              {currentQuiz.options && currentQuiz.options.length > 0 ? (
               <div className="space-y-3 mb-6">
                 {currentQuiz.options.map((option, index) => {
                   const isMultipleCorrect = currentQuiz.type === 'multiple-correct';
@@ -236,6 +255,11 @@ export default function InteractiveModule({ module, onProgress, onComplete }: In
                   );
                 })}
               </div>
+              ) : (
+                <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <p className="text-yellow-800">No options available for this quiz</p>
+                </div>
+              )}
 
               {showQuizResult && (
                 <div className={`p-4 rounded-lg mb-4 ${
@@ -290,10 +314,11 @@ export default function InteractiveModule({ module, onProgress, onComplete }: In
             </div>
 
             {/* Document/Content Viewer */}
-            {sections.length > 0 && currentSectionData ? (
-            <div className="mb-4">
-              {/* Check if section has a file/document */}
-              {currentSectionData.content?.file?.url ? (
+            {sections.length > 0 ? (
+              currentSectionData ? (
+              <div className="mb-4">
+                {/* Check if section has a file/document */}
+                {currentSectionData.content?.file?.url ? (
                 <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
                   <div className="bg-gray-50 px-4 py-2 border-b border-gray-200">
                     <div className="flex items-center space-x-2">
@@ -327,12 +352,33 @@ export default function InteractiveModule({ module, onProgress, onComplete }: In
                   <p className="text-gray-500">No content available for this section</p>
                 </div>
               )}
-            </div>
+              </div>
+              ) : (
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-12 text-center mb-4">
+                  <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-500">Section data not available</p>
+                </div>
+              )
             ) : (
-              /* Fallback: No content */
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-12 text-center">
+              /* No sections available */
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-12 text-center mb-4">
                 <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-500">No content available</p>
+                <p className="text-gray-500 mb-2">No sections available in this module</p>
+                <p className="text-sm text-gray-400">
+                  Module: {module.title || 'Untitled'}
+                </p>
+                {quizzes.length > 0 && (
+                  <button
+                    onClick={() => {
+                      setShowQuizzes(true);
+                      setCurrentQuizIndex(0);
+                      setCurrentQuiz(quizzes[0]);
+                    }}
+                    className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    Start Quizzes ({quizzes.length})
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -354,17 +400,29 @@ export default function InteractiveModule({ module, onProgress, onComplete }: In
           </button>
           <span className="text-sm text-gray-600">
             {showQuizzes 
-              ? `Quiz ${currentQuizIndex + 1} of ${quizzes.length}`
+              ? (quizzes.length > 0 ? `Quiz ${currentQuizIndex + 1} of ${quizzes.length}` : 'No quizzes')
               : sections.length > 0 
                 ? `Section ${currentSection + 1} of ${sections.length}`
-                : ''
+                : 'No sections'
             }
           </span>
           <button
             onClick={handleNext}
-            className="flex items-center space-x-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            disabled={!showQuizzes && sections.length === 0 && quizzes.length === 0}
+            className={`flex items-center space-x-2 px-6 py-3 rounded-lg transition-colors ${
+              (!showQuizzes && sections.length === 0 && quizzes.length === 0)
+                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                : 'bg-blue-600 text-white hover:bg-blue-700'
+            }`}
           >
-            <span>{showQuizzes && currentQuizIndex === quizzes.length - 1 ? 'Complete' : 'Next'}</span>
+            <span>
+              {showQuizzes && currentQuizIndex === quizzes.length - 1 
+                ? 'Complete' 
+                : (!showQuizzes && sections.length === 0 && quizzes.length > 0)
+                  ? 'Start Quizzes'
+                  : 'Next'
+              }
+            </span>
             <ChevronRight className="h-5 w-5" />
           </button>
         </div>
