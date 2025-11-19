@@ -183,9 +183,9 @@ export default function InteractiveModule({ module, onProgress, onComplete }: In
   };
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+    <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden flex flex-col" style={{ height: 'calc(100vh - 250px)', minHeight: '600px' }}>
       {/* Header */}
-      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-6">
+      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-6 flex-shrink-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
             {getModuleTypeIcon()}
@@ -210,7 +210,7 @@ export default function InteractiveModule({ module, onProgress, onComplete }: In
       </div>
 
       {/* Content Area */}
-      <div className="p-6">
+      <div className="p-6 flex-1 overflow-y-auto">
         {/* Show Quizzes or Sections */}
         {showQuizzes && currentQuiz ? (
           <div className="mb-6">
@@ -341,7 +341,7 @@ export default function InteractiveModule({ module, onProgress, onComplete }: In
                       </span>
                     </div>
                   </div>
-                  <div className="w-full" style={{ minHeight: '600px' }}>
+                  <div className="w-full" style={{ height: 'calc(100vh - 400px)', minHeight: '600px' }}>
                     <DocumentViewer
                       fileUrl={currentSectionData.content.file.url}
                       fileName={currentSectionData.content.file.name}

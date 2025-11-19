@@ -81,7 +81,7 @@ export default function DocumentViewer({ fileUrl, fileName, mimeType }: Document
   const isBlobUrl = fileUrl.startsWith("blob:");
 
   return (
-    <div className="w-full h-full flex flex-col gap-4">
+    <div className="w-full h-full flex flex-col gap-4" style={{ height: '100%' }}>
       {/* PDF VIEWER */}
       {type === "pdf" && (
         <>
@@ -89,8 +89,8 @@ export default function DocumentViewer({ fileUrl, fileName, mimeType }: Document
             <embed
               src={fileUrl}
               type="application/pdf"
-              className="w-full h-full rounded-lg shadow"
-              style={{ minHeight: '400px' }}
+              className="w-full rounded-lg shadow"
+              style={{ height: 'calc(100vh - 400px)', minHeight: '600px', maxHeight: 'none' }}
               onLoad={() => {
                 // Scroll to top when embed loads
                 window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -99,9 +99,9 @@ export default function DocumentViewer({ fileUrl, fileName, mimeType }: Document
           ) : (
             <iframe
               src={`https://mozilla.github.io/pdf.js/web/viewer.html?file=${encodeURIComponent(fileUrl)}`}
-              className="w-full h-full border-0 rounded-lg shadow"
+              className="w-full border-0 rounded-lg shadow"
               title="PDF Viewer"
-              style={{ minHeight: '400px' }}
+              style={{ height: 'calc(100vh - 400px)', minHeight: '600px', maxHeight: 'none' }}
               onLoad={() => {
                 // Scroll to top when iframe loads
                 window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -144,13 +144,13 @@ export default function DocumentViewer({ fileUrl, fileName, mimeType }: Document
 
       {/* VIDEO VIEWER */}
       {type === "video" && (
-        <div className="w-full h-full">
+        <div className="w-full" style={{ height: 'calc(100vh - 400px)', minHeight: '600px' }}>
           {isBlobUrl ? (
             <video
               src={fileUrl}
               controls
-              className="w-full h-full rounded-lg shadow"
-              style={{ minHeight: '400px' }}
+              className="w-full rounded-lg shadow"
+              style={{ height: '100%', width: '100%' }}
             >
               Your browser does not support the video tag.
             </video>
@@ -158,8 +158,8 @@ export default function DocumentViewer({ fileUrl, fileName, mimeType }: Document
             <video
               src={fileUrl}
               controls
-              className="w-full h-full rounded-lg shadow"
-              style={{ minHeight: '400px' }}
+              className="w-full rounded-lg shadow"
+              style={{ height: '100%', width: '100%' }}
             >
               Your browser does not support the video tag.
             </video>
@@ -181,18 +181,18 @@ export default function DocumentViewer({ fileUrl, fileName, mimeType }: Document
 
       {/* YOUTUBE VIEWER */}
       {type === "youtube" && (
-        <div className="w-full h-full">
+        <div className="w-full" style={{ height: 'calc(100vh - 400px)', minHeight: '600px' }}>
           {(() => {
             const videoId = getYouTubeId(fileUrl);
             if (videoId) {
               return (
                 <iframe
                   src={`https://www.youtube.com/embed/${videoId}`}
-                  className="w-full h-full border-0 rounded-lg shadow"
+                  className="w-full border-0 rounded-lg shadow"
                   title="YouTube Video"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen
-                  style={{ minHeight: '400px' }}
+                  style={{ height: '100%', width: '100%' }}
                 />
               );
             } else {
