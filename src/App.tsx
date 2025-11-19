@@ -707,11 +707,20 @@ function App() {
                         topics: topics,
                         progress: 0,
                         completed: false,
-                        order: index
+                        order: index,
+                        quizIds: Array.isArray(module.quizIds) ? module.quizIds : []
                       };
                     });
                     setSelectedJourneyModules(modules);
                     console.log('[App] Selected journey:', journey.title || journey.name, 'with', modules.length, 'modules');
+                    modules.forEach((m, idx) => {
+                      const quizIds = (m as any).quizIds;
+                      console.log(`[App] Module ${idx + 1} (${m.title}):`, {
+                        quizIds: quizIds,
+                        hasQuizIds: !!quizIds && Array.isArray(quizIds) && quizIds.length > 0,
+                        quizIdsCount: Array.isArray(quizIds) ? quizIds.length : 0
+                      });
+                    });
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }
                 }} 
@@ -1064,7 +1073,8 @@ function App() {
                         topics: topics,
                         progress: 0,
                         completed: false,
-                        order: index
+                        order: index,
+                        quizIds: Array.isArray(module.quizIds) ? module.quizIds : []
                       };
                     });
                     setSelectedJourneyModules(modules);

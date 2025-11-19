@@ -40,9 +40,11 @@ export default function InteractiveModule({ module, onProgress, onComplete }: In
   useEffect(() => {
     const loadQuizzes = async () => {
       const quizIds = (module as any).quizIds;
+      console.log('[InteractiveModule] Loading quizzes for module:', module.title, 'quizIds:', quizIds);
       
       // If module has quizIds, fetch quizzes from API
       if (quizIds && Array.isArray(quizIds) && quizIds.length > 0) {
+        console.log('[InteractiveModule] Found', quizIds.length, 'quizIds, fetching from API...');
         setLoadingQuizzes(true);
         try {
           const allQuestions: Quiz[] = [];
@@ -50,11 +52,15 @@ export default function InteractiveModule({ module, onProgress, onComplete }: In
           // Fetch each quiz by ID from module_quizzes collection
           for (const quizId of quizIds) {
             try {
+              console.log('[InteractiveModule] Fetching quiz:', quizId);
               const response = await ApiClient.get(`/training_journeys/modules/quizzes/${quizId}`);
+              console.log('[InteractiveModule] Quiz response:', response.data);
               if (response.data.success && response.data.data) {
                 const quiz = response.data.data;
+                console.log('[InteractiveModule] Quiz data:', quiz);
                 // Convert quiz questions to Quiz format
                 if (quiz.questions && Array.isArray(quiz.questions)) {
+                  console.log('[InteractiveModule] Found', quiz.questions.length, 'questions in quiz');
                   const questions = quiz.questions.map((q: any, idx: number) => ({
                     id: q._id || q.id || `quiz-${quizId}-${idx}`,
                     question: q.question || q.text || '',
@@ -65,13 +71,18 @@ export default function InteractiveModule({ module, onProgress, onComplete }: In
                     points: q.points || 10
                   }));
                   allQuestions.push(...questions);
+                } else {
+                  console.warn('[InteractiveModule] Quiz has no questions array:', quiz);
                 }
+              } else {
+                console.warn('[InteractiveModule] Quiz response not successful:', response.data);
               }
             } catch (error) {
               console.error(`[InteractiveModule] Error loading quiz ${quizId}:`, error);
             }
           }
           
+          console.log('[InteractiveModule] Total questions loaded:', allQuestions.length);
           setQuizzes(allQuestions);
         } catch (error) {
           console.error('[InteractiveModule] Error loading quizzes:', error);
@@ -80,6 +91,7 @@ export default function InteractiveModule({ module, onProgress, onComplete }: In
           setLoadingQuizzes(false);
         }
       } else {
+        console.log('[InteractiveModule] No quizIds found, using assessments fallback');
         // Fallback to assessments if no quizIds
         const quizzesFromAssessments = module.assessments && Array.isArray(module.assessments) && module.assessments.length > 0
           ? module.assessments.flatMap((assessment: any) => 
@@ -96,6 +108,7 @@ export default function InteractiveModule({ module, onProgress, onComplete }: In
                 : []
             )
           : [];
+        console.log('[InteractiveModule] Using', quizzesFromAssessments.length, 'questions from assessments');
         setQuizzes(quizzesFromAssessments);
       }
     };
@@ -105,6 +118,7 @@ export default function InteractiveModule({ module, onProgress, onComplete }: In
 
   // Debug log
   useEffect(() => {
+    const quizIds = (module as any).quizIds;
     console.log('[InteractiveModule] Module state:', {
       moduleTitle: module.title,
       sectionsCount: sections.length,
@@ -118,9 +132,12 @@ export default function InteractiveModule({ module, onProgress, onComplete }: In
       quizzesCount: quizzes.length,
       currentQuiz: currentQuiz,
       realProgress: realProgress,
-      completedSections: Array.from(completedSections)
+      completedSections: Array.from(completedSections),
+      quizIds: quizIds,
+      hasQuizIds: !!quizIds && Array.isArray(quizIds) && quizIds.length > 0,
+      loadingQuizzes: loadingQuizzes
     });
-  }, [sections, currentSection, currentSectionData, module.content, module.sections, showQuizzes, quizzes, currentQuiz, realProgress, completedSections]);
+  }, [sections, currentSection, currentSectionData, module.content, module.sections, showQuizzes, quizzes, currentQuiz, realProgress, completedSections, loadingQuizzes]);
 
   // Scroll to top when section changes
   useEffect(() => {
