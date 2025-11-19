@@ -36,6 +36,17 @@ export default function InteractiveModule({ module, onProgress, onComplete }: In
     ? Math.round((completedSections.size / sections.length) * 100)
     : module.progress || 0;
 
+  // Reset quiz state when module changes
+  useEffect(() => {
+    setShowQuizzes(false);
+    setCurrentQuizIndex(0);
+    setCurrentQuiz(null);
+    setQuizAnswer(null);
+    setShowQuizResult(false);
+    setCurrentSection(0);
+    setCompletedSections(new Set());
+  }, [module.id]);
+
   // Load quizzes from API if module has quizIds, otherwise use assessments
   useEffect(() => {
     const loadQuizzes = async () => {
@@ -162,13 +173,21 @@ export default function InteractiveModule({ module, onProgress, onComplete }: In
         setShowQuizResult(false);
         window.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
-        // All quizzes completed, finish module
+        // All quizzes completed for this module, finish module and move to next
+        console.log('[InteractiveModule] All quizzes completed, finishing module and moving to next');
         // Mark all sections as completed for final progress update
         if (sections.length > 0) {
           const allSectionsCompleted = new Set(Array.from({ length: sections.length }, (_, i) => i));
           setCompletedSections(allSectionsCompleted);
           onProgress(100);
         }
+        // Reset quiz state for next module
+        setShowQuizzes(false);
+        setCurrentQuizIndex(0);
+        setCurrentQuiz(null);
+        setQuizAnswer(null);
+        setShowQuizResult(false);
+        // Complete this module and move to next
         onComplete();
       }
     } else {
@@ -195,14 +214,39 @@ export default function InteractiveModule({ module, onProgress, onComplete }: In
         setCurrentSection(prev => prev + 1);
         window.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
-        // Last section completed, show quizzes
+        // Last section completed, show quizzes for this module
+        console.log('[InteractiveModule] Last section completed, checking for quizzes...', {
+          quizzesCount: quizzes.length,
+          loadingQuizzes: loadingQuizzes,
+          quizIds: (module as any).quizIds
+        });
+        
         if (quizzes.length > 0) {
+          console.log('[InteractiveModule] Showing quizzes after module completion');
           setShowQuizzes(true);
           setCurrentQuizIndex(0);
           setCurrentQuiz(quizzes[0]);
           window.scrollTo({ top: 0, behavior: 'smooth' });
+        } else if (loadingQuizzes) {
+          // Still loading quizzes, wait a bit
+          console.log('[InteractiveModule] Quizzes still loading, waiting...');
+          setTimeout(() => {
+            if (quizzes.length > 0) {
+              setShowQuizzes(true);
+              setCurrentQuizIndex(0);
+              setCurrentQuiz(quizzes[0]);
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            } else {
+              console.log('[InteractiveModule] No quizzes found after loading, completing module');
+              if (sections.length > 0) {
+                onProgress(100);
+              }
+              onComplete();
+            }
+          }, 1000);
         } else {
-          // No quizzes, complete module
+          // No quizzes available, complete module and move to next
+          console.log('[InteractiveModule] No quizzes available, completing module');
           if (sections.length > 0) {
             onProgress(100);
           }
@@ -261,9 +305,14 @@ export default function InteractiveModule({ module, onProgress, onComplete }: In
           <div className="p-6 flex-1 overflow-y-auto">
             <div className="mb-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">
-                  Quiz {currentQuizIndex + 1} of {quizzes.length}
-                </h3>
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900 mb-1">
+                    Module Quiz: {module.title}
+                  </h2>
+                  <h3 className="text-lg font-semibold text-gray-700">
+                    Question {currentQuizIndex + 1} of {quizzes.length}
+                  </h3>
+                </div>
               </div>
               
               {/* Quiz Content */}
@@ -444,7 +493,7 @@ export default function InteractiveModule({ module, onProgress, onComplete }: In
           >
             <span>
               {showQuizzes && currentQuizIndex === quizzes.length - 1 
-                ? 'Complete' 
+                ? 'Complete Module' 
                 : (!showQuizzes && sections.length === 0 && quizzes.length > 0)
                   ? 'Start Quizzes'
                   : 'Next'
