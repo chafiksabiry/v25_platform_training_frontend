@@ -398,16 +398,36 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
 
     try {
       // Prepare module content in the format expected by the backend
+      // For final exam, limit content significantly to avoid token limits
+      // Only include section titles and brief summaries, not full content
+      const maxSectionTextLength = isFinalExam ? 150 : 10000; // Very short for final exam
+      
       const moduleContent = {
         title: module.title,
-        description: module.description || '',
+        description: isFinalExam ? (module.description || '').substring(0, 200) : (module.description || ''),
         learningObjectives: module.learningObjectives || [],
-        sections: (module as any).sections?.map((section: any) => ({
-          title: section.title || '',
-          content: {
-            text: section.content?.text || section.description || section.aiDescription || ''
+        sections: (module as any).sections?.map((section: any) => {
+          let sectionText = '';
+          
+          if (isFinalExam) {
+            // For final exam, use only a very brief summary or just the title
+            const fullText = section.content?.text || section.description || section.aiDescription || '';
+            if (fullText.length > 0) {
+              // Take first 150 chars as summary
+              sectionText = fullText.substring(0, maxSectionTextLength) + (fullText.length > maxSectionTextLength ? '...' : '');
+            }
+          } else {
+            // For regular quizzes, use full content
+            sectionText = section.content?.text || section.description || section.aiDescription || '';
           }
-        })) || []
+          
+          return {
+            title: section.title || '',
+            content: {
+              text: sectionText
+            }
+          };
+        }) || []
       };
 
       // Log only for final exam to track the issue
