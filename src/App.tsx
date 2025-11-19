@@ -51,6 +51,8 @@ import {
 import { useTrainingProgress } from './hooks/useTrainingProgress';
 import { Company, TrainingJourney, TrainingModule, Rep } from './types';
 import { getCurrentUserName } from './utils/userUtils';
+import { JourneyService } from './infrastructure/services/JourneyService';
+import Cookies from 'js-cookie';
 
 function App() {
   // const { user, signOut } = useAuth();
@@ -80,9 +82,123 @@ function App() {
   const [showManualTraining, setShowManualTraining] = useState(false);
   const [manualTrainingSetupComplete, setManualTrainingSetupComplete] = useState(false);
   const [manualTrainingSetupData, setManualTrainingSetupData] = useState<any>(null);
+  const [realModules, setRealModules] = useState<TrainingModule[]>([]);
+  const [loadingModules, setLoadingModules] = useState(true);
+
+  // Load real training journeys and convert them to modules
+  useEffect(() => {
+    const loadTrainingJourneys = async () => {
+      try {
+        setLoadingModules(true);
+        const companyId = Cookies.get('companyId');
+        if (!companyId) {
+          console.warn('[App] No companyId found, using mock data');
+          setRealModules([]);
+          setLoadingModules(false);
+          return;
+        }
+
+        const response = await JourneyService.getJourneysByCompany(companyId);
+        // Handle different response formats: {data: [...], success: true} or just [...]
+        const journeys = Array.isArray(response) 
+          ? response 
+          : (response?.data && Array.isArray(response.data) 
+              ? response.data 
+              : (response?.journeys && Array.isArray(response.journeys) 
+                  ? response.journeys 
+                  : []));
+        
+        console.log('[App] Raw journeys response:', journeys.length, 'journeys');
+        
+        // Transform journeys into modules
+        const modules: TrainingModule[] = journeys
+          .filter((journey: any) => {
+            // Include active and completed journeys, or all if status is not set
+            const status = journey.status || journey.journeyStatus;
+            return !status || status === 'active' || status === 'completed';
+          })
+          .flatMap((journey: any) => {
+            // Each journey can have multiple modules
+            const journeyModules = journey.modules || [];
+            if (Array.isArray(journeyModules) && journeyModules.length > 0) {
+              return journeyModules.map((module: any, index: number) => {
+                // Extract topics from learning objectives or sections
+                const topics = Array.isArray(module.topics) 
+                  ? module.topics 
+                  : (Array.isArray(module.learningObjectives) 
+                      ? module.learningObjectives.slice(0, 5).map((obj: any) => typeof obj === 'string' ? obj : obj.text || obj.title || '')
+                      : []);
+                
+                // Calculate duration from sections or use default
+                let duration = 0;
+                if (typeof module.duration === 'number') {
+                  duration = module.duration;
+                } else if (typeof module.estimatedDuration === 'number') {
+                  duration = module.estimatedDuration;
+                } else if (Array.isArray(module.sections)) {
+                  // Estimate 30 minutes per section
+                  duration = Math.ceil(module.sections.length * 0.5);
+                }
+                
+                return {
+                  id: module.id || module._id || `module-${journey.id || journey._id}-${index}`,
+                  title: module.title || journey.title || journey.name || 'Untitled Module',
+                  description: module.description || journey.description || '',
+                  duration: duration,
+                  difficulty: (module.difficulty || 'beginner') as 'beginner' | 'intermediate' | 'advanced',
+                  prerequisites: Array.isArray(module.prerequisites) ? module.prerequisites : [],
+                  learningObjectives: Array.isArray(module.learningObjectives) 
+                    ? module.learningObjectives.map((obj: any) => typeof obj === 'string' ? obj : obj.text || obj.title || '')
+                    : [],
+                  assessments: Array.isArray(module.assessments) ? module.assessments : [],
+                  content: Array.isArray(module.content) ? module.content : [],
+                  sections: Array.isArray(module.sections) ? module.sections : [],
+                  topics: topics,
+                  progress: 0, // Will be calculated from trainee progress if available
+                  completed: false, // Will be updated from trainee progress
+                  order: index
+                };
+              });
+            } else {
+              // If no modules, create a module from the journey itself
+              const journeyStatus = journey.status || journey.journeyStatus;
+              return [{
+                id: `journey-${journey.id || journey._id}`,
+                title: journey.title || journey.name || 'Untitled Journey',
+                description: journey.description || '',
+                duration: 0,
+                difficulty: 'beginner' as 'beginner' | 'intermediate' | 'advanced',
+                prerequisites: [],
+                learningObjectives: [],
+                assessments: [],
+                content: [],
+                sections: [],
+                topics: [],
+                progress: 0,
+                completed: journeyStatus === 'completed',
+                order: 0
+              }];
+            }
+          });
+
+        setRealModules(modules);
+        console.log('[App] Loaded', modules.length, 'modules from', journeys.length, 'journeys');
+      } catch (error) {
+        console.error('[App] Error loading training journeys:', error);
+        setRealModules([]);
+      } finally {
+        setLoadingModules(false);
+      }
+    };
+
+    loadTrainingJourneys();
+  }, []);
+
+  // Use real modules if available, otherwise fallback to mock
+  const modulesToUse = realModules.length > 0 ? realModules : mockTrainingModules;
 
   const { progress, updateModuleProgress, updateStepProgress, updateAssessmentResult } = useTrainingProgress({
-    modules: mockTrainingModules,
+    modules: modulesToUse,
     steps: mockOnboardingSteps,
     assessments: mockAssessments,
   });
@@ -532,7 +648,16 @@ function App() {
         case 'dashboard':
           return <TrainerDashboard onTraineeSelect={(trainee) => console.log('Selected trainee:', trainee)} />;
         case 'training':
-          return <TrainingModules modules={progress.modules} onModuleSelect={setSelectedModule} />;
+          return (
+            loadingModules ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <span className="ml-3 text-gray-600">Loading training modules...</span>
+              </div>
+            ) : (
+              <TrainingModules modules={progress.modules} onModuleSelect={setSelectedModule} />
+            )
+          );
         case 'assessments':
           return <AssessmentCenter assessments={progress.assessments} onAssessmentComplete={handleAssessmentComplete} />;
         case 'live-sessions':
@@ -652,7 +777,16 @@ function App() {
         case 'dashboard':
           return <CompanyAnalytics analytics={mockCompanyAnalytics} />;
         case 'training':
-          return <TrainingModules modules={progress.modules} onModuleSelect={setSelectedModule} />;
+          return (
+            loadingModules ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <span className="ml-3 text-gray-600">Loading training modules...</span>
+              </div>
+            ) : (
+              <TrainingModules modules={progress.modules} onModuleSelect={setSelectedModule} />
+            )
+          );
         case 'assessments':
           return <AssessmentCenter assessments={progress.assessments} onAssessmentComplete={handleAssessmentComplete} />;
         case 'live-sessions':
@@ -793,7 +927,14 @@ function App() {
       case 'training':
         return (
           <div className="space-y-6">
-            <TrainingModules modules={progress.modules} onModuleSelect={setSelectedModule} />
+            {loadingModules ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <span className="ml-3 text-gray-600">Loading training modules...</span>
+              </div>
+            ) : (
+              <TrainingModules modules={progress.modules} onModuleSelect={setSelectedModule} />
+            )}
           </div>
         );
       case 'assessments':
