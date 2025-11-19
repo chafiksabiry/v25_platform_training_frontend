@@ -27,7 +27,9 @@ export default function InteractiveModule({ module, onProgress, onComplete }: In
       interval = setInterval(() => {
         setTimeSpent(prev => {
           const newTime = prev + 1;
-          const progress = Math.min((newTime / (parseInt(module.duration) * 60)) * 100, 100);
+          // module.duration is in hours, convert to minutes
+          const durationMinutes = typeof module.duration === 'number' ? module.duration * 60 : (typeof module.duration === 'string' ? parseInt(module.duration) * 60 : 60);
+          const progress = Math.min((newTime / durationMinutes) * 100, 100);
           onProgress(progress);
           
           // Real engagement tracking based on interactions

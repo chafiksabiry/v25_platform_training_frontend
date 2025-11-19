@@ -144,7 +144,11 @@ export default function TrainingModules({ modules, onModuleSelect }: TrainingMod
                       ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800 shadow-md hover:shadow-lg'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
                   }`}
-                  onClick={() => onModuleSelect?.(module.id)}
+                  onClick={() => {
+                    onModuleSelect?.(module.id);
+                    // Scroll to top when selecting a module
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
                 >
                   <Play className={`h-4 w-4 ${isCompleted ? '' : hasProgress ? '' : ''}`} />
                   <span>

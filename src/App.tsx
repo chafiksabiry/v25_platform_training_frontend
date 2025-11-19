@@ -587,15 +587,21 @@ function App() {
 
   const renderContent = () => {
     if (selectedModule) {
-      const module = progress.modules.find(m => m.id === selectedModule);
+      // Search in selectedJourneyModules first, then fallback to progress.modules
+      const module = selectedJourneyModules.find(m => m.id === selectedModule) 
+        || progress.modules.find(m => m.id === selectedModule);
       if (module) {
         return (
           <div className="space-y-6">
             <button
-              onClick={() => setSelectedModule(null)}
-              className="text-blue-600 hover:text-blue-700 font-medium"
+              onClick={() => {
+                setSelectedModule(null);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className="flex items-center space-x-2 px-4 py-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors font-medium"
             >
-              ← Back to Training Modules
+              <span>←</span>
+              <span>Back to Training Modules</span>
             </button>
             <InteractiveModule
               module={module}
