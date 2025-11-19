@@ -398,33 +398,20 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
 
     try {
       // Prepare module content in the format expected by the backend
-      // For final exam, limit content significantly to avoid token limits
-      // Only include section titles and brief summaries, not full content
-      const maxSectionTextLength = isFinalExam ? 150 : 10000; // Very short for final exam
-      
+      // For final exam, use minimal content to avoid token limits
+      // Only include titles and learning objectives, NO section content text
       const moduleContent = {
         title: module.title,
-        description: isFinalExam ? (module.description || '').substring(0, 200) : (module.description || ''),
-        learningObjectives: module.learningObjectives || [],
+        description: isFinalExam ? (module.description || '').substring(0, 100) : (module.description || ''),
+        learningObjectives: isFinalExam 
+          ? (module.learningObjectives || []).slice(0, 5) // Limit to 5 objectives for final exam
+          : (module.learningObjectives || []),
         sections: (module as any).sections?.map((section: any) => {
-          let sectionText = '';
-          
-          if (isFinalExam) {
-            // For final exam, use only a very brief summary or just the title
-            const fullText = section.content?.text || section.description || section.aiDescription || '';
-            if (fullText.length > 0) {
-              // Take first 150 chars as summary
-              sectionText = fullText.substring(0, maxSectionTextLength) + (fullText.length > maxSectionTextLength ? '...' : '');
-            }
-          } else {
-            // For regular quizzes, use full content
-            sectionText = section.content?.text || section.description || section.aiDescription || '';
-          }
-          
+          // For final exam, only include title, NO content text to save tokens
           return {
             title: section.title || '',
             content: {
-              text: sectionText
+              text: isFinalExam ? '' : (section.content?.text || section.description || section.aiDescription || '')
             }
           };
         }) || []
