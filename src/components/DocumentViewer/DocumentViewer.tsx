@@ -81,7 +81,7 @@ export default function DocumentViewer({ fileUrl, fileName, mimeType }: Document
   const isBlobUrl = fileUrl.startsWith("blob:");
 
   return (
-    <div className="w-full h-full flex flex-col" style={{ height: '100%', width: '100%', minHeight: 0 }}>
+    <div className="w-full h-full flex flex-col" style={{ height: '100%', width: '100%', minHeight: 0, maxHeight: '100%' }}>
       {/* PDF VIEWER */}
       {type === "pdf" && (
         <>

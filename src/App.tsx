@@ -611,7 +611,7 @@ function App() {
         || progress.modules.find(m => m.id === selectedModule);
       if (module) {
         return (
-          <div className="h-full flex flex-col">
+          <div className="h-full flex flex-col" style={{ height: '100%', minHeight: 0 }}>
             <button
               onClick={() => {
                 setSelectedModule(null);
@@ -622,12 +622,12 @@ function App() {
               <span>←</span>
               <span>Back to Training Modules</span>
             </button>
-            <div className="flex-1 overflow-hidden">
-              <InteractiveModule
-                module={module}
-                onProgress={(progress) => handleModuleProgress(selectedModule, progress)}
-                onComplete={() => handleModuleComplete(selectedModule)}
-              />
+            <div className="flex-1 overflow-hidden" style={{ height: '100%', minHeight: 0 }}>
+            <InteractiveModule
+              module={module}
+              onProgress={(progress) => handleModuleProgress(selectedModule, progress)}
+              onComplete={() => handleModuleComplete(selectedModule)}
+            />
             </div>
           </div>
         );
