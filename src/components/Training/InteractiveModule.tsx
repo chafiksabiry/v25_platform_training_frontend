@@ -191,7 +191,6 @@ export default function InteractiveModule({ module, onProgress, onComplete }: In
             {getModuleTypeIcon()}
             <div>
               <h2 className="text-xl font-semibold">{module.title}</h2>
-              <p className="text-blue-100">{module.description}</p>
             </div>
           </div>
           <div className="text-right">
