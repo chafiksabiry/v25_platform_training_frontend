@@ -56,10 +56,116 @@ export class JourneyService {
   }
 
   /**
+   * Create quizzes separately in module_quizzes collection and return their IDs
+   */
+  static async createQuizzesForModule(moduleId: string, trainingId: string, assessments: any[]): Promise<string[]> {
+    const quizIds: string[] = [];
+    
+    if (!assessments || assessments.length === 0) {
+      return quizIds;
+    }
+
+    for (const assessment of assessments) {
+      if (!assessment.questions || assessment.questions.length === 0) {
+        continue;
+      }
+
+      try {
+        const quizPayload = {
+          title: assessment.title || `${moduleId} - Quiz`,
+          description: assessment.description || 'Module quiz',
+          moduleId: moduleId,
+          trainingId: trainingId,
+          passingScore: assessment.passingScore || 70,
+          timeLimit: assessment.timeLimit || 15,
+          maxAttempts: assessment.maxAttempts || 3,
+          questions: assessment.questions.map((q: any, idx: number) => ({
+            _id: q._id || q.id || `q-${idx}`,
+            id: q._id || q.id || `q-${idx}`,
+            question: q.question || q.text || '',
+            type: q.type || 'multiple-choice',
+            options: q.options || [],
+            correctAnswer: q.correctAnswer,
+            explanation: q.explanation || '',
+            points: q.points || 10,
+            orderIndex: idx
+          })),
+          settings: {
+            shuffleQuestions: assessment.settings?.shuffleQuestions || false,
+            shuffleOptions: assessment.settings?.shuffleOptions || false,
+            showCorrectAnswers: assessment.settings?.showCorrectAnswers !== false,
+            allowReview: assessment.settings?.allowReview !== false,
+            showExplanations: assessment.settings?.showExplanations !== false
+          }
+        };
+
+        // Use endpoint for module_quizzes collection
+        const response = await ApiClient.post(`/training_journeys/modules/${moduleId}/quizzes`, quizPayload);
+        if (response.data.success && response.data.data?._id) {
+          quizIds.push(response.data.data._id);
+        }
+      } catch (error) {
+        console.error(`[JourneyService] Error creating quiz for module ${moduleId}:`, error);
+      }
+    }
+
+    return quizIds;
+  }
+
+  /**
+   * Create final exam quiz in exam_final_quizzes collection
+   */
+  static async createFinalExam(trainingId: string, finalExamData: any): Promise<string | null> {
+    if (!finalExamData || !finalExamData.questions || finalExamData.questions.length === 0) {
+      return null;
+    }
+
+    try {
+      const quizPayload = {
+        title: finalExamData.title || 'Final Exam',
+        description: finalExamData.description || 'Final examination for the training journey',
+        trainingId: trainingId,
+        passingScore: finalExamData.passingScore || 70,
+        timeLimit: finalExamData.timeLimit || 60,
+        maxAttempts: finalExamData.maxAttempts || 1,
+        questions: finalExamData.questions.map((q: any, idx: number) => ({
+          _id: q._id || q.id || `q-${idx}`,
+          id: q._id || q.id || `q-${idx}`,
+          question: q.question || q.text || '',
+          type: q.type || 'multiple-choice',
+          options: q.options || [],
+          correctAnswer: q.correctAnswer,
+          explanation: q.explanation || '',
+          points: q.points || 10,
+          orderIndex: idx
+        })),
+        settings: {
+          shuffleQuestions: finalExamData.settings?.shuffleQuestions || true,
+          shuffleOptions: finalExamData.settings?.shuffleOptions || true,
+          showCorrectAnswers: finalExamData.settings?.showCorrectAnswers !== false,
+          allowReview: finalExamData.settings?.allowReview !== false,
+          showExplanations: finalExamData.settings?.showExplanations !== false
+        }
+      };
+
+      // Use endpoint for exam_final_quizzes collection
+      const response = await ApiClient.post(`/training_journeys/${trainingId}/final-exam`, quizPayload);
+      if (response.data.success && response.data.data?._id) {
+        return response.data.data._id;
+      }
+    } catch (error) {
+      console.error('[JourneyService] Error creating final exam:', error);
+    }
+
+    return null;
+  }
+
+  /**
    * Create or save a journey
    */
-  static async saveJourney(journey: TrainingJourney, modules: TrainingModule[], companyId?: string, gigId?: string): Promise<any> {
-    const payload = {
+  static async saveJourney(journey: TrainingJourney, modules: TrainingModule[], companyId?: string, gigId?: string, finalExam?: any): Promise<any> {
+    // First, create the journey to get its ID
+    const journeyPayload = {
       title: journey.title,
       description: journey.description,
       industry: journey.industry,
@@ -69,7 +175,8 @@ export class JourneyService {
       companyId: companyId,
       gigId: gigId,
       modules: modules.map(m => ({
-        id: m.id,
+        _id: (m as any)._id || m.id,
+        id: (m as any)._id || m.id,
         title: m.title,
         description: m.description,
         duration: m.duration,
@@ -78,19 +185,96 @@ export class JourneyService {
         prerequisites: m.prerequisites,
         topics: m.topics,
         content: m.content,
-        sections: (m as any).sections || [], // Include sections with documents
-        assessments: m.assessments || [] // Include assessments/quizzes
+        sections: (m as any).sections || [],
+        quizIds: [] // Will be populated after creating quizzes
       }))
     };
 
-    const response = await ApiClient.post('/training_journeys', payload);
-    return response.data;
+    const response = await ApiClient.post('/training_journeys', journeyPayload);
+    
+    if (!response.data.success || !response.data.journey?._id) {
+      throw new Error('Failed to create journey');
+    }
+
+    const journeyId = response.data.journey._id;
+    const trainingId = journeyId; // Use journey ID as training ID
+
+    // Create quizzes for each module
+    const updatedModules = await Promise.all(
+      modules.map(async (m) => {
+        const moduleId = (m as any)._id || m.id;
+        const quizIds = await this.createQuizzesForModule(moduleId, trainingId, m.assessments || []);
+        return {
+          ...m,
+          quizIds: quizIds
+        };
+      })
+    );
+
+    // Create final exam if provided
+    let finalExamId: string | null = null;
+    if (finalExam) {
+      finalExamId = await this.createFinalExam(trainingId, finalExam);
+    }
+
+    // Update journey with quiz references
+    const updatePayload = {
+      ...journeyPayload,
+      modules: updatedModules.map(m => ({
+        _id: (m as any)._id || m.id,
+        id: (m as any)._id || m.id,
+        title: m.title,
+        description: m.description,
+        duration: m.duration,
+        difficulty: m.difficulty,
+        learningObjectives: m.learningObjectives,
+        prerequisites: m.prerequisites,
+        topics: m.topics,
+        content: m.content,
+        sections: (m as any).sections || [],
+        quizIds: (m as any).quizIds || []
+      })),
+      finalExamId: finalExamId
+    };
+
+    // Update the journey with quiz references
+    const updateResponse = await ApiClient.put(`/training_journeys/${journeyId}`, updatePayload);
+    
+    return {
+      ...response.data,
+      quizIds: updatedModules.flatMap(m => (m as any).quizIds || []),
+      finalExamId: finalExamId
+    };
   }
 
   /**
    * Launch a training journey
    */
-  static async launchJourney(request: LaunchJourneyRequest): Promise<LaunchJourneyResponse> {
+  static async launchJourney(request: LaunchJourneyRequest, finalExam?: any): Promise<LaunchJourneyResponse> {
+      // First, create quizzes for each module and get their IDs
+      const modulesWithQuizIds = await Promise.all(
+        request.modules.map(async (m) => {
+          const quizIds = await this.createQuizzesForModule(
+            (m as any)._id || m.id,
+            (request.journey as any)._id || request.journey.id || 'temp-id', // Will be updated after journey creation
+            m.assessments || []
+          );
+          return {
+            ...m,
+            quizIds: quizIds
+          };
+        })
+      );
+
+      // Create final exam if provided
+      let finalExamId: string | null = null;
+      if (finalExam) {
+        finalExamId = await this.createFinalExam(
+          (request.journey as any)._id || request.journey.id || 'temp-id',
+          finalExam
+        );
+      }
+
     const payload = {
       journey: {
         // Map name to title (frontend uses 'name', backend expects 'title')
@@ -105,7 +289,8 @@ export class JourneyService {
         rehearsalData: request.rehearsalData,
         companyId: request.companyId,
         gigId: request.gigId,
-        modules: request.modules.map(m => {
+        finalExamId: finalExamId,
+        modules: modulesWithQuizIds.map(m => {
           // Convert sections to content format for backend compatibility
           const sections = (m as any).sections || [];
           const contentFromSections = sections.map((section: any, index: number) => ({
@@ -127,8 +312,10 @@ export class JourneyService {
             ...contentFromSections
           ];
           
+          const moduleId = (m as any)._id || m.id;
           return {
-            id: m.id,
+            _id: moduleId,
+            id: moduleId,
             title: m.title,
             description: m.description,
             duration: m.duration,
@@ -138,7 +325,7 @@ export class JourneyService {
             topics: m.topics,
             content: combinedContent, // Include sections converted to content
             sections: sections, // Also include sections for frontend compatibility
-            assessments: m.assessments || [] // Include assessments/quizzes
+            quizIds: (m as any).quizIds || [] // Include quiz IDs instead of full assessments
           };
         })
       },
@@ -151,7 +338,11 @@ export class JourneyService {
       throw new Error(response.data.error || 'Failed to launch journey');
     }
 
-    return response.data;
+    return {
+      ...response.data,
+      quizIds: modulesWithQuizIds.flatMap(m => (m as any).quizIds || []),
+      finalExamId: finalExamId
+    };
   }
 
   /**

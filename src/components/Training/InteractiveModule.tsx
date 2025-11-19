@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, FileText } from 'lucide-react';
 import { TrainingModule, Quiz } from '../../types';
 import DocumentViewer from '../DocumentViewer/DocumentViewer';
+import { ApiClient } from '../../lib/api';
 
 interface InteractiveModuleProps {
   module: TrainingModule;
@@ -17,6 +18,8 @@ export default function InteractiveModule({ module, onProgress, onComplete }: In
   const [currentQuizIndex, setCurrentQuizIndex] = useState(0);
   const [quizAnswer, setQuizAnswer] = useState<number | number[] | null>(null);
   const [showQuizResult, setShowQuizResult] = useState(false);
+  const [quizzes, setQuizzes] = useState<Quiz[]>([]);
+  const [loadingQuizzes, setLoadingQuizzes] = useState(false);
 
   // Get sections from module.content or module.sections
   const sections = (module.sections && Array.isArray(module.sections) && module.sections.length > 0)
@@ -33,22 +36,72 @@ export default function InteractiveModule({ module, onProgress, onComplete }: In
     ? Math.round((completedSections.size / sections.length) * 100)
     : module.progress || 0;
 
-  // Get quizzes from module assessments
-  const quizzes = module.assessments && Array.isArray(module.assessments) && module.assessments.length > 0
-    ? module.assessments.flatMap((assessment: any) => 
-        assessment.questions && Array.isArray(assessment.questions) 
-          ? assessment.questions.map((q: any, idx: number) => ({
-              id: q.id || `quiz-${idx}`,
-              question: q.question || q.text || '',
-              options: q.options || [],
-              correctAnswer: q.correctAnswer,
-              explanation: q.explanation || '',
-              type: q.type || 'multiple-choice',
-              points: q.points || 10
-            }))
-          : []
-      )
-    : [];
+  // Load quizzes from API if module has quizIds, otherwise use assessments
+  useEffect(() => {
+    const loadQuizzes = async () => {
+      const quizIds = (module as any).quizIds;
+      
+      // If module has quizIds, fetch quizzes from API
+      if (quizIds && Array.isArray(quizIds) && quizIds.length > 0) {
+        setLoadingQuizzes(true);
+        try {
+          const allQuestions: Quiz[] = [];
+          
+          // Fetch each quiz by ID from module_quizzes collection
+          for (const quizId of quizIds) {
+            try {
+              const response = await ApiClient.get(`/training_journeys/modules/quizzes/${quizId}`);
+              if (response.data.success && response.data.data) {
+                const quiz = response.data.data;
+                // Convert quiz questions to Quiz format
+                if (quiz.questions && Array.isArray(quiz.questions)) {
+                  const questions = quiz.questions.map((q: any, idx: number) => ({
+                    id: q._id || q.id || `quiz-${quizId}-${idx}`,
+                    question: q.question || q.text || '',
+                    options: q.options || [],
+                    correctAnswer: q.correctAnswer,
+                    explanation: q.explanation || '',
+                    type: q.type || 'multiple-choice',
+                    points: q.points || 10
+                  }));
+                  allQuestions.push(...questions);
+                }
+              }
+            } catch (error) {
+              console.error(`[InteractiveModule] Error loading quiz ${quizId}:`, error);
+            }
+          }
+          
+          setQuizzes(allQuestions);
+        } catch (error) {
+          console.error('[InteractiveModule] Error loading quizzes:', error);
+          setQuizzes([]);
+        } finally {
+          setLoadingQuizzes(false);
+        }
+      } else {
+        // Fallback to assessments if no quizIds
+        const quizzesFromAssessments = module.assessments && Array.isArray(module.assessments) && module.assessments.length > 0
+          ? module.assessments.flatMap((assessment: any) => 
+              assessment.questions && Array.isArray(assessment.questions) 
+                ? assessment.questions.map((q: any, idx: number) => ({
+                    id: q.id || `quiz-${idx}`,
+                    question: q.question || q.text || '',
+                    options: q.options || [],
+                    correctAnswer: q.correctAnswer,
+                    explanation: q.explanation || '',
+                    type: q.type || 'multiple-choice',
+                    points: q.points || 10
+                  }))
+                : []
+            )
+          : [];
+        setQuizzes(quizzesFromAssessments);
+      }
+    };
+
+    loadQuizzes();
+  }, [module]);
 
   // Debug log
   useEffect(() => {
