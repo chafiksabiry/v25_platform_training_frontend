@@ -8,9 +8,10 @@ interface InteractiveModuleProps {
   module: TrainingModule;
   onProgress: (progress: number) => void;
   onComplete: () => void;
+  onBack?: () => void;
 }
 
-export default function InteractiveModule({ module, onProgress, onComplete }: InteractiveModuleProps) {
+export default function InteractiveModule({ module, onProgress, onComplete, onBack }: InteractiveModuleProps) {
   const [currentSection, setCurrentSection] = useState(0);
   const [completedSections, setCompletedSections] = useState<Set<number>>(new Set());
   const [showQuizzes, setShowQuizzes] = useState(false);
@@ -218,9 +219,13 @@ export default function InteractiveModule({ module, onProgress, onComplete }: In
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     } else {
-      // Go to previous section
+      // Go to previous section or back to modules list if on first section
       if (currentSection > 0) {
         setCurrentSection(prev => prev - 1);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else if (onBack) {
+        // On first section, go back to modules list
+        onBack();
       }
     }
   };
@@ -410,15 +415,15 @@ export default function InteractiveModule({ module, onProgress, onComplete }: In
       <div className="flex items-center justify-between p-4 border-t border-gray-200 bg-white flex-shrink-0 z-10" style={{ flexShrink: 0, position: 'relative' }}>
           <button
             onClick={handlePrevious}
-            disabled={!showQuizzes && currentSection === 0}
+            disabled={!showQuizzes && currentSection === 0 && !onBack}
             className={`flex items-center space-x-2 px-6 py-3 rounded-lg transition-colors ${
-              (!showQuizzes && currentSection === 0)
+              (!showQuizzes && currentSection === 0 && !onBack)
                 ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
             }`}
           >
             <ChevronLeft className="h-5 w-5" />
-            <span>Previous</span>
+            <span>{!showQuizzes && currentSection === 0 && onBack ? 'Back to Training Modules' : 'Previous'}</span>
           </button>
           <span className="text-sm text-gray-600">
             {showQuizzes 

@@ -614,21 +614,15 @@ function App() {
       if (module) {
         return (
           <div className="flex flex-col h-full" style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-            <button
-              onClick={() => {
-                setSelectedModule(null);
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-              }}
-              className="flex items-center space-x-2 px-4 py-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors font-medium mb-4 flex-shrink-0"
-            >
-              <span>←</span>
-              <span>Back to Training Modules</span>
-            </button>
             <div className="flex-1 min-h-0" style={{ flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             <InteractiveModule
               module={module}
               onProgress={(progress) => handleModuleProgress(selectedModule, progress)}
               onComplete={() => handleModuleComplete(selectedModule)}
+              onBack={() => {
+                setSelectedModule(null);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
             />
             </div>
           </div>
