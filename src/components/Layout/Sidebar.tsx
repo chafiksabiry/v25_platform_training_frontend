@@ -18,24 +18,31 @@ interface SidebarProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
   isOpen: boolean;
+  userType?: 'company' | 'rep' | null;
 }
 
 const menuItems = [
-  { id: 'dashboard', label: 'Dashboard', icon: Home },
-  { id: 'training', label: 'Journey Training', icon: BookOpen },
-  { id: 'assessments', label: 'Assessments', icon: CheckSquare },
-  { id: 'live-sessions', label: 'Live Training', icon: Users },
-  { id: 'knowledge-base', label: 'Knowledge Base', icon: FileText },
-  { id: 'schedule', label: 'Schedule', icon: Calendar },
-  { id: 'certificates', label: 'Certificates', icon: Award },
-  { id: 'progress', label: 'Progress', icon: BarChart3 },
-  { id: 'curriculum-builder', label: 'Curriculum Builder', icon: Wand2 },
-  { id: 'streaming', label: 'Live Streaming', icon: Video },
-  { id: 'document-transformer', label: 'Document Transformer', icon: Wand2 },
-  { id: 'methodology', label: '360° Methodology', icon: Target },
+  { id: 'dashboard', label: 'Dashboard', icon: Home, allowedFor: ['company', 'rep'] },
+  { id: 'training', label: 'Journey Training', icon: BookOpen, allowedFor: ['company', 'rep'] },
+  { id: 'assessments', label: 'Assessments', icon: CheckSquare, allowedFor: ['company', 'rep'] },
+  { id: 'live-sessions', label: 'Live Training', icon: Users, allowedFor: ['company', 'rep'] },
+  { id: 'knowledge-base', label: 'Knowledge Base', icon: FileText, allowedFor: ['company', 'rep'] },
+  { id: 'schedule', label: 'Schedule', icon: Calendar, allowedFor: ['company', 'rep'] },
+  { id: 'certificates', label: 'Certificates', icon: Award, allowedFor: ['company', 'rep'] },
+  { id: 'progress', label: 'Progress', icon: BarChart3, allowedFor: ['company', 'rep'] },
+  { id: 'curriculum-builder', label: 'Curriculum Builder', icon: Wand2, allowedFor: ['company'] },
+  { id: 'streaming', label: 'Live Streaming', icon: Video, allowedFor: ['company'] },
+  { id: 'document-transformer', label: 'Document Transformer', icon: Wand2, allowedFor: ['company'] },
+  { id: 'methodology', label: '360° Methodology', icon: Target, allowedFor: ['company'] },
 ];
 
-export default function Sidebar({ activeTab, onTabChange, isOpen }: SidebarProps) {
+export default function Sidebar({ activeTab, onTabChange, isOpen, userType }: SidebarProps) {
+  // Filter menu items based on user type
+  const filteredMenuItems = menuItems.filter(item => {
+    if (!userType) return true; // Show all if userType is not set yet
+    return item.allowedFor.includes(userType);
+  });
+
   return (
     <aside className={`bg-gray-900 text-white w-64 min-h-screen p-4 transition-transform duration-300 ${
       isOpen ? 'translate-x-0' : '-translate-x-full'
@@ -45,7 +52,7 @@ export default function Sidebar({ activeTab, onTabChange, isOpen }: SidebarProps
       </div>
       
       <nav className="space-y-2">
-        {menuItems.map((item) => {
+        {filteredMenuItems.map((item) => {
           const Icon = item.icon;
           return (
             <button

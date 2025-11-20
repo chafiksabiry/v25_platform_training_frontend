@@ -49,7 +49,7 @@ import {
 } from './data/mockData';
 import { useTrainingProgress } from './hooks/useTrainingProgress';
 import { Company, TrainingJourney, TrainingModule, Rep } from './types';
-import { getCurrentUserName, getAgentId, getCurrentUserEmail } from './utils/userUtils';
+import { getCurrentUserName, getAgentId, getCurrentUserEmail, getUserType, getUserId } from './utils/userUtils';
 import { JourneyService } from './infrastructure/services/JourneyService';
 // TrainingModuleService no longer needed - using embedded structure
 import Cookies from 'js-cookie';
@@ -94,6 +94,8 @@ function App() {
   const [traineeJourneys, setTraineeJourneys] = useState<any[]>([]);
   const [selectedTraineeJourney, setSelectedTraineeJourney] = useState<any | null>(null);
   const [loadingTraineeJourneys, setLoadingTraineeJourneys] = useState(false);
+  const [userType, setUserType] = useState<'company' | 'rep' | null>(null);
+  const [checkingUserType, setCheckingUserType] = useState(true);
 
   // Load real training journeys and convert them to modules
   useEffect(() => {
@@ -160,49 +162,83 @@ function App() {
     loadTrainingJourneys();
   }, []);
 
-  // Detect trainee and load their journeys
+  // Check user type and set appropriate role
   useEffect(() => {
-    const detectTraineeAndLoadJourneys = async () => {
-      const detectedAgentId = getAgentId();
-      if (detectedAgentId) {
-        console.log('[App] Trainee detected with agentId:', detectedAgentId);
-        setAgentId(detectedAgentId);
-        setUserRole('trainee');
-        setLoadingTraineeJourneys(true);
+    const checkUserTypeAndSetRole = async () => {
+      setCheckingUserType(true);
+      try {
+        const type = await getUserType();
+        setUserType(type);
         
-        try {
-          const journeys = await JourneyService.getJourneysForRep(detectedAgentId);
-          console.log('[App] Loaded trainee journeys:', journeys.length);
+        if (type === 'rep') {
+          // Rep user: set as trainee, load their journeys
+          console.log('[App] User type is REP - setting as trainee');
+          setUserRole('trainee');
           
-          // Filter active journeys
-          const activeJourneys = journeys.filter((journey: any) => {
-            const status = journey.status || journey.journeyStatus;
-            return !status || status === 'active' || status === 'completed';
-          });
-          
-          setTraineeJourneys(activeJourneys);
-          
-          // If there's at least one journey, select the first one
-          if (activeJourneys.length > 0) {
-            setSelectedTraineeJourney(activeJourneys[0]);
-            console.log('[App] Selected first trainee journey:', activeJourneys[0].title || activeJourneys[0].name);
+          const detectedAgentId = getAgentId();
+          if (detectedAgentId) {
+            console.log('[App] Trainee detected with agentId:', detectedAgentId);
+            setAgentId(detectedAgentId);
+            setLoadingTraineeJourneys(true);
+            
+            try {
+              const journeys = await JourneyService.getJourneysForRep(detectedAgentId);
+              console.log('[App] Loaded trainee journeys:', journeys.length);
+              
+              // Filter active journeys
+              const activeJourneys = journeys.filter((journey: any) => {
+                const status = journey.status || journey.journeyStatus;
+                return !status || status === 'active' || status === 'completed';
+              });
+              
+              setTraineeJourneys(activeJourneys);
+              
+              // If there's at least one journey, select the first one
+              if (activeJourneys.length > 0) {
+                setSelectedTraineeJourney(activeJourneys[0]);
+                console.log('[App] Selected first trainee journey:', activeJourneys[0].title || activeJourneys[0].name);
+              }
+            } catch (error) {
+              console.error('[App] Error loading trainee journeys:', error);
+            } finally {
+              setLoadingTraineeJourneys(false);
+            }
           }
-        } catch (error) {
-          console.error('[App] Error loading trainee journeys:', error);
-        } finally {
-          setLoadingTraineeJourneys(false);
+        } else if (type === 'company') {
+          // Company user: set as trainer/admin, can create trainings
+          console.log('[App] User type is COMPANY - setting as trainer');
+          setUserRole('trainer');
+        } else {
+          // No type or unknown: check fallback (companyId for trainer, agentId for trainee)
+          console.log('[App] No user type found, checking fallback');
+          const companyId = Cookies.get('companyId');
+          const detectedAgentId = getAgentId();
+          
+          if (companyId) {
+            setUserRole('trainer');
+          } else if (detectedAgentId) {
+            setUserRole('trainee');
+            setAgentId(detectedAgentId);
+          }
         }
-      } else {
-        console.log('[App] No agentId found, user is not a trainee');
-        // Check if user is a trainer (has companyId)
+      } catch (error) {
+        console.error('[App] Error checking user type:', error);
+        // Fallback logic
         const companyId = Cookies.get('companyId');
+        const detectedAgentId = getAgentId();
+        
         if (companyId) {
           setUserRole('trainer');
+        } else if (detectedAgentId) {
+          setUserRole('trainee');
+          setAgentId(detectedAgentId);
         }
+      } finally {
+        setCheckingUserType(false);
       }
     };
 
-    detectTraineeAndLoadJourneys();
+    checkUserTypeAndSetRole();
   }, []); // Run once on mount
 
   // Use real modules if available, otherwise fallback to mock
@@ -298,6 +334,10 @@ function App() {
   };
 
   const handleCreateAnotherJourney = () => {
+    if (userType === 'rep') {
+      alert('You do not have permission to create training journeys. Please contact your administrator.');
+      return;
+    }
     setShowJourneySuccess(false);
     setLaunchedJourney(null);
     setShowJourneyBuilder(true);
@@ -438,8 +478,8 @@ function App() {
     }
   }, [hasCompletedSetup, showWelcome, showJourneyBuilder, showManualTraining, showJourneySuccess]);
 
-  // Show welcome screen for first-time users (but not if showing success page)
-  if (!hasCompletedSetup && showWelcome && !showJourneyBuilder && !showManualTraining && !showJourneySuccess) {
+  // Show welcome screen for first-time users (but not if showing success page or if user is rep)
+  if (!hasCompletedSetup && showWelcome && !showJourneyBuilder && !showManualTraining && !showJourneySuccess && userType !== 'rep' && !checkingUserType) {
     return (
       <div className="h-screen bg-gradient-to-br from-blue-50 to-indigo-100 overflow-y-auto">
         <div className="container mx-auto px-4 py-4">
@@ -484,8 +524,15 @@ function App() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* AI Creation */}
               <button
-                onClick={() => setShowJourneyBuilder(true)}
-                className="group p-6 bg-gradient-to-br from-blue-500 to-purple-600 text-white rounded-xl shadow-lg hover:shadow-2xl transition-all transform hover:scale-105 text-left"
+                onClick={() => {
+                  if (userType === 'rep') {
+                    alert('You do not have permission to create training journeys. Please contact your administrator.');
+                    return;
+                  }
+                  setShowJourneyBuilder(true);
+                }}
+                disabled={userType === 'rep'}
+                className={`group p-6 bg-gradient-to-br from-blue-500 to-purple-600 text-white rounded-xl shadow-lg hover:shadow-2xl transition-all transform hover:scale-105 text-left ${userType === 'rep' ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 <Sparkles className="h-8 w-8 mb-3 group-hover:rotate-12 transition-transform" />
                 <h3 className="text-xl font-bold mb-2">🤖 AI-Powered Creation</h3>
@@ -501,9 +548,15 @@ function App() {
               {/* Manual Creation */}
               <button
                 onClick={() => {
+                  if (userType === 'rep') {
+                    alert('You do not have permission to create training journeys. Please contact your administrator.');
+                    return;
+                  }
                   console.log('Manual Training clicked!');
                   setShowManualTraining(true);
                 }}
+                disabled={userType === 'rep'}
+                className={userType === 'rep' ? 'opacity-50 cursor-not-allowed' : ''}
                 className="group p-6 bg-gradient-to-br from-green-500 to-teal-600 text-white rounded-xl shadow-lg hover:shadow-2xl transition-all transform hover:scale-105 text-left"
               >
                 <Upload className="h-8 w-8 mb-3 group-hover:-translate-y-1 transition-transform" />
@@ -533,7 +586,13 @@ function App() {
   }
 
   // ✨ NOUVEAU : Afficher le Setup puis le ManualTrainingBuilder
+  // Prevent reps from accessing Manual Training
   if (showManualTraining) {
+    if (userType === 'rep') {
+      console.warn('[App] Rep users cannot create manual trainings');
+      setShowManualTraining(false);
+      return null;
+    }
     if (!manualTrainingSetupComplete) {
       return (
         <ManualTrainingSetup
@@ -579,12 +638,18 @@ function App() {
     );
   }
 
+  // Prevent reps from accessing Journey Builder
   if (showJourneyBuilder) {
+    if (userType === 'rep') {
+      console.warn('[App] Rep users cannot create journeys');
+      setShowJourneyBuilder(false);
+      return null;
+    }
     return <JourneyBuilder onComplete={handleJourneyComplete} />;
   }
 
-  // Auto-show TraineePortal if agentId is present and journeys are loaded
-  if (agentId && selectedTraineeJourney && !showTraineePortal && !showLaunchedDashboard && !showJourneyBuilder && !showJourneySuccess && !showManualTraining) {
+  // Auto-show TraineePortal if userType is 'rep' and journeys are loaded
+  if (userType === 'rep' && agentId && selectedTraineeJourney && !showTraineePortal && !showLaunchedDashboard && !showJourneyBuilder && !showJourneySuccess && !showManualTraining && !checkingUserType) {
     // Create a mock trainee object from agentId
     const autoTrainee: Rep = {
       id: agentId,
@@ -703,6 +768,7 @@ function App() {
           activeTab={activeTab} 
           onTabChange={setActiveTab}
           isOpen={sidebarOpen}
+          userType={userType}
         />
         
         {sidebarOpen && (
@@ -1389,8 +1455,15 @@ function App() {
               <span>AI Tutor</span>
             </button>
             <button
-              onClick={() => setShowJourneyBuilder(true)}
-              className="flex items-center space-x-2 px-3 py-1 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm"
+                onClick={() => {
+                  if (userType === 'rep') {
+                    alert('You do not have permission to create training journeys. Please contact your administrator.');
+                    return;
+                  }
+                  setShowJourneyBuilder(true);
+                }}
+                disabled={userType === 'rep'}
+                className={`flex items-center space-x-2 px-3 py-1 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm ${userType === 'rep' ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               <Sparkles className="h-4 w-4" />
               <span>New Journey (IA)</span>

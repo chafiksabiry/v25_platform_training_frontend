@@ -18,7 +18,7 @@ ARG VITE_API_BASE_URL=https://api-training.harx.ai
 
 # Set environment variable for API URL (default for standalone deployment)
 ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
-
+ENV VITE_REGISTRATION_API_URL=https://api-registration.harx.ai/api
 # Build the app with environment variables
 RUN npm run build
 

@@ -97,3 +97,69 @@ export const getAgentId = (): string | null => {
   return null;
 };
 
+/**
+ * Get userId from cookies
+ * Returns the userId if found in cookies, null otherwise
+ */
+export const getUserId = (): string | null => {
+  const userId = Cookies.get('userId');
+  if (userId) {
+    console.log('[UserUtils] UserId found in cookies:', userId);
+    return userId.trim();
+  }
+  console.warn('[UserUtils] UserId not found in cookies');
+  return null;
+};
+
+/**
+ * Get user type (typeUser) from registration API
+ * Returns 'company', 'rep', or null
+ */
+export const getUserType = async (): Promise<'company' | 'rep' | null> => {
+  try {
+    const userId = getUserId();
+    if (!userId) {
+      console.warn('[UserUtils] No userId found, cannot check user type');
+      return null;
+    }
+
+    // Try to get from cache first (localStorage)
+    const cachedType = localStorage.getItem('userType');
+    if (cachedType === 'company' || cachedType === 'rep') {
+      console.log('[UserUtils] UserType found in cache:', cachedType);
+      return cachedType as 'company' | 'rep';
+    }
+
+    // Fetch from registration API
+    const registrationApiUrl = import.meta.env.VITE_REGISTRATION_API_URL || 'http://localhost:5000';
+    const response = await fetch(`${registrationApiUrl}/auth/check-user-type`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ userId }),
+    });
+
+    if (!response.ok) {
+      console.warn('[UserUtils] Failed to fetch user type:', response.status);
+      return null;
+    }
+
+    const data = await response.json();
+    const userType = data.userType || data.typeUser;
+
+    if (userType === 'company' || userType === 'rep') {
+      // Cache the result
+      localStorage.setItem('userType', userType);
+      console.log('[UserUtils] UserType fetched from API:', userType);
+      return userType;
+    }
+
+    console.warn('[UserUtils] Invalid user type received:', userType);
+    return null;
+  } catch (error) {
+    console.error('[UserUtils] Error fetching user type:', error);
+    return null;
+  }
+};
+
