@@ -198,6 +198,22 @@ function App() {
   console.log('[App] Using', modulesToUse.length, 'modules (real:', realModules.length, ', mock:', mockTrainingModules.length, ')');
   console.log('[App] Progress modules count:', progress.modules.length);
 
+  // For reps, automatically skip welcome screen and mark setup as completed
+  useEffect(() => {
+    if (userType === 'rep' && showWelcome) {
+      setShowWelcome(false);
+      setHasCompletedSetup(true);
+    }
+  }, [userType, showWelcome]);
+
+  // Scroll to top when welcome screen is shown
+  // IMPORTANT: Only for trainers, not for reps
+  useEffect(() => {
+    if (!hasCompletedSetup && showWelcome && !showJourneyBuilder && !showManualTraining && !showJourneySuccess && userType !== 'rep') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [hasCompletedSetup, showWelcome, showJourneyBuilder, showManualTraining, showJourneySuccess, userType]);
+
   // Route to appropriate view based on user type
   // IMPORTANT: This must be AFTER all hooks to comply with React rules
   // All hooks must be called before any conditional returns
@@ -209,6 +225,8 @@ function App() {
     return <TrainerView />;
   }
 
+  // Fallback mode: userType is null
+  // Calculate progress stats and handlers for fallback mode
   const progressStats = {
     completed: progress.steps.filter(step => step.status === 'completed').length,
     inProgress: progress.steps.filter(step => step.status === 'in-progress').length,
@@ -422,25 +440,9 @@ function App() {
     }
   };
 
-  // For reps, automatically skip welcome screen and mark setup as completed
-  useEffect(() => {
-    if (userType === 'rep' && showWelcome) {
-      setShowWelcome(false);
-      setHasCompletedSetup(true);
-    }
-  }, [userType, showWelcome]);
-
-  // Scroll to top when welcome screen is shown
-  // IMPORTANT: Only for trainers, not for reps
-  // This hook is only executed if userType is null (fallback mode)
-  useEffect(() => {
-    if (!hasCompletedSetup && showWelcome && !showJourneyBuilder && !showManualTraining && !showJourneySuccess && userType !== 'rep') {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-  }, [hasCompletedSetup, showWelcome, showJourneyBuilder, showManualTraining, showJourneySuccess, userType]);
-
   // Show welcome screen for first-time users (but not if showing success page)
   // IMPORTANT: Only show welcome screen for trainers, not for reps
+  // Only executed if userType is null (fallback mode)
   if (!hasCompletedSetup && showWelcome && !showJourneyBuilder && !showManualTraining && !showJourneySuccess && userType !== 'rep') {
     return (
       <div className="h-screen bg-gradient-to-br from-blue-50 to-indigo-100 overflow-y-auto">
