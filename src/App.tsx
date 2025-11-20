@@ -49,11 +49,13 @@ import {
 } from './data/mockData';
 import { useTrainingProgress } from './hooks/useTrainingProgress';
 import { Company, TrainingJourney, TrainingModule, Rep } from './types';
-import { getCurrentUserName } from './utils/userUtils';
+import { getCurrentUserName, getUserType } from './utils/userUtils';
 import { JourneyService } from './infrastructure/services/JourneyService';
 // TrainingModuleService no longer needed - using embedded structure
 import Cookies from 'js-cookie';
 import { extractObjectId } from './lib/mongoUtils';
+import TrainerView from './components/Trainer/TrainerView';
+import RepView from './components/Rep/RepView';
 
 function App() {
   // const { user, signOut } = useAuth();
@@ -61,6 +63,7 @@ function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userRole, setUserRole] = useState<'trainee' | 'trainer' | 'admin'>('trainee');
+  const [userType, setUserType] = useState<'trainer' | 'rep' | null>(null);
   const [selectedModule, setSelectedModule] = useState<string | null>(null);
   const [showAITutor, setShowAITutor] = useState(false);
   const [showLiveStream, setShowLiveStream] = useState(false);
@@ -89,8 +92,26 @@ function App() {
   const [selectedJourneyModules, setSelectedJourneyModules] = useState<TrainingModule[]>([]);
   const [loadingModules, setLoadingModules] = useState(true);
 
-  // Load real training journeys and convert them to modules
+  // Detect user type on mount
   useEffect(() => {
+    const detectedUserType = getUserType();
+    setUserType(detectedUserType);
+    console.log('[App] Detected user type:', detectedUserType);
+    
+    // Set userRole based on userType
+    if (detectedUserType === 'trainer') {
+      setUserRole('trainer');
+    } else if (detectedUserType === 'rep') {
+      setUserRole('trainee');
+    }
+  }, []);
+
+  // Load real training journeys and convert them to modules (only for trainer)
+  useEffect(() => {
+    // Only load journeys if user is a trainer
+    if (userType !== 'trainer') {
+      return;
+    }
     const loadTrainingJourneys = async () => {
       try {
         setLoadingModules(true);
@@ -152,7 +173,7 @@ function App() {
     };
 
     loadTrainingJourneys();
-  }, []);
+  }, [userType]);
 
   // Use real modules if available, otherwise fallback to mock
   const modulesToUse = realModules.length > 0 ? realModules : mockTrainingModules;
@@ -1192,6 +1213,17 @@ function App() {
     }
   };
 
+  // Route to appropriate view based on user type
+  if (userType === 'trainer') {
+    return <TrainerView />;
+  }
+  
+  if (userType === 'rep') {
+    return <RepView />;
+  }
+
+  // Fallback: Show loading or default view if user type not detected
+  // This allows backward compatibility with existing code
   return (
     <div className="h-screen bg-gray-50 relative overflow-hidden flex">
       {/* Sidebar - Always rendered first */}

@@ -69,10 +69,10 @@ export default function InteractiveModule({ module, onProgress, onComplete, onBa
       return questions.map((q: any, index: number) => ({
         id: q.id || `q-${Date.now()}-${index}`,
         question: q.question || q.text || '',
-        type: q.type || 'multiple-choice',
-        options: q.options || [],
-        correctAnswer: q.correctAnswer,
-        explanation: q.explanation || '',
+          type: q.type || 'multiple-choice',
+          options: q.options || [],
+          correctAnswer: q.correctAnswer,
+          explanation: q.explanation || '',
         difficulty: q.points || 10,
         aiGenerated: false
       }));
