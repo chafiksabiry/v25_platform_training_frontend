@@ -237,11 +237,36 @@ export class JourneyService {
       console.log('[JourneyService] Updated journey:', existingJourneyId);
     } else {
       // Create new journey
+      console.log('[JourneyService] Creating new journey with payload:', JSON.stringify(journeyPayload, null, 2));
       response = await ApiClient.post('/training_journeys', journeyPayload);
-      if (!response.data.success || !response.data.journey?._id) {
-        throw new Error('Failed to create journey');
+      
+      console.log('[JourneyService] Create journey response:', {
+        success: response.data.success,
+        hasJourney: !!response.data.journey,
+        journeyId: response.data.journey?._id,
+        journeyIdAlt: response.data.journey?.id,
+        fullResponse: response.data
+      });
+      
+      if (!response.data.success) {
+        console.error('[JourneyService] Create journey failed:', response.data);
+        throw new Error(`Failed to create journey: ${response.data.error || 'Unknown error'}`);
       }
-      existingJourneyId = response.data.journey._id;
+      
+      if (!response.data.journey?._id && !response.data.journey?.id) {
+        console.error('[JourneyService] No journey ID in response:', response.data);
+        throw new Error('Failed to create journey: No journey ID returned');
+      }
+      
+      existingJourneyId = response.data.journey._id || response.data.journey.id;
+      
+      // Validate that it's a MongoDB ObjectId
+      const isValidMongoId = (id: string | undefined) => id && /^[0-9a-fA-F]{24}$/.test(id);
+      if (!isValidMongoId(existingJourneyId)) {
+        console.error('[JourneyService] ⚠️ Invalid journeyId returned from backend:', existingJourneyId);
+        throw new Error(`Invalid journeyId returned from backend: ${existingJourneyId}`);
+      }
+      
       console.log('[JourneyService] Created new journey:', existingJourneyId);
     }
 
@@ -331,8 +356,19 @@ export class JourneyService {
     console.log('[JourneyService] Updating journey with moduleIds:', moduleIds);
     const updateResponse = await ApiClient.put(`/training_journeys/${existingJourneyId}`, updatePayload);
     
+    if (!updateResponse.data.success) {
+      throw new Error('Failed to update journey');
+    }
+    
     // CRITICAL: Always use _id from backend response, never journey.id (which might be a timestamp)
     const returnedJourneyId = updateResponse.data.journey?._id || updateResponse.data.journey?.id || existingJourneyId;
+    
+    // Validate that it's a MongoDB ObjectId
+    const isValidMongoId = (id: string | undefined) => id && /^[0-9a-fA-F]{24}$/.test(id);
+    if (!returnedJourneyId || !isValidMongoId(returnedJourneyId)) {
+      console.error('[JourneyService] ⚠️ Invalid journeyId returned from backend:', returnedJourneyId);
+      throw new Error('Invalid journeyId returned from backend');
+    }
     
     return {
       ...updateResponse.data,

@@ -518,14 +518,24 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
       setUpdatedModules(updatedModulesList);
 
       // Sauvegarder dans le brouillon immédiatement
-      // IMPORTANT: Get draft first to ensure we have draftId before saving
+      // IMPORTANT: Only use MongoDB ObjectId format (24 hex characters)
+      // Don't use timestamps or other non-MongoDB IDs from journey.id
+      const isValidMongoId = (id: string | undefined) => id && /^[0-9a-fA-F]{24}$/.test(id);
+      
       try {
         const currentDraft = DraftService.getDraft();
-        console.log('[RehearsalMode] Current draftId before save:', currentDraft.draftId);
+        const existingDraftId = currentDraft.draftId; // Never use journey.id as it might be a timestamp
+        
+        // Validate that it's a MongoDB ObjectId
+        if (existingDraftId && !isValidMongoId(existingDraftId)) {
+          console.warn('[RehearsalMode] Invalid draftId format (not MongoDB ObjectId):', existingDraftId, '- will create new journey');
+        }
+        
+        console.log('[RehearsalMode] Current draftId before save:', existingDraftId || 'NEW');
         
         await DraftService.saveDraftImmediately({
           modules: updatedModulesList,
-          draftId: currentDraft.draftId // Explicitly pass draftId to prevent duplicate creation
+          draftId: existingDraftId && isValidMongoId(existingDraftId) ? existingDraftId : undefined // Only pass valid MongoDB ObjectId
         });
         console.log('[RehearsalMode] ✓ Draft saved with updated quizzes');
       } catch (draftError) {

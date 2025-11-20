@@ -46,7 +46,35 @@ export class DraftService {
     try {
       const draftJson = localStorage.getItem(DRAFT_STORAGE_KEY);
       if (draftJson) {
-        return JSON.parse(draftJson);
+        const draft = JSON.parse(draftJson);
+        
+        // CRITICAL: Clean up invalid draftId (timestamps) from localStorage
+        // If journey.id is a timestamp (not MongoDB ObjectId), remove it
+        const isValidMongoId = (id: string | undefined) => id && /^[0-9a-fA-F]{24}$/.test(id);
+        
+        if (draft.journey && (draft.journey as any).id) {
+          const journeyId = (draft.journey as any).id;
+          if (!isValidMongoId(journeyId)) {
+            console.warn('[DraftService] Found invalid journey.id (timestamp) in localStorage:', journeyId, '- removing it');
+            delete (draft.journey as any).id;
+            // Also clear draftId if it's the same invalid value
+            if (draft.draftId === journeyId) {
+              console.warn('[DraftService] Clearing invalid draftId:', draft.draftId);
+              draft.draftId = undefined;
+            }
+            // Save cleaned draft back to localStorage
+            this.saveDraftLocally(draft);
+          }
+        }
+        
+        // Also validate draftId
+        if (draft.draftId && !isValidMongoId(draft.draftId)) {
+          console.warn('[DraftService] Found invalid draftId (timestamp) in localStorage:', draft.draftId, '- clearing it');
+          draft.draftId = undefined;
+          this.saveDraftLocally(draft);
+        }
+        
+        return draft;
       }
     } catch (error) {
       console.error('[DraftService] Error loading draft from localStorage:', error);
