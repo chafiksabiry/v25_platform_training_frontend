@@ -53,18 +53,30 @@ export default function JourneyBuilder({ onComplete }: JourneyBuilderProps) {
   }, []);
 
   // Sauvegarder automatiquement à chaque changement (avec debounce)
+  // IMPORTANT: Only auto-save if draftId exists to prevent creating duplicate journeys
   useEffect(() => {
     if (!isRestoringDraft && (company || journey || uploads.length > 0 || modules.length > 0)) {
-      // Use debounced save to prevent multiple rapid saves
-      DraftService.saveDraftToBackend({
-        company,
-        journey,
-        methodology,
-        uploads,
-        modules,
-        currentStep,
-        selectedGigId
-      });
+      // IMPORTANT: Check if draftId exists before saving to avoid creating duplicate journeys
+      const currentDraft = DraftService.getDraft();
+      
+      // Only auto-save if we have a draftId (journey already created)
+      // Initial creation is handled by saveDraftImmediately in handleSetupComplete, handleUploadComplete, handleCurriculumComplete
+      if (currentDraft.draftId) {
+        console.log('[JourneyBuilder] Auto-saving with existing draftId:', currentDraft.draftId);
+        // Use debounced save to prevent multiple rapid saves
+        DraftService.saveDraftToBackend({
+          company,
+          journey,
+          methodology,
+          uploads,
+          modules,
+          currentStep,
+          selectedGigId,
+          draftId: currentDraft.draftId // Explicitly pass draftId
+        });
+      } else {
+        console.log('[JourneyBuilder] Skipping auto-save - no draftId yet. Initial save will be handled by explicit saveDraftImmediately calls.');
+      }
     }
   }, [company, journey, methodology, uploads, modules, currentStep, selectedGigId, isRestoringDraft]);
 
@@ -111,12 +123,14 @@ export default function JourneyBuilder({ onComplete }: JourneyBuilderProps) {
     setCurrentStep(1);
     
     // Sauvegarder immédiatement après le setup
+    // IMPORTANT: Don't pass modules yet (empty array) to avoid creating journey without modules
     await DraftService.saveDraftImmediately({
       company: newCompany,
       journey: newJourney,
       methodology: selectedMethodology || null,
       selectedGigId: gigId || null,
-      currentStep: 1
+      currentStep: 1,
+      modules: [] // Empty modules - journey will be created when modules are added
     });
   };
 

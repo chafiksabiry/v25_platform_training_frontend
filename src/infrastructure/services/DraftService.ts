@@ -106,8 +106,23 @@ export class DraftService {
           };
 
           try {
-            // Use existing draftId if available to update instead of creating new journey
-            const existingJourneyId = updatedDraft.draftId || (updatedDraft.journey as any).id || (updatedDraft.journey as any)._id;
+            // CRITICAL: Re-read draft from localStorage to get the most recent draftId
+            // This ensures we don't create duplicates if draftId was saved by another call
+            const latestDraft = this.getDraftLocally();
+            const existingJourneyId = latestDraft.draftId || updatedDraft.draftId || (updatedDraft.journey as any).id || (updatedDraft.journey as any)._id;
+            
+            console.log('[DraftService] DraftId sources (debounced):', {
+              fromLatestDraft: latestDraft.draftId,
+              fromUpdatedDraft: updatedDraft.draftId,
+              fromJourney: (updatedDraft.journey as any).id || (updatedDraft.journey as any)._id,
+              finalJourneyId: existingJourneyId
+            });
+            
+            if (!existingJourneyId) {
+              console.warn('[DraftService] ⚠️ No draftId found (debounced), will create new journey.');
+            } else {
+              console.log('[DraftService] ✓ Found existing draftId (debounced):', existingJourneyId);
+            }
             
             console.log('[DraftService] Saving draft (debounced) with journeyId:', existingJourneyId || 'NEW');
             
@@ -123,9 +138,16 @@ export class DraftService {
             if (response.success && (response.journey?.id || response.journeyId)) {
               // Sauvegarder l'ID du brouillon
               const savedJourneyId = response.journey?.id || response.journeyId || response.journey?._id;
-              updatedDraft.draftId = savedJourneyId;
-              this.saveDraftLocally(updatedDraft);
+              
+              // CRITICAL: Re-read draft again to merge with any concurrent updates
+              const finalDraft = this.getDraftLocally();
+              finalDraft.draftId = savedJourneyId;
+              finalDraft.modules = updatedDraft.modules; // Update modules
+              finalDraft.lastSaved = new Date().toISOString();
+              this.saveDraftLocally(finalDraft);
+              
               console.log('[DraftService] ✓ Draft saved successfully (debounced), journeyId:', savedJourneyId);
+              console.log('[DraftService] ✓ draftId saved to localStorage (debounced):', savedJourneyId);
             }
           } catch (error) {
             console.warn('[DraftService] Could not save draft to backend (will retry):', error);
@@ -177,6 +199,7 @@ export class DraftService {
       console.log('[DraftService] Local draft updated, draftId:', updatedDraft.draftId);
 
       // Sauvegarder dans le backend si possible
+      // IMPORTANT: Only save if we have both journey AND modules (to avoid creating empty journeys)
       if (updatedDraft.journey && updatedDraft.modules.length > 0) {
         const companyId = Cookies.get('companyId');
         const gigId = updatedDraft.selectedGigId || null;
@@ -187,47 +210,60 @@ export class DraftService {
           title: (updatedDraft.journey as any).title || updatedDraft.journey.name
         };
 
-        try {
-          // CRITICAL: Re-read draft from localStorage to get the most recent draftId
-          // This ensures we don't create duplicates if draftId was saved by another call
-          const latestDraft = this.getDraftLocally();
-          const existingJourneyId = draft.draftId || updatedDraft.draftId || latestDraft.draftId || (updatedDraft.journey as any).id || (updatedDraft.journey as any)._id;
-          
-          if (!existingJourneyId) {
-            console.warn('[DraftService] ⚠️ No draftId found, will create new journey. Make sure draftId is saved after first creation.');
-          } else {
-            console.log('[DraftService] ✓ Found existing draftId:', existingJourneyId);
-          }
-          
-          console.log('[DraftService] Saving draft with journeyId:', existingJourneyId || 'NEW');
-          
-          const response = await JourneyService.saveJourney(
-            journeyToSave,
-            updatedDraft.modules,
-            companyId,
-            gigId,
-            undefined, // finalExam
-            existingJourneyId // Pass existing journeyId to update instead of create
-          );
+          try {
+            // CRITICAL: Re-read draft from localStorage MULTIPLE TIMES to get the most recent draftId
+            // This ensures we don't create duplicates if draftId was saved by another call
+            let latestDraft = this.getDraftLocally();
+            let existingJourneyId = draft.draftId || updatedDraft.draftId || latestDraft.draftId || (updatedDraft.journey as any).id || (updatedDraft.journey as any)._id;
+            
+            // Double-check: read again right before saving to catch any last-second updates
+            latestDraft = this.getDraftLocally();
+            existingJourneyId = draft.draftId || latestDraft.draftId || existingJourneyId || (updatedDraft.journey as any).id || (updatedDraft.journey as any)._id;
+            
+            console.log('[DraftService] DraftId sources:', {
+              fromParam: draft.draftId,
+              fromUpdatedDraft: updatedDraft.draftId,
+              fromLatestDraft: latestDraft.draftId,
+              fromJourney: (updatedDraft.journey as any).id || (updatedDraft.journey as any)._id,
+              finalJourneyId: existingJourneyId
+            });
+            
+            if (!existingJourneyId) {
+              console.warn('[DraftService] ⚠️ No draftId found, will create new journey. Make sure draftId is saved after first creation.');
+            } else {
+              console.log('[DraftService] ✓ Found existing draftId:', existingJourneyId);
+            }
+            
+            console.log('[DraftService] Saving draft with journeyId:', existingJourneyId || 'NEW');
+            
+            const response = await JourneyService.saveJourney(
+              journeyToSave,
+              updatedDraft.modules,
+              companyId,
+              gigId,
+              undefined, // finalExam
+              existingJourneyId // Pass existing journeyId to update instead of create
+            );
 
-          if (response.success && (response.journey?.id || response.journeyId)) {
-            const savedJourneyId = response.journey?.id || response.journeyId || response.journey?._id;
-            
-            // CRITICAL: Save draftId immediately to localStorage to prevent duplicate creation
-            // Re-read draft again to merge with any concurrent updates
-            const finalDraft = this.getDraftLocally();
-            finalDraft.draftId = savedJourneyId;
-            finalDraft.modules = updatedDraft.modules; // Update modules
-            finalDraft.lastSaved = new Date().toISOString();
-            this.saveDraftLocally(finalDraft);
-            
-            console.log('[DraftService] ✓ Draft saved immediately, journeyId:', savedJourneyId);
-          } else {
-            console.error('[DraftService] ✗ Save failed - response:', response);
+            if (response.success && (response.journey?.id || response.journeyId)) {
+              const savedJourneyId = response.journey?.id || response.journeyId || response.journey?._id;
+              
+              // CRITICAL: Save draftId immediately to localStorage to prevent duplicate creation
+              // Re-read draft again to merge with any concurrent updates
+              const finalDraft = this.getDraftLocally();
+              finalDraft.draftId = savedJourneyId;
+              finalDraft.modules = updatedDraft.modules; // Update modules
+              finalDraft.lastSaved = new Date().toISOString();
+              this.saveDraftLocally(finalDraft);
+              
+              console.log('[DraftService] ✓ Draft saved immediately, journeyId:', savedJourneyId);
+              console.log('[DraftService] ✓ draftId saved to localStorage:', savedJourneyId);
+            } else {
+              console.error('[DraftService] ✗ Save failed - response:', response);
+            }
+          } catch (error) {
+            console.warn('[DraftService] Could not save draft immediately to backend:', error);
           }
-        } catch (error) {
-          console.warn('[DraftService] Could not save draft immediately to backend:', error);
-        }
       } else {
         console.log('[DraftService] Skipping save - missing journey or modules:', {
           hasJourney: !!updatedDraft.journey,
