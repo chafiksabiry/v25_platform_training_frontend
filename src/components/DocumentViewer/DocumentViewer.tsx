@@ -143,7 +143,7 @@ export default function DocumentViewer({ fileUrl, fileName, mimeType }: Document
               src={fileUrl}
               controls
               className="w-full h-full rounded-lg shadow"
-              style={{ height: '100%', width: '100%', minHeight: '500px' }}
+              style={{ height: '100%', width: '100%' }}
             >
               Your browser does not support the video tag.
             </video>
@@ -152,7 +152,7 @@ export default function DocumentViewer({ fileUrl, fileName, mimeType }: Document
               src={fileUrl}
               controls
               className="w-full h-full rounded-lg shadow"
-              style={{ height: '100%', width: '100%', minHeight: '500px' }}
+              style={{ height: '100%', width: '100%' }}
             >
               Your browser does not support the video tag.
             </video>
@@ -167,7 +167,7 @@ export default function DocumentViewer({ fileUrl, fileName, mimeType }: Document
             src={fileUrl}
             alt={fileName || "Image"}
             className="max-w-full max-h-full rounded-lg shadow object-contain"
-            style={{ minHeight: '400px' }}
+            style={{ maxHeight: '100%', width: 'auto' }}
           />
         </div>
       )}
@@ -185,7 +185,7 @@ export default function DocumentViewer({ fileUrl, fileName, mimeType }: Document
                   title="YouTube Video"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen
-                  style={{ height: '100%', width: '100%', minHeight: '500px' }}
+                  style={{ height: '100%', width: '100%' }}
                 />
               );
             } else {

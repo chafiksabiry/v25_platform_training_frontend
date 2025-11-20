@@ -105,10 +105,7 @@ export default function InteractiveModule({ module, onProgress, onComplete }: In
     });
   }, [sections, currentSection, currentSectionData, module.content, module.sections, showQuizzes, quizzes, currentQuiz, realProgress, completedSections, loadingQuizzes]);
 
-  // Scroll to top when section changes
-  useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [currentSection]);
+  // Don't scroll automatically - let the container handle it
 
   // Update progress when sections are completed (this is now handled in handleNext, but keep for initial state)
   useEffect(() => {
@@ -126,7 +123,6 @@ export default function InteractiveModule({ module, onProgress, onComplete }: In
         setCurrentQuizIndex(prev => prev + 1);
         setQuizAnswer(null);
         setShowQuizResult(false);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
         // All quizzes completed for this module, finish module and move to next
         console.log('[InteractiveModule] All quizzes completed, finishing module and moving to next');
@@ -167,7 +163,6 @@ export default function InteractiveModule({ module, onProgress, onComplete }: In
       // Check if this is the last section
       if (currentSection < sections.length - 1) {
         setCurrentSection(prev => prev + 1);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
         // Last section completed, show quizzes for this module
         console.log('[InteractiveModule] Last section completed, checking for quizzes...', {
@@ -181,7 +176,6 @@ export default function InteractiveModule({ module, onProgress, onComplete }: In
           setShowQuizzes(true);
           setCurrentQuizIndex(0);
           setCurrentQuiz(quizzes[0]);
-          window.scrollTo({ top: 0, behavior: 'smooth' });
         } else if (loadingQuizzes) {
           // Still loading quizzes, wait a bit
           console.log('[InteractiveModule] Quizzes still loading, waiting...');
@@ -190,7 +184,6 @@ export default function InteractiveModule({ module, onProgress, onComplete }: In
               setShowQuizzes(true);
               setCurrentQuizIndex(0);
               setCurrentQuiz(quizzes[0]);
-              window.scrollTo({ top: 0, behavior: 'smooth' });
             } else {
               console.log('[InteractiveModule] No quizzes found after loading, completing module');
               if (sections.length > 0) {
