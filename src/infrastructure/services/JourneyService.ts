@@ -278,6 +278,9 @@ export class JourneyService {
       
       // Spring Data MongoDB uses 'id' (not '_id') in Java entities
       const createdJourney = response.data.journey || response.data;
+      // Backend can return journey directly or wrapped in response.data.journey
+      const createdJourney = response.data.journey || response.data;
+      
       console.log('[JourneyService] Create journey response:', {
         success: response.data.success,
         hasJourney: !!response.data.journey,
@@ -289,9 +292,6 @@ export class JourneyService {
         console.error('[JourneyService] Create journey failed:', response.data);
         throw new Error(`Failed to create journey: ${response.data.error || 'Unknown error'}`);
       }
-      
-      // Backend can return journey directly or wrapped in response.data.journey
-      const createdJourney = response.data.journey || response.data;
       
       // Spring Data MongoDB uses 'id' (not '_id') in Java entities
       if (!createdJourney?.id && !createdJourney?._id) {
