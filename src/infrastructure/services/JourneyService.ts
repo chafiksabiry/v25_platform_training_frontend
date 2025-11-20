@@ -31,6 +31,11 @@ export interface LaunchJourneyResponse {
   enrolledCount: number;
 }
 
+// Helper function to validate MongoDB ObjectId format (24 hex characters)
+const isValidMongoId = (id: string | undefined): boolean => {
+  return !!(id && /^[0-9a-fA-F]{24}$/.test(id));
+};
+
 export class JourneyService {
   /**
    * Get all training journeys
@@ -185,9 +190,9 @@ export class JourneyService {
     
     // If journeyId is provided, validate it's a MongoDB ObjectId format (24 hex characters)
     // Don't use timestamps or other non-MongoDB IDs
-    const isValidMongoId = journeyId && /^[0-9a-fA-F]{24}$/.test(journeyId);
+    const isValidJourneyId = journeyId && isValidMongoId(journeyId);
     
-    if (journeyId && isValidMongoId) {
+    if (journeyId && isValidJourneyId) {
       try {
         const existingJourney = await ApiClient.get(`/training_journeys/${journeyId}`);
         if (existingJourney.data.success && existingJourney.data.journey) {
@@ -261,7 +266,6 @@ export class JourneyService {
       existingJourneyId = response.data.journey._id || response.data.journey.id;
       
       // Validate that it's a MongoDB ObjectId
-      const isValidMongoId = (id: string | undefined) => id && /^[0-9a-fA-F]{24}$/.test(id);
       if (!isValidMongoId(existingJourneyId)) {
         console.error('[JourneyService] ⚠️ Invalid journeyId returned from backend:', existingJourneyId);
         throw new Error(`Invalid journeyId returned from backend: ${existingJourneyId}`);
@@ -363,9 +367,8 @@ export class JourneyService {
     // CRITICAL: Always use _id from backend response, never journey.id (which might be a timestamp)
     const returnedJourneyId = updateResponse.data.journey?._id || updateResponse.data.journey?.id || existingJourneyId;
     
-    // Validate that it's a MongoDB ObjectId
-    const isValidMongoId = (id: string | undefined) => id && /^[0-9a-fA-F]{24}$/.test(id);
-    if (!returnedJourneyId || !isValidMongoId(returnedJourneyId)) {
+      // Validate that it's a MongoDB ObjectId
+      if (!returnedJourneyId || !isValidMongoId(returnedJourneyId)) {
       console.error('[JourneyService] ⚠️ Invalid journeyId returned from backend:', returnedJourneyId);
       throw new Error('Invalid journeyId returned from backend');
     }
@@ -412,7 +415,6 @@ export class JourneyService {
     // If journeyId is provided, check if journey exists and update it
     // IMPORTANT: Only use MongoDB ObjectId format (24 hex characters)
     // Don't use timestamps or other non-MongoDB IDs from journey.id
-    const isValidMongoId = (id: string | undefined) => id && /^[0-9a-fA-F]{24}$/.test(id);
     
     // Priority: journeyId parameter > journey._id (never use journey.id as it might be a timestamp)
     let journeyIdToUse = journeyId || (request.journey as any)._id;
