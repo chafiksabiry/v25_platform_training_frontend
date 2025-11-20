@@ -240,15 +240,10 @@ function App() {
 
   const handleViewDashboard = () => {
     setShowJourneySuccess(false);
-    setShowLaunchedDashboard(false); // Don't show LaunchedJourneyDashboard, use main layout instead
+    setShowLaunchedDashboard(true);
     setHasCompletedSetup(true);
     setShowWelcome(false);
     setActiveTab('dashboard');
-    // Reset selected journey/module to show main content
-    setSelectedJourney(null);
-    setSelectedModule(null);
-    setSelectedJourneyModules([]);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleCreateAnotherJourney = () => {
@@ -618,7 +613,7 @@ function App() {
         || progress.modules.find(m => m.id === selectedModule);
       if (module) {
         return (
-          <div className="h-full flex flex-col overflow-hidden" style={{ height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <div className="h-full flex flex-col" style={{ height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
             <button
               onClick={() => {
                 setSelectedModule(null);
@@ -629,7 +624,7 @@ function App() {
               <span>←</span>
               <span>Back to Training Modules</span>
             </button>
-            <div className="flex-1 overflow-hidden" style={{ height: '100%', minHeight: 0, flex: '1 1 auto', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <div className="flex-1 overflow-hidden" style={{ height: '100%', minHeight: 0, flex: '1 1 auto', display: 'flex', flexDirection: 'column' }}>
             <InteractiveModule
               module={module}
               onProgress={(progress) => handleModuleProgress(selectedModule, progress)}
@@ -1204,7 +1199,7 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 relative">
+    <div className="h-screen bg-gray-50 relative overflow-hidden flex">
       {/* Sidebar - Always rendered first */}
       <Sidebar 
         activeTab={activeTab} 
@@ -1221,9 +1216,9 @@ function App() {
       )}
       
       {/* Main content - Always has margin on md+ screens */}
-      <div className="flex-1 flex flex-col ml-0 md:ml-64 transition-all duration-300 w-full">
+      <div className="flex-1 flex flex-col ml-0 md:ml-64 transition-all duration-300 w-full overflow-hidden">
         {/* Fixed Top Bar */}
-        <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
+        <div className="bg-white border-b border-gray-200 flex-shrink-0 z-10">
           <div className="flex items-center justify-between px-6 py-2">
             <div className="flex items-center space-x-4">
               <span className="text-sm text-gray-600">View as:</span>
@@ -1268,20 +1263,20 @@ function App() {
         </div>
         
         {/* Fixed Header */}
-        <div className="sticky top-[42px] z-10">
+        <div className="flex-shrink-0 z-10">
         <Header 
             repName={getCurrentUserName()} 
           onMenuToggle={() => setSidebarOpen(!sidebarOpen)}
         />
         </div>
         
-        <main className={`flex-1 flex gap-6 overflow-hidden ${selectedModule ? 'p-6 pb-0' : 'p-6'}`} style={{ display: 'flex', flexDirection: 'row', height: '100%', minHeight: 0 }}>
-          <div className="flex-1 overflow-hidden" style={{ height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+        <main className={`flex-1 flex gap-6 overflow-hidden ${selectedModule ? 'p-6 pb-0' : 'p-6'}`} style={{ display: 'flex', flexDirection: 'row', height: '100%', minHeight: 0, overflow: 'hidden' }}>
+          <div className="flex-1 overflow-hidden" style={{ height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             {renderContent()}
           </div>
           
           {showAITutor && (
-            <div className="w-96 flex-shrink-0">
+            <div className="w-96 flex-shrink-0 overflow-hidden">
               <AITutor 
                 tutor={mockAITutor}
                 currentModule={selectedModule || undefined}

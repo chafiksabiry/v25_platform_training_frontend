@@ -502,10 +502,10 @@ export default function TraineePortal({
     case 'live-session':
       return renderLiveSessionView();
     default:
-      return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
-          <div className="container mx-auto px-4 py-8">
-            <div className="max-w-7xl mx-auto">
+  return (
+    <div className="h-screen bg-gradient-to-br from-gray-50 to-blue-50 overflow-hidden flex flex-col">
+      <div className="container mx-auto px-4 py-8 flex-1 overflow-y-auto">
+        <div className="max-w-7xl mx-auto">
               {/* Navigation */}
               <div className="flex items-center justify-between mb-8">
                 <div className="flex items-center space-x-6">
