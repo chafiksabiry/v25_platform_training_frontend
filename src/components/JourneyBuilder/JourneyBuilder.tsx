@@ -174,7 +174,8 @@ export default function JourneyBuilder({ onComplete }: JourneyBuilderProps) {
       
       return {
         ...module,
-        title: `${methodologyComponent.title} - ${module.title}`,
+        // Utiliser uniquement le titre du module basé sur l'analyse des documents, sans préfixe de méthodologie
+        title: module.title,
         description: `${module.description} Enhanced with ${methodology.name} methodology.`,
         duration: module.duration + methodologyComponent.estimatedDuration,
         difficulty: methodologyComponent.competencyLevel === 'expert' ? 'advanced' : 

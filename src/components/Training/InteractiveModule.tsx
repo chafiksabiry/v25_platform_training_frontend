@@ -17,16 +17,18 @@ export default function InteractiveModule({ module, onProgress, onComplete, onBa
   const [showQuizzes, setShowQuizzes] = useState(false);
   const [currentQuiz, setCurrentQuiz] = useState<Quiz | null>(null);
   const [currentQuizIndex, setCurrentQuizIndex] = useState(0);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [quizAnswer, setQuizAnswer] = useState<number | number[] | null>(null);
   const [showQuizResult, setShowQuizResult] = useState(false);
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [loadingQuizzes, setLoadingQuizzes] = useState(false);
 
   // Get sections from module.content or module.sections
-  const sections = (module.sections && Array.isArray(module.sections) && module.sections.length > 0)
-    ? module.sections
-    : (module.content && Array.isArray(module.content) && module.content.length > 0)
-      ? module.content
+  const moduleAny = module as any;
+  const sections = (moduleAny.sections && Array.isArray(moduleAny.sections) && moduleAny.sections.length > 0)
+    ? moduleAny.sections
+    : (moduleAny.content && Array.isArray(moduleAny.content) && moduleAny.content.length > 0)
+      ? moduleAny.content
       : [];
 
   // Get current section data
@@ -41,6 +43,7 @@ export default function InteractiveModule({ module, onProgress, onComplete, onBa
   useEffect(() => {
     setShowQuizzes(false);
     setCurrentQuizIndex(0);
+    setCurrentQuestionIndex(0);
     setCurrentQuiz(null);
     setQuizAnswer(null);
     setShowQuizResult(false);
@@ -48,37 +51,64 @@ export default function InteractiveModule({ module, onProgress, onComplete, onBa
     setCompletedSections(new Set());
   }, [module.id]);
 
-  // Load quizzes from embedded structure (module.assessments contains quizzes from embedded structure)
+  // Load quizzes from embedded structure (module.assessments or module.quizzes)
   useEffect(() => {
     console.log('[InteractiveModule] Loading quizzes for module:', module.title);
+    console.log('[InteractiveModule] Module data:', {
+      hasAssessments: !!(moduleAny.assessments && Array.isArray(moduleAny.assessments) && moduleAny.assessments.length > 0),
+      hasQuizzes: !!(moduleAny.quizzes && Array.isArray(moduleAny.quizzes) && moduleAny.quizzes.length > 0),
+      assessments: moduleAny.assessments,
+      quizzes: moduleAny.quizzes
+    });
     
     setLoadingQuizzes(true);
     
-    // Use embedded quizzes from module.assessments (which now contains quizzes from embedded structure)
-    if (module.assessments && Array.isArray(module.assessments) && module.assessments.length > 0) {
-      // Convert assessments to Quiz format
-      const quizzesFromAssessments: Quiz[] = module.assessments.map((assessment: any) => ({
-        id: assessment.id || `quiz-${Date.now()}`,
-        title: assessment.title || 'Quiz',
-        questions: (assessment.questions || []).map((q: any) => ({
-          id: q.id || `q-${Date.now()}`,
-          text: q.text || q.question || '',
-          type: q.type || 'multiple-choice',
-          options: q.options || [],
-          correctAnswer: q.correctAnswer,
-          explanation: q.explanation || '',
-          points: q.points || 10
-        })),
-        passingScore: assessment.passingScore || 70,
-        timeLimit: assessment.timeLimit || 15
+    // Convert quiz/assessment questions to Quiz format (flatten all questions)
+    const convertQuestionsToQuizzes = (quizOrAssessment: any): Quiz[] => {
+      const questions = quizOrAssessment.questions || [];
+      return questions.map((q: any, index: number) => ({
+        id: q.id || `q-${Date.now()}-${index}`,
+        question: q.question || q.text || '',
+        type: q.type || 'multiple-choice',
+        options: q.options || [],
+        correctAnswer: q.correctAnswer,
+        explanation: q.explanation || '',
+        difficulty: q.points || 10,
+        aiGenerated: false
       }));
-      
-      console.log('[InteractiveModule] Using', quizzesFromAssessments.length, 'quizzes from embedded assessments');
-      setQuizzes(quizzesFromAssessments);
+    };
+    
+    // Check module.quizzes first (new structure), then module.assessments (old structure)
+    const moduleQuizzes = moduleAny.quizzes;
+    const moduleAssessments = moduleAny.assessments;
+    
+    let allQuestions: Quiz[] = [];
+    
+    if (moduleQuizzes && Array.isArray(moduleQuizzes) && moduleQuizzes.length > 0) {
+      // Flatten all questions from all quizzes
+      moduleQuizzes.forEach((quiz: any) => {
+        const questions = convertQuestionsToQuizzes(quiz);
+        allQuestions = [...allQuestions, ...questions];
+      });
+      console.log('[InteractiveModule] Using', allQuestions.length, 'questions from', moduleQuizzes.length, 'quizzes in module.quizzes');
+      console.log('[InteractiveModule] First question:', allQuestions[0]);
+    } else if (moduleAssessments && Array.isArray(moduleAssessments) && moduleAssessments.length > 0) {
+      // Flatten all questions from all assessments (fallback for old structure)
+      moduleAssessments.forEach((assessment: any) => {
+        const questions = convertQuestionsToQuizzes(assessment);
+        allQuestions = [...allQuestions, ...questions];
+      });
+      console.log('[InteractiveModule] Using', allQuestions.length, 'questions from', moduleAssessments.length, 'assessments in module.assessments');
     } else {
-      console.log('[InteractiveModule] No embedded quizzes found');
-      setQuizzes([]);
+      console.log('[InteractiveModule] No quizzes found in module.quizzes or module.assessments');
     }
+    
+    console.log('[InteractiveModule] Total questions loaded:', allQuestions.length);
+    if (allQuestions.length > 0) {
+      console.log('[InteractiveModule] First question options:', allQuestions[0].options);
+    }
+    
+    setQuizzes(allQuestions);
     
     setLoadingQuizzes(false);
   }, [module]);
@@ -93,8 +123,8 @@ export default function InteractiveModule({ module, onProgress, onComplete, onBa
       currentSectionData: currentSectionData,
       hasFile: !!currentSectionData?.content?.file?.url,
       fileUrl: currentSectionData?.content?.file?.url,
-      moduleContent: module.content?.length || 0,
-      moduleSections: module.sections?.length || 0,
+      moduleContent: moduleAny.content?.length || 0,
+      moduleSections: moduleAny.sections?.length || 0,
       showQuizzes: showQuizzes,
       quizzesCount: quizzes.length,
       currentQuiz: currentQuiz,
@@ -104,7 +134,7 @@ export default function InteractiveModule({ module, onProgress, onComplete, onBa
       hasQuizIds: !!quizIds && Array.isArray(quizIds) && quizIds.length > 0,
       loadingQuizzes: loadingQuizzes
     });
-  }, [sections, currentSection, currentSectionData, module.content, module.sections, showQuizzes, quizzes, currentQuiz, realProgress, completedSections, loadingQuizzes]);
+  }, [sections, currentSection, currentSectionData, moduleAny.content, moduleAny.sections, showQuizzes, quizzes, currentQuiz, realProgress, completedSections, loadingQuizzes]);
 
   // Don't scroll automatically - let the container handle it
 
@@ -119,14 +149,12 @@ export default function InteractiveModule({ module, onProgress, onComplete, onBa
 
   const handleNext = () => {
     if (showQuizzes) {
-      // If showing quizzes, move to next quiz
-      if (currentQuizIndex < quizzes.length - 1) {
-        setCurrentQuizIndex(prev => prev + 1);
-        setQuizAnswer(null);
-        setShowQuizResult(false);
+      // If showing quizzes, move to next question
+      if (currentQuestionIndex < quizzes.length - 1) {
+        setCurrentQuestionIndex(prev => prev + 1);
       } else {
-        // All quizzes completed for this module, finish module and move to next
-        console.log('[InteractiveModule] All quizzes completed, finishing module and moving to next');
+        // All questions completed for this module, finish module and move to next
+        console.log('[InteractiveModule] All questions completed, finishing module and moving to next');
         // Mark all sections as completed for final progress update
         if (sections.length > 0) {
           const allSectionsCompleted = new Set(Array.from({ length: sections.length }, (_, i) => i));
@@ -135,6 +163,7 @@ export default function InteractiveModule({ module, onProgress, onComplete, onBa
         }
         // Reset quiz state for next module
         setShowQuizzes(false);
+        setCurrentQuestionIndex(0);
         setCurrentQuizIndex(0);
         setCurrentQuiz(null);
         setQuizAnswer(null);
@@ -146,7 +175,7 @@ export default function InteractiveModule({ module, onProgress, onComplete, onBa
       // If no sections but quizzes available, start quizzes
       if (sections.length === 0 && quizzes.length > 0) {
         setShowQuizzes(true);
-        setCurrentQuizIndex(0);
+        setCurrentQuestionIndex(0);
         setCurrentQuiz(quizzes[0]);
         return;
       }
@@ -174,7 +203,7 @@ export default function InteractiveModule({ module, onProgress, onComplete, onBa
         if (quizzes.length > 0) {
           console.log('[InteractiveModule] Showing quizzes after module completion');
           setShowQuizzes(true);
-          setCurrentQuizIndex(0);
+          setCurrentQuestionIndex(0);
           setCurrentQuiz(quizzes[0]);
         } else if (loadingQuizzes) {
           // Still loading quizzes, wait a bit
@@ -182,7 +211,7 @@ export default function InteractiveModule({ module, onProgress, onComplete, onBa
           setTimeout(() => {
             if (quizzes.length > 0) {
               setShowQuizzes(true);
-              setCurrentQuizIndex(0);
+              setCurrentQuestionIndex(0);
               setCurrentQuiz(quizzes[0]);
             } else {
               console.log('[InteractiveModule] No quizzes found after loading, completing module');
@@ -206,12 +235,9 @@ export default function InteractiveModule({ module, onProgress, onComplete, onBa
 
   const handlePrevious = () => {
     if (showQuizzes) {
-      // If showing quizzes, go back to previous quiz
-      if (currentQuizIndex > 0) {
-        setCurrentQuizIndex(prev => prev - 1);
-        setCurrentQuiz(quizzes[currentQuizIndex - 1]);
-        setQuizAnswer(null);
-        setShowQuizResult(false);
+      // If showing quizzes, go back to previous question
+      if (currentQuestionIndex > 0) {
+        setCurrentQuestionIndex(prev => prev - 1);
       } else {
         // Go back to last section
         setShowQuizzes(false);
@@ -230,12 +256,14 @@ export default function InteractiveModule({ module, onProgress, onComplete, onBa
     }
   };
 
-  // Update current quiz when quiz index changes
+  // Update current quiz when question index changes
   useEffect(() => {
-    if (showQuizzes && quizzes.length > 0 && currentQuizIndex < quizzes.length) {
-      setCurrentQuiz(quizzes[currentQuizIndex]);
+    if (showQuizzes && quizzes.length > 0 && currentQuestionIndex < quizzes.length) {
+      setCurrentQuiz(quizzes[currentQuestionIndex]);
+      setQuizAnswer(null);
+      setShowQuizResult(false);
     }
-  }, [showQuizzes, currentQuizIndex, quizzes]);
+  }, [showQuizzes, currentQuestionIndex, quizzes]);
 
   const submitQuizAnswer = () => {
     if (quizAnswer !== null && currentQuiz) {
@@ -261,7 +289,7 @@ export default function InteractiveModule({ module, onProgress, onComplete, onBa
                     Module Quiz: {module.title}
                   </h2>
                   <h3 className="text-lg font-semibold text-gray-700">
-                    Question {currentQuizIndex + 1} of {quizzes.length}
+                    Question {currentQuestionIndex + 1} of {quizzes.length}
                   </h3>
                 </div>
               </div>
@@ -270,10 +298,13 @@ export default function InteractiveModule({ module, onProgress, onComplete, onBa
               <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
                 <p className="text-gray-700 mb-6 text-lg font-medium">{currentQuiz.question}</p>
                 
-                {currentQuiz.options && currentQuiz.options.length > 0 ? (
+                {currentQuiz && currentQuiz.options && currentQuiz.options.length > 0 ? (
                 <div className="space-y-3 mb-6">
                   {currentQuiz.options.map((option, index) => {
-                    const isMultipleCorrect = currentQuiz.type === 'multiple-correct';
+                    // Determine question type from currentQuiz or default to multiple-choice
+                    const questionType = (currentQuiz as any).type || 'multiple-choice';
+                    const isMultipleCorrect = questionType === 'multiple-correct';
+                    const isTrueFalse = questionType === 'true-false';
                     const isChecked = Array.isArray(quizAnswer) 
                       ? quizAnswer.includes(index)
                       : quizAnswer === index;
@@ -320,24 +351,45 @@ export default function InteractiveModule({ module, onProgress, onComplete, onBa
                   </div>
                 )}
 
-                {showQuizResult && (
+                {showQuizResult && currentQuiz && (
                   <div className={`p-4 rounded-lg mb-4 ${
-                    (Array.isArray(quizAnswer)
-                      ? JSON.stringify([...quizAnswer].sort()) === JSON.stringify([...(Array.isArray(currentQuiz.correctAnswer) ? currentQuiz.correctAnswer : [currentQuiz.correctAnswer])].sort())
-                      : quizAnswer === currentQuiz.correctAnswer)
+                    (() => {
+                      const correctAnswer = currentQuiz.correctAnswer;
+                      if (Array.isArray(quizAnswer) && Array.isArray(correctAnswer)) {
+                        return JSON.stringify([...quizAnswer].sort()) === JSON.stringify([...correctAnswer].sort());
+                      } else if (Array.isArray(quizAnswer)) {
+                        return quizAnswer.length === 1 && quizAnswer[0] === correctAnswer;
+                      } else {
+                        return quizAnswer === correctAnswer;
+                      }
+                    })()
                       ? 'bg-green-50 border border-green-200'
                       : 'bg-red-50 border border-red-200'
                   }`}>
                     <p className={`font-medium ${
-                      (Array.isArray(quizAnswer)
-                        ? JSON.stringify([...quizAnswer].sort()) === JSON.stringify([...(Array.isArray(currentQuiz.correctAnswer) ? currentQuiz.correctAnswer : [currentQuiz.correctAnswer])].sort())
-                        : quizAnswer === currentQuiz.correctAnswer)
+                      (() => {
+                        const correctAnswer = currentQuiz.correctAnswer;
+                        if (Array.isArray(quizAnswer) && Array.isArray(correctAnswer)) {
+                          return JSON.stringify([...quizAnswer].sort()) === JSON.stringify([...correctAnswer].sort());
+                        } else if (Array.isArray(quizAnswer)) {
+                          return quizAnswer.length === 1 && quizAnswer[0] === correctAnswer;
+                        } else {
+                          return quizAnswer === correctAnswer;
+                        }
+                      })()
                         ? 'text-green-800'
                         : 'text-red-800'
                     }`}>
-                      {(Array.isArray(quizAnswer)
-                        ? JSON.stringify([...quizAnswer].sort()) === JSON.stringify([...(Array.isArray(currentQuiz.correctAnswer) ? currentQuiz.correctAnswer : [currentQuiz.correctAnswer])].sort())
-                        : quizAnswer === currentQuiz.correctAnswer)
+                      {(() => {
+                        const correctAnswer = currentQuiz.correctAnswer;
+                        if (Array.isArray(quizAnswer) && Array.isArray(correctAnswer)) {
+                          return JSON.stringify([...quizAnswer].sort()) === JSON.stringify([...correctAnswer].sort());
+                        } else if (Array.isArray(quizAnswer)) {
+                          return quizAnswer.length === 1 && quizAnswer[0] === correctAnswer;
+                        } else {
+                          return quizAnswer === correctAnswer;
+                        }
+                      })()
                         ? 'Correct!'
                         : 'Incorrect'}
                     </p>
@@ -397,7 +449,7 @@ export default function InteractiveModule({ module, onProgress, onComplete, onBa
                   <button
                     onClick={() => {
                       setShowQuizzes(true);
-                      setCurrentQuizIndex(0);
+                      setCurrentQuestionIndex(0);
                       setCurrentQuiz(quizzes[0]);
                     }}
                     className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -427,7 +479,7 @@ export default function InteractiveModule({ module, onProgress, onComplete, onBa
           </button>
           <span className="text-sm text-gray-600">
             {showQuizzes 
-              ? (quizzes.length > 0 ? `Quiz ${currentQuizIndex + 1} of ${quizzes.length}` : 'No quizzes')
+              ? (quizzes.length > 0 ? `Question ${currentQuestionIndex + 1} of ${quizzes.length}` : 'No questions')
               : sections.length > 0 
                 ? `Section ${currentSection + 1} of ${sections.length}`
                 : 'No sections'
@@ -443,7 +495,7 @@ export default function InteractiveModule({ module, onProgress, onComplete, onBa
             }`}
           >
             <span>
-              {showQuizzes && currentQuizIndex === quizzes.length - 1 
+              {showQuizzes && currentQuestionIndex === quizzes.length - 1 
                 ? 'Complete Module' 
                 : (!showQuizzes && sections.length === 0 && quizzes.length > 0)
                   ? 'Start Quizzes'

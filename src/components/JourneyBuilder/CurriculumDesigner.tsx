@@ -305,15 +305,13 @@ export default function CurriculumDesigner({ uploads, methodology, onComplete, o
             sectionType = 'document';
           }
           
-          // Générer un titre de section intelligent basé sur l'analyse AI
+          // Générer un titre de section intelligent basé uniquement sur l'analyse AI du document
           let sectionTitle = upload.name.replace(/\.[^/.]+$/, '');
           if (upload.aiAnalysis?.keyTopics && upload.aiAnalysis.keyTopics.length > 0) {
-            // Utiliser le premier key topic comme titre de section
+            // Utiliser le premier key topic comme titre de section (basé uniquement sur l'analyse du document)
             sectionTitle = upload.aiAnalysis.keyTopics[0];
-          } else if (aiModule?.title) {
-            // Utiliser une partie du titre du module si disponible
-            sectionTitle = `${aiModule.title} - ${upload.name.replace(/\.[^/.]+$/, '')}`;
           }
+          // Ne pas ajouter de préfixe du module - utiliser uniquement l'analyse du document
           
           // Créer l'URL du fichier - utiliser Cloudinary URL si disponible, sinon blob URL
           let fileUrl = '';
