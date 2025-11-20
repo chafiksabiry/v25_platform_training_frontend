@@ -192,14 +192,16 @@ export class DraftService {
               existingJourneyId // Pass existing journeyId to update instead of create
             );
 
-            if (response.success && (response.journey?.id || response.journeyId || response.journey?._id)) {
-              // CRITICAL: Always use _id from backend response, never journey.id (which might be a timestamp)
-              const savedJourneyId = response.journey?._id || response.journeyId || response.journey?.id;
-              
+            // Spring Data MongoDB uses 'id' (not '_id') in Java entities
+            // Backend can return journey directly or wrapped in response.journey
+            const savedJourney = response.journey || response;
+            const savedJourneyId = savedJourney?.id || savedJourney?._id || response.journeyId;
+            
+            if (response.success && savedJourneyId) {
               // Validate that it's a MongoDB ObjectId
               const isValidMongoId = (id: string | undefined) => id && /^[0-9a-fA-F]{24}$/.test(id);
               
-              if (!savedJourneyId || !isValidMongoId(savedJourneyId)) {
+              if (!isValidMongoId(savedJourneyId)) {
                 console.error('[DraftService] ✗ Invalid journeyId returned from backend (debounced):', savedJourneyId);
               } else {
                 // CRITICAL: Re-read draft again to merge with any concurrent updates
@@ -322,14 +324,16 @@ export class DraftService {
               existingJourneyId // Pass existing journeyId to update instead of create
             );
 
-            if (response.success && (response.journey?.id || response.journeyId || response.journey?._id || response.journeyId)) {
-              // CRITICAL: Always use _id from backend response, never journey.id (which might be a timestamp)
-              const savedJourneyId = response.journey?._id || response.journeyId || response.journey?.id;
-              
+            // Spring Data MongoDB uses 'id' (not '_id') in Java entities
+            // Backend can return journey directly or wrapped in response.journey
+            const savedJourney = response.journey || response;
+            const savedJourneyId = savedJourney?.id || savedJourney?._id || response.journeyId;
+            
+            if (response.success && savedJourneyId) {
               // Validate that it's a MongoDB ObjectId
               const isValidMongoId = (id: string | undefined) => id && /^[0-9a-fA-F]{24}$/.test(id);
               
-              if (!savedJourneyId || !isValidMongoId(savedJourneyId)) {
+              if (!isValidMongoId(savedJourneyId)) {
                 console.error('[DraftService] ✗ Invalid journeyId returned from backend:', savedJourneyId);
               } else {
                 // CRITICAL: Save draftId immediately to localStorage to prevent duplicate creation

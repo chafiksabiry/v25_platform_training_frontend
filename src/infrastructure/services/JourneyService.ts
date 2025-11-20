@@ -194,14 +194,32 @@ export class JourneyService {
     
     if (journeyId && isValidJourneyId) {
       try {
-        const existingJourney = await ApiClient.get(`/training_journeys/${journeyId}`);
-        if (existingJourney.data.success && existingJourney.data.journey) {
+        console.log('[JourneyService] Checking if journey exists:', journeyId);
+        const existingJourneyResponse = await ApiClient.get(`/training_journeys/${journeyId}`);
+        
+        // Backend can return either:
+        // 1. Direct entity: {id: "...", title: "...", ...} (Spring Data MongoDB maps _id to id)
+        // 2. Wrapped response: {success: true, journey: {...}}
+        const journeyData = existingJourneyResponse.data.journey || existingJourneyResponse.data;
+        // Spring Data MongoDB uses 'id' (not '_id') in Java entities
+        const hasJourneyId = journeyData && (journeyData.id || journeyData._id);
+        const isSuccess = existingJourneyResponse.data.success !== false && hasJourneyId;
+        
+        console.log('[JourneyService] Journey check response:', {
+          hasData: !!existingJourneyResponse.data,
+          hasJourney: !!existingJourneyResponse.data.journey,
+          hasDirectJourney: !!hasJourneyId,
+          journeyId: journeyData?.id || journeyData?._id,
+          isSuccess: isSuccess
+        });
+        
+        if (isSuccess && journeyData) {
           existingJourneyId = journeyId;
           isUpdate = true;
-          console.log('[JourneyService] Updating existing journey:', journeyId);
+          console.log('[JourneyService] ✓ Journey exists, will UPDATE:', journeyId);
           
           // Delete old modules and sections before creating new ones
-          const oldModuleIds = existingJourney.data.journey.moduleIds || [];
+          const oldModuleIds = journeyData.moduleIds || [];
           if (oldModuleIds.length > 0) {
             console.log('[JourneyService] Deleting old modules:', oldModuleIds.length);
             for (const oldModuleId of oldModuleIds) {
@@ -225,11 +243,24 @@ export class JourneyService {
                 console.warn(`[JourneyService] Could not delete module ${oldModuleId}:`, error);
               }
             }
+          } else {
+            console.log('[JourneyService] No old modules to delete');
           }
+        } else {
+          console.warn('[JourneyService] Journey check returned no valid journey data');
         }
-      } catch (error) {
-        console.warn('[JourneyService] Journey not found, will create new one:', error);
+      } catch (error: any) {
+        console.warn('[JourneyService] Journey not found (404 or error), will create new one:', {
+          journeyId,
+          errorMessage: error?.message,
+          errorStatus: error?.response?.status,
+          errorData: error?.response?.data
+        });
       }
+    } else if (journeyId && !isValidJourneyId) {
+      console.warn('[JourneyService] Invalid journeyId format (not a MongoDB ObjectId):', journeyId, '- will create new journey');
+    } else {
+      console.log('[JourneyService] No journeyId provided, will create new journey');
     }
 
     let response;
@@ -245,11 +276,12 @@ export class JourneyService {
       console.log('[JourneyService] Creating new journey with payload:', JSON.stringify(journeyPayload, null, 2));
       response = await ApiClient.post('/training_journeys', journeyPayload);
       
+      // Spring Data MongoDB uses 'id' (not '_id') in Java entities
+      const createdJourney = response.data.journey || response.data;
       console.log('[JourneyService] Create journey response:', {
         success: response.data.success,
         hasJourney: !!response.data.journey,
-        journeyId: response.data.journey?._id,
-        journeyIdAlt: response.data.journey?.id,
+        journeyId: createdJourney?.id || createdJourney?._id,
         fullResponse: response.data
       });
       
@@ -258,12 +290,17 @@ export class JourneyService {
         throw new Error(`Failed to create journey: ${response.data.error || 'Unknown error'}`);
       }
       
-      if (!response.data.journey?._id && !response.data.journey?.id) {
+      // Backend can return journey directly or wrapped in response.data.journey
+      const createdJourney = response.data.journey || response.data;
+      
+      // Spring Data MongoDB uses 'id' (not '_id') in Java entities
+      if (!createdJourney?.id && !createdJourney?._id) {
         console.error('[JourneyService] No journey ID in response:', response.data);
         throw new Error('Failed to create journey: No journey ID returned');
       }
       
-      existingJourneyId = response.data.journey._id || response.data.journey.id;
+      // Spring Data MongoDB maps MongoDB _id to Java 'id' field
+      existingJourneyId = createdJourney.id || createdJourney._id;
       
       // Validate that it's a MongoDB ObjectId
       if (!isValidMongoId(existingJourneyId)) {
@@ -364,11 +401,13 @@ export class JourneyService {
       throw new Error('Failed to update journey');
     }
     
-    // CRITICAL: Always use _id from backend response, never journey.id (which might be a timestamp)
-    const returnedJourneyId = updateResponse.data.journey?._id || updateResponse.data.journey?.id || existingJourneyId;
+    // CRITICAL: Spring Data MongoDB uses 'id' (not '_id') in Java entities
+    // Backend can return journey directly or wrapped in response.data.journey
+    const updatedJourney = updateResponse.data.journey || updateResponse.data;
+    const returnedJourneyId = updatedJourney?.id || updatedJourney?._id || existingJourneyId;
     
-      // Validate that it's a MongoDB ObjectId
-      if (!returnedJourneyId || !isValidMongoId(returnedJourneyId)) {
+    // Validate that it's a MongoDB ObjectId
+    if (!returnedJourneyId || !isValidMongoId(returnedJourneyId)) {
       console.error('[JourneyService] ⚠️ Invalid journeyId returned from backend:', returnedJourneyId);
       throw new Error('Invalid journeyId returned from backend');
     }
@@ -377,7 +416,7 @@ export class JourneyService {
       ...updateResponse.data,
       success: true,
       journey: {
-        ...updateResponse.data.journey,
+        ...updatedJourney,
         _id: returnedJourneyId,
         id: returnedJourneyId
       },
