@@ -183,6 +183,21 @@ function App() {
     loadTrainingJourneys();
   }, [userType]);
 
+  // Use real modules if available, otherwise fallback to mock
+  // IMPORTANT: This must be called BEFORE conditional returns to ensure hooks are always called in the same order
+  const modulesToUse = realModules.length > 0 ? realModules : mockTrainingModules;
+  
+  // IMPORTANT: Always call useTrainingProgress hook, even if we don't use it
+  // This ensures the same number of hooks are called on every render
+  const { progress, updateModuleProgress, updateStepProgress, updateAssessmentResult } = useTrainingProgress({
+    modules: modulesToUse,
+    steps: mockOnboardingSteps,
+    assessments: mockAssessments,
+  });
+  
+  console.log('[App] Using', modulesToUse.length, 'modules (real:', realModules.length, ', mock:', mockTrainingModules.length, ')');
+  console.log('[App] Progress modules count:', progress.modules.length);
+
   // Route to appropriate view based on user type
   // IMPORTANT: This must be AFTER all hooks to comply with React rules
   // All hooks must be called before any conditional returns
@@ -193,20 +208,6 @@ function App() {
   if (userType === 'trainer') {
     return <TrainerView />;
   }
-
-  // Use real modules if available, otherwise fallback to mock
-  // Only executed if userType is null (fallback mode)
-  const modulesToUse = realModules.length > 0 ? realModules : mockTrainingModules;
-  
-  console.log('[App] Using', modulesToUse.length, 'modules (real:', realModules.length, ', mock:', mockTrainingModules.length, ')');
-
-  const { progress, updateModuleProgress, updateStepProgress, updateAssessmentResult } = useTrainingProgress({
-    modules: modulesToUse,
-    steps: mockOnboardingSteps,
-    assessments: mockAssessments,
-  });
-  
-  console.log('[App] Progress modules count:', progress.modules.length);
 
   const progressStats = {
     completed: progress.steps.filter(step => step.status === 'completed').length,
