@@ -81,7 +81,7 @@ export default function DocumentViewer({ fileUrl, fileName, mimeType }: Document
   const isBlobUrl = fileUrl.startsWith("blob:");
 
   return (
-    <div className="w-full h-full flex flex-col" style={{ height: '100%', width: '100%', minHeight: 'calc(100vh - 300px)', maxHeight: '100%', flex: '1 1 auto', display: 'flex', flexDirection: 'column' }}>
+    <div className="w-full h-full flex flex-col overflow-hidden" style={{ height: '100%', width: '100%', flex: '1 1 auto', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* PDF VIEWER */}
       {type === "pdf" && (
         <>
@@ -90,7 +90,7 @@ export default function DocumentViewer({ fileUrl, fileName, mimeType }: Document
               src={fileUrl}
               type="application/pdf"
               className="w-full h-full"
-              style={{ height: '100%', width: '100%', flex: '1 1 auto', minHeight: 'calc(100vh - 300px)', border: 'none' }}
+              style={{ height: '100%', width: '100%', flex: '1 1 auto', border: 'none', overflow: 'hidden' }}
               onLoad={() => {
                 // Scroll to top when embed loads
                 window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -101,7 +101,7 @@ export default function DocumentViewer({ fileUrl, fileName, mimeType }: Document
               src={`https://mozilla.github.io/pdf.js/web/viewer.html?file=${encodeURIComponent(fileUrl)}`}
               className="w-full h-full border-0"
               title="PDF Viewer"
-              style={{ height: '100%', width: '100%', flex: '1 1 auto', minHeight: 'calc(100vh - 300px)', border: 'none' }}
+              style={{ height: '100%', width: '100%', flex: '1 1 auto', border: 'none', overflow: 'hidden' }}
               onLoad={() => {
                 // Scroll to top when iframe loads
                 window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -136,7 +136,7 @@ export default function DocumentViewer({ fileUrl, fileName, mimeType }: Document
               src={`https://docs.google.com/gview?url=${encodeURIComponent(fileUrl)}&embedded=true`}
               className="w-full h-full border-0 rounded-lg shadow"
               title="Word Viewer"
-              style={{ minHeight: '400px' }}
+              style={{ height: '100%', width: '100%' }}
             />
           )}
         </>
@@ -144,13 +144,13 @@ export default function DocumentViewer({ fileUrl, fileName, mimeType }: Document
 
       {/* VIDEO VIEWER */}
       {type === "video" && (
-        <div className="w-full h-full" style={{ height: '100%', width: '100%' }}>
+        <div className="w-full h-full overflow-hidden" style={{ height: '100%', width: '100%', overflow: 'hidden' }}>
           {isBlobUrl ? (
             <video
               src={fileUrl}
               controls
               className="w-full h-full rounded-lg shadow"
-              style={{ height: '100%', width: '100%', minHeight: '500px' }}
+              style={{ height: '100%', width: '100%', objectFit: 'contain' }}
             >
               Your browser does not support the video tag.
             </video>
@@ -159,7 +159,7 @@ export default function DocumentViewer({ fileUrl, fileName, mimeType }: Document
               src={fileUrl}
               controls
               className="w-full h-full rounded-lg shadow"
-              style={{ height: '100%', width: '100%', minHeight: '500px' }}
+              style={{ height: '100%', width: '100%', objectFit: 'contain' }}
             >
               Your browser does not support the video tag.
             </video>
@@ -169,19 +169,19 @@ export default function DocumentViewer({ fileUrl, fileName, mimeType }: Document
 
       {/* IMAGE VIEWER */}
       {type === "image" && (
-        <div className="w-full h-full flex items-center justify-center">
+        <div className="w-full h-full flex items-center justify-center overflow-hidden" style={{ overflow: 'hidden' }}>
           <img
             src={fileUrl}
             alt={fileName || "Image"}
             className="max-w-full max-h-full rounded-lg shadow object-contain"
-            style={{ minHeight: '400px' }}
+            style={{ maxHeight: '100%', maxWidth: '100%' }}
           />
         </div>
       )}
 
       {/* YOUTUBE VIEWER */}
       {type === "youtube" && (
-        <div className="w-full h-full" style={{ height: '100%', width: '100%' }}>
+        <div className="w-full h-full overflow-hidden" style={{ height: '100%', width: '100%', overflow: 'hidden' }}>
           {(() => {
             const videoId = getYouTubeId(fileUrl);
             if (videoId) {
@@ -192,7 +192,7 @@ export default function DocumentViewer({ fileUrl, fileName, mimeType }: Document
                   title="YouTube Video"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen
-                  style={{ height: '100%', width: '100%', minHeight: '500px' }}
+                  style={{ height: '100%', width: '100%' }}
                 />
               );
             } else {
