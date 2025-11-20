@@ -54,7 +54,14 @@ export default function JourneyBuilder({ onComplete }: JourneyBuilderProps) {
 
   // Sauvegarder automatiquement à chaque changement (avec debounce)
   // IMPORTANT: Only auto-save if draftId exists to prevent creating duplicate journeys
+  // CRITICAL: Skip auto-save when in RehearsalMode (step 3) to prevent creating duplicate journeys when generating quizzes
   useEffect(() => {
+    // Skip auto-save during RehearsalMode (step 3) - quizzes are saved locally only
+    if (currentStep === 3) {
+      console.log('[JourneyBuilder] Skipping auto-save - in RehearsalMode. Quizzes will be saved when journey is launched.');
+      return;
+    }
+    
     if (!isRestoringDraft && (company || journey || uploads.length > 0 || modules.length > 0)) {
       // IMPORTANT: Check if draftId exists before saving to avoid creating duplicate journeys
       const currentDraft = DraftService.getDraft();
