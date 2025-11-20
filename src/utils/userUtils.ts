@@ -66,94 +66,34 @@ export const getCurrentUserEmail = (): string => {
 };
 
 /**
- * Get user type from cookies or token
- * Returns 'trainer' (company) or 'rep' (trainee)
+ * Get agentId from cookies
+ * Returns the agentId if found in cookies, null otherwise
  */
-export const getUserType = (): 'trainer' | 'rep' | null => {
-  try {
-    // Check cookies first
-    const companyId = Cookies.get('companyId');
-    const repId = Cookies.get('repId') || Cookies.get('agentId');
-    
-    if (companyId) {
-      return 'trainer';
-    }
-    
-    if (repId) {
-      return 'rep';
-    }
-    
-    // Fallback to token if available
-    const token = localStorage.getItem('auth_token') || localStorage.getItem('token');
-    if (token) {
-      const userInfo = decodeToken(token);
-      if (userInfo) {
-        // Check typeUser field from token
-        if (userInfo.typeUser === 'company') {
-          return 'trainer';
-        }
-        if (userInfo.typeUser === 'rep') {
-          return 'rep';
-        }
-      }
-    }
-    
-    return null;
-  } catch (error) {
-    console.error('[UserUtils] Error getting user type:', error);
-    return null;
+export const getAgentId = (): string | null => {
+  // Try to get agentId from cookies
+  const agentIdFromCookie = Cookies.get('agentId');
+  if (agentIdFromCookie) {
+    console.log('[UserUtils] AgentId found in cookies:', agentIdFromCookie);
+    return agentIdFromCookie.trim();
   }
-};
 
-/**
- * Get company ID from cookies or token
- */
-export const getCompanyId = (): string | null => {
+  // Fallback: try to get from localStorage profileData
   try {
-    const companyId = Cookies.get('companyId');
-    if (companyId) {
-      return companyId;
-    }
-    
-    // Fallback to token if available
-    const token = localStorage.getItem('auth_token') || localStorage.getItem('token');
-    if (token) {
-      const userInfo = decodeToken(token);
-      if (userInfo && userInfo.typeUser === 'company') {
-        return userInfo._id || userInfo.id || null;
+    const profileDataString = localStorage.getItem('profileData');
+    if (profileDataString) {
+      const profileData = JSON.parse(profileDataString);
+      const agentIdFromProfile = profileData._id;
+      
+      if (agentIdFromProfile) {
+        console.log('[UserUtils] AgentId found in profileData:', agentIdFromProfile);
+        return agentIdFromProfile;
       }
     }
-    
-    return null;
   } catch (error) {
-    console.error('[UserUtils] Error getting company ID:', error);
-    return null;
+    console.error('[UserUtils] Error reading profileData from localStorage:', error);
   }
-};
 
-/**
- * Get rep ID from cookies or token
- */
-export const getRepId = (): string | null => {
-  try {
-    const repId = Cookies.get('repId') || Cookies.get('agentId');
-    if (repId) {
-      return repId;
-    }
-    
-    // Fallback to token if available
-    const token = localStorage.getItem('auth_token') || localStorage.getItem('token');
-    if (token) {
-      const userInfo = decodeToken(token);
-      if (userInfo && userInfo.typeUser === 'rep') {
-        return userInfo._id || userInfo.id || null;
-      }
-    }
-    
-    return null;
-  } catch (error) {
-    console.error('[UserUtils] Error getting rep ID:', error);
-    return null;
-  }
+  console.warn('[UserUtils] AgentId not found in cookies or localStorage');
+  return null;
 };
 

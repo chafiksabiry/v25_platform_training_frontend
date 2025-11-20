@@ -49,13 +49,11 @@ import {
 } from './data/mockData';
 import { useTrainingProgress } from './hooks/useTrainingProgress';
 import { Company, TrainingJourney, TrainingModule, Rep } from './types';
-import { getCurrentUserName, getUserType } from './utils/userUtils';
+import { getCurrentUserName, getAgentId, getCurrentUserEmail } from './utils/userUtils';
 import { JourneyService } from './infrastructure/services/JourneyService';
 // TrainingModuleService no longer needed - using embedded structure
 import Cookies from 'js-cookie';
 import { extractObjectId } from './lib/mongoUtils';
-import TrainerView from './components/Trainer/TrainerView';
-import RepView from './components/Rep/RepView';
 
 function App() {
   // const { user, signOut } = useAuth();
@@ -63,7 +61,6 @@ function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userRole, setUserRole] = useState<'trainee' | 'trainer' | 'admin'>('trainee');
-  const [userType, setUserType] = useState<'trainer' | 'rep' | null>(null);
   const [selectedModule, setSelectedModule] = useState<string | null>(null);
   const [showAITutor, setShowAITutor] = useState(false);
   const [showLiveStream, setShowLiveStream] = useState(false);
@@ -91,35 +88,15 @@ function App() {
   const [selectedJourney, setSelectedJourney] = useState<any | null>(null);
   const [selectedJourneyModules, setSelectedJourneyModules] = useState<TrainingModule[]>([]);
   const [loadingModules, setLoadingModules] = useState(true);
+  
+  // Trainee-specific state
+  const [agentId, setAgentId] = useState<string | null>(null);
+  const [traineeJourneys, setTraineeJourneys] = useState<any[]>([]);
+  const [selectedTraineeJourney, setSelectedTraineeJourney] = useState<any | null>(null);
+  const [loadingTraineeJourneys, setLoadingTraineeJourneys] = useState(false);
 
-  // Detect user type on mount
+  // Load real training journeys and convert them to modules
   useEffect(() => {
-    const detectedUserType = getUserType();
-    setUserType(detectedUserType);
-    console.log('[App] Detected user type:', detectedUserType);
-    
-    // Set userRole based on userType
-    if (detectedUserType === 'trainer') {
-      setUserRole('trainer');
-    } else if (detectedUserType === 'rep') {
-      setUserRole('trainee');
-    }
-  }, []);
-
-  // For reps, automatically skip welcome screen and mark setup as completed
-  useEffect(() => {
-    if (userType === 'rep' && showWelcome) {
-      setShowWelcome(false);
-      setHasCompletedSetup(true);
-    }
-  }, [userType, showWelcome]);
-
-  // Load real training journeys and convert them to modules (only for trainer)
-  useEffect(() => {
-    // Only load journeys if user is a trainer
-    if (userType !== 'trainer') {
-      return;
-    }
     const loadTrainingJourneys = async () => {
       try {
         setLoadingModules(true);
@@ -181,52 +158,66 @@ function App() {
     };
 
     loadTrainingJourneys();
-  }, [userType]);
+  }, []);
+
+  // Detect trainee and load their journeys
+  useEffect(() => {
+    const detectTraineeAndLoadJourneys = async () => {
+      const detectedAgentId = getAgentId();
+      if (detectedAgentId) {
+        console.log('[App] Trainee detected with agentId:', detectedAgentId);
+        setAgentId(detectedAgentId);
+        setUserRole('trainee');
+        setLoadingTraineeJourneys(true);
+        
+        try {
+          const journeys = await JourneyService.getJourneysForRep(detectedAgentId);
+          console.log('[App] Loaded trainee journeys:', journeys.length);
+          
+          // Filter active journeys
+          const activeJourneys = journeys.filter((journey: any) => {
+            const status = journey.status || journey.journeyStatus;
+            return !status || status === 'active' || status === 'completed';
+          });
+          
+          setTraineeJourneys(activeJourneys);
+          
+          // If there's at least one journey, select the first one
+          if (activeJourneys.length > 0) {
+            setSelectedTraineeJourney(activeJourneys[0]);
+            console.log('[App] Selected first trainee journey:', activeJourneys[0].title || activeJourneys[0].name);
+          }
+        } catch (error) {
+          console.error('[App] Error loading trainee journeys:', error);
+        } finally {
+          setLoadingTraineeJourneys(false);
+        }
+      } else {
+        console.log('[App] No agentId found, user is not a trainee');
+        // Check if user is a trainer (has companyId)
+        const companyId = Cookies.get('companyId');
+        if (companyId) {
+          setUserRole('trainer');
+        }
+      }
+    };
+
+    detectTraineeAndLoadJourneys();
+  }, []); // Run once on mount
 
   // Use real modules if available, otherwise fallback to mock
-  // IMPORTANT: This must be called BEFORE conditional returns to ensure hooks are always called in the same order
   const modulesToUse = realModules.length > 0 ? realModules : mockTrainingModules;
   
-  // IMPORTANT: Always call useTrainingProgress hook, even if we don't use it
-  // This ensures the same number of hooks are called on every render
+  console.log('[App] Using', modulesToUse.length, 'modules (real:', realModules.length, ', mock:', mockTrainingModules.length, ')');
+
   const { progress, updateModuleProgress, updateStepProgress, updateAssessmentResult } = useTrainingProgress({
     modules: modulesToUse,
     steps: mockOnboardingSteps,
     assessments: mockAssessments,
   });
   
-  console.log('[App] Using', modulesToUse.length, 'modules (real:', realModules.length, ', mock:', mockTrainingModules.length, ')');
   console.log('[App] Progress modules count:', progress.modules.length);
 
-  // For reps, automatically skip welcome screen and mark setup as completed
-  useEffect(() => {
-    if (userType === 'rep' && showWelcome) {
-      setShowWelcome(false);
-      setHasCompletedSetup(true);
-    }
-  }, [userType, showWelcome]);
-
-  // Scroll to top when welcome screen is shown
-  // IMPORTANT: Only for trainers, not for reps
-  useEffect(() => {
-    if (!hasCompletedSetup && showWelcome && !showJourneyBuilder && !showManualTraining && !showJourneySuccess && userType !== 'rep') {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-  }, [hasCompletedSetup, showWelcome, showJourneyBuilder, showManualTraining, showJourneySuccess, userType]);
-
-  // Route to appropriate view based on user type
-  // IMPORTANT: This must be AFTER all hooks to comply with React rules
-  // All hooks must be called before any conditional returns
-  if (userType === 'rep') {
-    return <RepView />;
-  }
-  
-  if (userType === 'trainer') {
-    return <TrainerView />;
-  }
-
-  // Fallback mode: userType is null
-  // Calculate progress stats and handlers for fallback mode
   const progressStats = {
     completed: progress.steps.filter(step => step.status === 'completed').length,
     inProgress: progress.steps.filter(step => step.status === 'in-progress').length,
@@ -413,7 +404,7 @@ function App() {
   };
 
   const handleJourneySettings = () => {
-    alert('Journey Settings feature coming soon!\n\nYou will be able to:\n- Edit journey details\n- Modify modules\n- Update launch settings\n- Change notification preferences');
+    alert('Journey Settings feafture coming soon!\n\nYou will be able to:\n- Edit journey details\n- Modify modules\n- Update launch settings\n- Change notification preferences');
   };
 
   const handleManageParticipants = () => {
@@ -440,10 +431,15 @@ function App() {
     }
   };
 
+  // Scroll to top when welcome screen is shown
+  useEffect(() => {
+    if (!hasCompletedSetup && showWelcome && !showJourneyBuilder && !showManualTraining && !showJourneySuccess) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [hasCompletedSetup, showWelcome, showJourneyBuilder, showManualTraining, showJourneySuccess]);
+
   // Show welcome screen for first-time users (but not if showing success page)
-  // IMPORTANT: Only show welcome screen for trainers, not for reps
-  // Only executed if userType is null (fallback mode)
-  if (!hasCompletedSetup && showWelcome && !showJourneyBuilder && !showManualTraining && !showJourneySuccess && userType !== 'rep') {
+  if (!hasCompletedSetup && showWelcome && !showJourneyBuilder && !showManualTraining && !showJourneySuccess) {
     return (
       <div className="h-screen bg-gradient-to-br from-blue-50 to-indigo-100 overflow-y-auto">
         <div className="container mx-auto px-4 py-4">
@@ -585,6 +581,104 @@ function App() {
 
   if (showJourneyBuilder) {
     return <JourneyBuilder onComplete={handleJourneyComplete} />;
+  }
+
+  // Auto-show TraineePortal if agentId is present and journeys are loaded
+  if (agentId && selectedTraineeJourney && !showTraineePortal && !showLaunchedDashboard && !showJourneyBuilder && !showJourneySuccess && !showManualTraining) {
+    // Create a mock trainee object from agentId
+    const autoTrainee: Rep = {
+      id: agentId,
+      name: getCurrentUserName(),
+      email: getCurrentUserEmail() || '',
+      role: 'trainee',
+      department: '',
+      skills: [],
+      learningStyle: 'visual',
+      aiPersonalityProfile: {
+        strengths: [],
+        improvementAreas: [],
+        preferredLearningPace: 'medium',
+        motivationFactors: []
+      },
+      joinDate: new Date().toISOString(),
+      enrolledJourneys: traineeJourneys.map(j => j.id || j._id)
+    };
+
+    // Transform journey modules to TrainingModule format
+    const journeyModules: TrainingModule[] = (selectedTraineeJourney.modules || []).map((module: any, index: number) => {
+      const topics = Array.isArray(module.topics) 
+        ? module.topics 
+        : (Array.isArray(module.learningObjectives) 
+            ? module.learningObjectives.slice(0, 5).map((obj: any) => typeof obj === 'string' ? obj : obj.text || obj.title || '')
+            : []);
+      
+      let duration = 0;
+      if (typeof module.duration === 'number') {
+        duration = module.duration;
+      } else if (Array.isArray(module.content) && module.content.length > 0) {
+        duration = module.content.reduce((sum: number, item: any) => {
+          return sum + (item.duration || 0);
+        }, 0);
+      }
+      const durationHours = duration > 0 ? Math.round(duration / 60 * 10) / 10 : 0;
+      
+      return {
+        id: module.id || module._id || `module-${selectedTraineeJourney.id || selectedTraineeJourney._id}-${index}`,
+        title: module.title || 'Untitled Module',
+        description: module.description || '',
+        duration: durationHours,
+        difficulty: (module.difficulty || 'beginner') as 'beginner' | 'intermediate' | 'advanced',
+        prerequisites: Array.isArray(module.prerequisites) ? module.prerequisites : [],
+        learningObjectives: Array.isArray(module.learningObjectives) 
+          ? module.learningObjectives.map((obj: any) => typeof obj === 'string' ? obj : obj.text || obj.title || '')
+          : [],
+        assessments: Array.isArray(module.assessments) ? module.assessments : [],
+        content: Array.isArray(module.content) ? module.content : [],
+        sections: Array.isArray(module.sections) ? module.sections : [],
+        topics: topics,
+        progress: 0,
+        completed: false,
+        order: index,
+        quizIds: Array.isArray(module.quizIds) ? module.quizIds : [],
+        quizzes: Array.isArray(module.quizzes) ? module.quizzes : []
+      };
+    });
+
+    // Transform journey to TrainingJourney format
+    const traineeJourney: TrainingJourney = {
+      id: selectedTraineeJourney.id || selectedTraineeJourney._id,
+      name: selectedTraineeJourney.title || selectedTraineeJourney.name || 'Untitled Journey',
+      description: selectedTraineeJourney.description || '',
+      status: (selectedTraineeJourney.status || 'active') as 'draft' | 'rehearsal' | 'active' | 'completed' | 'archived',
+      companyId: selectedTraineeJourney.companyId || '',
+      steps: [],
+      createdAt: selectedTraineeJourney.createdAt || new Date().toISOString(),
+      estimatedDuration: selectedTraineeJourney.estimatedDuration || '0',
+      targetRoles: []
+    };
+
+    return (
+      <TraineePortal
+        trainee={autoTrainee}
+        journey={traineeJourney}
+        modules={journeyModules}
+        methodology={undefined}
+        onProgressUpdate={(moduleId, progress) => updateModuleProgress(moduleId, progress)}
+        onModuleComplete={(moduleId) => updateModuleProgress(moduleId, 100)}
+        onAssessmentComplete={(assessmentId, score) => updateAssessmentResult(assessmentId, score, score >= 80 ? 'passed' : 'failed')}
+        onBack={() => {
+          // If there are multiple journeys, allow switching
+          if (traineeJourneys.length > 1) {
+            const currentIndex = traineeJourneys.findIndex(j => (j.id || j._id) === (selectedTraineeJourney.id || selectedTraineeJourney._id));
+            const nextIndex = (currentIndex + 1) % traineeJourneys.length;
+            setSelectedTraineeJourney(traineeJourneys[nextIndex]);
+          } else {
+            // If only one journey, just reload the page or show a message
+            console.log('[App] Only one journey available');
+          }
+        }}
+      />
+    );
   }
 
   if (showTraineePortal && selectedTrainee && launchedJourney) {
@@ -1247,9 +1341,6 @@ function App() {
     }
   };
 
-  // Fallback: Show loading or default view if user type not detected
-  // This allows backward compatibility with existing code
-  // Note: The routing to TrainerView/RepView is done earlier in the component
   return (
     <div className="h-screen bg-gray-50 relative overflow-hidden flex">
       {/* Sidebar - Always rendered first */}

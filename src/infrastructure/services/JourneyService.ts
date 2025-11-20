@@ -544,6 +544,31 @@ export class JourneyService {
   }
 
   /**
+   * Get journeys for a specific rep (trainee)
+   */
+  static async getJourneysForRep(repId: string): Promise<any[]> {
+    const endpoint = `/training_journeys/rep/${repId}`;
+    console.log('[JourneyService] Fetching journeys for rep from:', endpoint);
+    try {
+      const response = await ApiClient.get(endpoint);
+      console.log('[JourneyService] Response:', response);
+      // The backend returns a List<TrainingJourneyEntity> directly
+      // ApiClient wraps it in response.data, so we have response.data = [...]
+      if (Array.isArray(response.data)) {
+        return response.data;
+      }
+      // Handle nested data structure if needed
+      if (response.data?.data && Array.isArray(response.data.data)) {
+        return response.data.data;
+      }
+      return [];
+    } catch (error: any) {
+      console.error('[JourneyService] Error fetching journeys for rep:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Get trainer dashboard statistics
    */
   static async getTrainerDashboard(companyId: string, gigId?: string): Promise<any> {
