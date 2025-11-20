@@ -78,7 +78,7 @@ export default function DocumentViewer({ fileUrl, fileName, mimeType }: Document
   const isBlobUrl = fileUrl.startsWith("blob:");
 
   return (
-    <div className="w-full h-full flex flex-col" style={{ height: '100%', width: '100%', maxHeight: '100%', flex: '1 1 auto', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div className="w-full h-full flex flex-col" style={{ height: '100%', width: '100%', flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* PDF VIEWER */}
       {type === "pdf" && (
         <>
@@ -94,12 +94,7 @@ export default function DocumentViewer({ fileUrl, fileName, mimeType }: Document
               src={`https://mozilla.github.io/pdf.js/web/viewer.html?file=${encodeURIComponent(fileUrl)}`}
               className="w-full h-full border-0"
               title="PDF Viewer"
-              style={{ height: '100%', width: '100%', flex: '1 1 auto', minHeight: 'calc(100vh - 300px)', border: 'none' }}
-              onLoad={() => {
-                // Scroll to top when iframe loads
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-                // PDF loaded successfully
-              }}
+              style={{ height: '100%', width: '100%', flex: '1 1 auto', minHeight: 0, border: 'none' }}
             />
           )}
         </>

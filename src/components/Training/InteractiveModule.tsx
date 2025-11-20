@@ -147,7 +147,6 @@ export default function InteractiveModule({ module, onProgress, onComplete }: In
         setShowQuizzes(true);
         setCurrentQuizIndex(0);
         setCurrentQuiz(quizzes[0]);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
         return;
       }
       
@@ -222,7 +221,6 @@ export default function InteractiveModule({ module, onProgress, onComplete }: In
       // Go to previous section
       if (currentSection > 0) {
         setCurrentSection(prev => prev - 1);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     }
   };
@@ -245,9 +243,9 @@ export default function InteractiveModule({ module, onProgress, onComplete }: In
   };
 
   return (
-    <div className="bg-white flex flex-col w-full h-full" style={{ height: '100vh', minHeight: '100vh', maxHeight: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div className="bg-white flex flex-col w-full h-full" style={{ height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
       {/* Content Area - Only Document */}
-      <div className="flex-1 flex flex-col w-full" style={{ flex: '1 1 auto', minHeight: 0, maxHeight: 'calc(100vh - 80px)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div className="flex-1 flex flex-col w-full min-h-0 overflow-hidden" style={{ flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
         {/* Show Quizzes or Sections */}
         {showQuizzes && currentQuiz ? (
           <div className="p-6 flex-1 overflow-y-auto" style={{ overflowY: 'auto', height: '100%' }}>
@@ -360,7 +358,7 @@ export default function InteractiveModule({ module, onProgress, onComplete }: In
           /* Current Section - Only Document */
           sections.length > 0 && currentSectionData ? (
             currentSectionData.content?.file?.url ? (
-              <div className="flex-1 w-full" style={{ flex: '1 1 auto', height: '100%', maxHeight: 'calc(100vh - 80px)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+              <div className="flex-1 w-full min-h-0 overflow-hidden" style={{ flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
                 <DocumentViewer
                   fileUrl={currentSectionData.content.file.url}
                   fileName={currentSectionData.content.file.name}
@@ -408,8 +406,8 @@ export default function InteractiveModule({ module, onProgress, onComplete }: In
         )}
       </div>
 
-      {/* Navigation Buttons */}
-      <div className="flex items-center justify-between p-4 border-t border-gray-200 bg-white flex-shrink-0" style={{ flexShrink: 0 }}>
+      {/* Navigation Buttons - Always visible at bottom */}
+      <div className="flex items-center justify-between p-4 border-t border-gray-200 bg-white flex-shrink-0 z-10" style={{ flexShrink: 0, position: 'relative' }}>
           <button
             onClick={handlePrevious}
             disabled={!showQuizzes && currentSection === 0}
