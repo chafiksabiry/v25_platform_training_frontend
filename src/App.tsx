@@ -51,6 +51,7 @@ import { useTrainingProgress } from './hooks/useTrainingProgress';
 import { Company, TrainingJourney, TrainingModule, Rep } from './types';
 import { getCurrentUserName, getAgentId, getCurrentUserEmail, getUserType, getUserId } from './utils/userUtils';
 import { JourneyService } from './infrastructure/services/JourneyService';
+import { TrainingService } from './infrastructure/services/TrainingService';
 // TrainingModuleService no longer needed - using embedded structure
 import Cookies from 'js-cookie';
 import { extractObjectId } from './lib/mongoUtils';
@@ -96,6 +97,7 @@ function App() {
   const [loadingTraineeJourneys, setLoadingTraineeJourneys] = useState(false);
   const [userType, setUserType] = useState<'company' | 'rep' | null>(null);
   const [checkingUserType, setCheckingUserType] = useState(true);
+  const [traineeProgressData, setTraineeProgressData] = useState<Record<string, any>>({});
 
   // Load real training journeys and convert them to modules
   useEffect(() => {
@@ -193,10 +195,32 @@ function App() {
               
               setTraineeJourneys(activeJourneys);
               
-              // If there's at least one journey, select the first one
+              // If there's at least one journey, select the first one and load its progress
               if (activeJourneys.length > 0) {
-                setSelectedTraineeJourney(activeJourneys[0]);
-                console.log('[App] Selected first trainee journey:', activeJourneys[0].title || activeJourneys[0].name);
+                const firstJourney = activeJourneys[0];
+                setSelectedTraineeJourney(firstJourney);
+                console.log('[App] Selected first trainee journey:', firstJourney.title || firstJourney.name);
+                
+                // Load progress for this journey
+                try {
+                  const journeyId = firstJourney.id || firstJourney._id;
+                  const progressData = await TrainingService.getRepProgress(detectedAgentId, journeyId);
+                  console.log('[App] Loaded progress data:', progressData);
+                  
+                  // Store progress data by journey ID
+                  if (progressData) {
+                    const progressArray = Array.isArray(progressData) ? progressData : [progressData];
+                    const progressMap: Record<string, any> = {};
+                    progressArray.forEach((p: any) => {
+                      if (p.moduleId) {
+                        progressMap[p.moduleId] = p;
+                      }
+                    });
+                    setTraineeProgressData(prev => ({ ...prev, [journeyId]: progressMap }));
+                  }
+                } catch (progressError) {
+                  console.warn('[App] Could not load progress data:', progressError);
+                }
               }
             } catch (error) {
               console.error('[App] Error loading trainee journeys:', error);
@@ -669,8 +693,14 @@ function App() {
       enrolledJourneys: traineeJourneys.map(j => j.id || j._id)
     };
 
-    // Transform journey modules to TrainingModule format
+    // Transform journey modules to TrainingModule format with real progress data
+    const journeyId = selectedTraineeJourney.id || selectedTraineeJourney._id;
+    const journeyProgress = traineeProgressData[journeyId] || {};
+    
     const journeyModules: TrainingModule[] = (selectedTraineeJourney.modules || []).map((module: any, index: number) => {
+      const moduleId = module.id || module._id || `module-${journeyId}-${index}`;
+      const moduleProgress = journeyProgress[moduleId];
+      
       const topics = Array.isArray(module.topics) 
         ? module.topics 
         : (Array.isArray(module.learningObjectives) 
@@ -687,8 +717,12 @@ function App() {
       }
       const durationHours = duration > 0 ? Math.round(duration / 60 * 10) / 10 : 0;
       
+      // Get progress from backend data
+      const progress = moduleProgress?.progress || 0;
+      const completed = moduleProgress?.status === 'completed' || progress >= 100;
+      
       return {
-        id: module.id || module._id || `module-${selectedTraineeJourney.id || selectedTraineeJourney._id}-${index}`,
+        id: moduleId,
         title: module.title || 'Untitled Module',
         description: module.description || '',
         duration: durationHours,
@@ -701,8 +735,8 @@ function App() {
         content: Array.isArray(module.content) ? module.content : [],
         sections: Array.isArray(module.sections) ? module.sections : [],
         topics: topics,
-        progress: 0,
-        completed: false,
+        progress: progress,
+        completed: completed,
         order: index,
         quizIds: Array.isArray(module.quizIds) ? module.quizIds : [],
         quizzes: Array.isArray(module.quizzes) ? module.quizzes : []
@@ -722,14 +756,82 @@ function App() {
       targetRoles: []
     };
 
+    // Transform available journeys for selector
+    const availableJourneysForSelector: TrainingJourney[] = traineeJourneys.map((j: any) => ({
+      id: j.id || j._id,
+      name: j.title || j.name || 'Untitled Journey',
+      description: j.description || '',
+      status: (j.status || 'active') as 'draft' | 'rehearsal' | 'active' | 'completed' | 'archived',
+      companyId: j.companyId || '',
+      steps: [],
+      createdAt: j.createdAt || new Date().toISOString(),
+      estimatedDuration: j.estimatedDuration || '0',
+      targetRoles: []
+    }));
+
     return (
       <TraineePortal
         trainee={autoTrainee}
         journey={traineeJourney}
         modules={journeyModules}
         methodology={undefined}
-        onProgressUpdate={(moduleId, progress) => updateModuleProgress(moduleId, progress)}
-        onModuleComplete={(moduleId) => updateModuleProgress(moduleId, 100)}
+        availableJourneys={availableJourneysForSelector.length > 1 ? availableJourneysForSelector : undefined}
+        onJourneyChange={async (newJourneyId) => {
+          const newJourney = traineeJourneys.find(j => (j.id || j._id) === newJourneyId);
+          if (newJourney && agentId) {
+            setSelectedTraineeJourney(newJourney);
+            // Load progress for the new journey
+            try {
+              const progressData = await TrainingService.getRepProgress(agentId, newJourneyId);
+              if (progressData) {
+                const progressArray = Array.isArray(progressData) ? progressData : [progressData];
+                const progressMap: Record<string, any> = {};
+                progressArray.forEach((p: any) => {
+                  if (p.moduleId) {
+                    progressMap[p.moduleId] = p;
+                  }
+                });
+                setTraineeProgressData(prev => ({ ...prev, [newJourneyId]: progressMap }));
+              }
+            } catch (error) {
+              console.error('[App] Error loading progress for new journey:', error);
+            }
+          }
+        }}
+        onProgressUpdate={async (moduleId, progress) => {
+          updateModuleProgress(moduleId, progress);
+          // Save progress to backend
+          if (agentId && journeyId) {
+            try {
+              await TrainingService.updateProgress(agentId, journeyId, moduleId, progress, 85);
+            } catch (error) {
+              console.error('[App] Error saving progress:', error);
+            }
+          }
+        }}
+        onModuleComplete={async (moduleId) => {
+          updateModuleProgress(moduleId, 100);
+          // Save completion to backend
+          if (agentId && journeyId) {
+            try {
+              await TrainingService.updateProgress(agentId, journeyId, moduleId, 100, 100);
+              // Reload progress data
+              const progressData = await TrainingService.getRepProgress(agentId, journeyId);
+              if (progressData) {
+                const progressArray = Array.isArray(progressData) ? progressData : [progressData];
+                const progressMap: Record<string, any> = {};
+                progressArray.forEach((p: any) => {
+                  if (p.moduleId) {
+                    progressMap[p.moduleId] = p;
+                  }
+                });
+                setTraineeProgressData(prev => ({ ...prev, [journeyId]: progressMap }));
+              }
+            } catch (error) {
+              console.error('[App] Error saving completion:', error);
+            }
+          }
+        }}
         onAssessmentComplete={(assessmentId, score) => updateAssessmentResult(assessmentId, score, score >= 80 ? 'passed' : 'failed')}
         onBack={() => {
           // If there are multiple journeys, allow switching

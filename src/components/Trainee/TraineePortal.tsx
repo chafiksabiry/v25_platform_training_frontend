@@ -40,6 +40,8 @@ interface TraineePortalProps {
   onModuleComplete: (moduleId: string) => void;
   onAssessmentComplete: (assessmentId: string, score: number) => void;
   onBack: () => void;
+  availableJourneys?: TrainingJourney[];
+  onJourneyChange?: (journeyId: string) => void;
 }
 
 export default function TraineePortal({ 
@@ -50,22 +52,45 @@ export default function TraineePortal({
   onProgressUpdate, 
   onModuleComplete, 
   onAssessmentComplete,
-  onBack
+  onBack,
+  availableJourneys,
+  onJourneyChange
 }: TraineePortalProps) {
   const [activeView, setActiveView] = useState('dashboard');
   const [selectedModule, setSelectedModule] = useState<TrainingModule | null>(null);
   const [selectedAssessment, setSelectedAssessment] = useState<Assessment | null>(null);
+  // Calculate progress from modules
+  const completedModules = modules.filter(m => m.completed).length;
+  const overallProgress = modules.length > 0 
+    ? Math.round((modules.reduce((sum, m) => sum + m.progress, 0) / modules.length))
+    : 0;
+  
   const [traineeProgress, setTraineeProgress] = useState({
-    overallProgress: 35,
-    completedModules: 2,
+    overallProgress: overallProgress,
+    completedModules: completedModules,
     currentStreak: 5,
     totalTimeSpent: 180, // minutes
     averageScore: 87,
     engagementLevel: 92,
     nextDeadline: '2024-01-28',
-    certificationsEarned: 1,
+    certificationsEarned: completedModules > 0 ? 1 : 0,
     skillsAcquired: ['Customer Service', 'Product Knowledge']
   });
+
+  // Update progress when modules change
+  useEffect(() => {
+    const completed = modules.filter(m => m.completed).length;
+    const overall = modules.length > 0 
+      ? Math.round((modules.reduce((sum, m) => sum + m.progress, 0) / modules.length))
+      : 0;
+    
+    setTraineeProgress(prev => ({
+      ...prev,
+      overallProgress: overall,
+      completedModules: completed,
+      certificationsEarned: completed > 0 ? 1 : 0
+    }));
+  }, [modules]);
 
   const [currentModule, setCurrentModule] = useState<TrainingModule | null>(
     modules.find(m => !m.completed && m.progress > 0) || modules.find(m => !m.completed) || null
@@ -509,6 +534,21 @@ export default function TraineePortal({
               {/* Navigation */}
               <div className="flex items-center justify-between mb-8">
                 <div className="flex items-center space-x-6">
+                  {/* Journey Selector - Only show if multiple journeys available */}
+                  {availableJourneys && availableJourneys.length > 1 && onJourneyChange && (
+                    <select
+                      value={journey.id}
+                      onChange={(e) => onJourneyChange(e.target.value)}
+                      className="px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      {availableJourneys.map((j) => (
+                        <option key={j.id} value={j.id}>
+                          {j.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  
                   <button
                     onClick={() => setActiveView('dashboard')}
                     className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
@@ -523,7 +563,7 @@ export default function TraineePortal({
                     className="flex items-center space-x-2 px-4 py-2 text-gray-600 hover:text-gray-900 rounded-lg transition-colors"
                   >
                     <ArrowLeft className="h-4 w-4" />
-                    <span>Back to Manager View</span>
+                    <span>Mes Formations</span>
                   </button>
                   <button
                     onClick={() => setActiveView('progress')}
