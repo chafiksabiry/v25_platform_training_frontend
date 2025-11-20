@@ -53,6 +53,7 @@ import { getCurrentUserName } from './utils/userUtils';
 import { JourneyService } from './infrastructure/services/JourneyService';
 import { TrainingModuleService } from './infrastructure/services/TrainingModuleService';
 import Cookies from 'js-cookie';
+import { extractObjectId } from './lib/mongoUtils';
 
 function App() {
   // const { user, signOut } = useAuth();
@@ -624,11 +625,11 @@ function App() {
               <span>Back to Training Modules</span>
             </button>
             <div className="flex-1 overflow-hidden" style={{ height: '100%', minHeight: 0, flex: '1 1 auto', display: 'flex', flexDirection: 'column' }}>
-              <InteractiveModule
-                module={module}
-                onProgress={(progress) => handleModuleProgress(selectedModule, progress)}
-                onComplete={() => handleModuleComplete(selectedModule)}
-              />
+            <InteractiveModule
+              module={module}
+              onProgress={(progress) => handleModuleProgress(selectedModule, progress)}
+              onComplete={() => handleModuleComplete(selectedModule)}
+            />
             </div>
           </div>
         );
@@ -678,8 +679,9 @@ function App() {
                     
                     try {
                       // Load modules from separate collection using moduleIds
-                      const journeyIdStr = journey.id || journey._id;
-                      const moduleIds = journey.moduleIds || [];
+                      // ApiClient already normalizes Extended JSON ObjectIds to strings, but use extractObjectId for safety
+                      const journeyIdStr = extractObjectId(journey.id || journey._id) || '';
+                      const moduleIds = (journey.moduleIds || []).map((id: any) => extractObjectId(id)).filter((id: string | null): id is string => id !== null);
                       const hasOldStructure = journey.modules && Array.isArray(journey.modules) && journey.modules.length > 0;
                       
                       console.log('[App] Loading modules for journey:', journeyIdStr);
@@ -700,13 +702,15 @@ function App() {
                         
                         // For each module, load its sections
                         modules = await Promise.all(loadedModules.map(async (module: any, index: number) => {
-                          const sectionIds = module.sectionIds || [];
+                          // ApiClient already normalizes Extended JSON ObjectIds to strings, but use extractObjectId for safety
+                          const moduleId = extractObjectId(module._id || module.id) || `module-${journeyIdStr}-${index}`;
+                          const sectionIds = (module.sectionIds || []).map((id: any) => extractObjectId(id)).filter((id: string | null): id is string => id !== null);
                           let sections: any[] = [];
                           
                           if (sectionIds && Array.isArray(sectionIds) && sectionIds.length > 0) {
                             // Load sections from training_sections collection
                             try {
-                              sections = await TrainingModuleService.getSectionsByModule(module._id || module.id);
+                              sections = await TrainingModuleService.getSectionsByModule(moduleId);
                               console.log(`[App] Loaded ${sections.length} sections for module ${module.title}`);
                             } catch (error) {
                               console.warn(`[App] Error loading sections for module ${module.title}:`, error);
@@ -722,7 +726,7 @@ function App() {
                           const durationHours = module.duration ? Math.round(module.duration / 60 * 10) / 10 : 0;
                           
                           return {
-                            id: module._id || module.id || `module-${journeyIdStr}-${index}`,
+                            id: moduleId,
                             title: module.title || 'Untitled Module',
                             description: module.description || '',
                             duration: durationHours,

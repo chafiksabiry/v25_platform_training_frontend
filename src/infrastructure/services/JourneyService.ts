@@ -2,6 +2,7 @@
 import { ApiClient } from '../../lib/api';
 import { TrainingJourney, TrainingModule, Rep } from '../../types';
 import { TrainingModuleService, TrainingSection } from './TrainingModuleService';
+import { extractObjectId } from '../../lib/mongoUtils';
 
 export interface LaunchJourneyRequest {
   journey: TrainingJourney;
@@ -107,8 +108,10 @@ export class JourneyService {
 
         // Use endpoint for module_quizzes collection
         const response = await ApiClient.post(`/training_journeys/modules/${moduleId}/quizzes`, quizPayload);
-        if (response.data.success && response.data.data?._id) {
-          quizIds.push(response.data.data._id);
+        // ApiClient already normalizes Extended JSON ObjectIds to strings, but use extractObjectId for safety
+        const quizId = extractObjectId(response.data.data?._id || response.data.data?.id);
+        if (quizId) {
+          quizIds.push(quizId);
         }
       } catch (error) {
         console.error(`[JourneyService] Error creating quiz for module ${moduleId}:`, error);
@@ -156,8 +159,10 @@ export class JourneyService {
 
       // Use endpoint for exam_final_quizzes collection
       const response = await ApiClient.post(`/training_journeys/${trainingId}/final-exam`, quizPayload);
-      if (response.data.success && response.data.data?._id) {
-        return response.data.data._id;
+      // ApiClient already normalizes Extended JSON ObjectIds to strings, but use extractObjectId for safety
+      const finalExamId = extractObjectId(response.data.data?._id || response.data.data?.id);
+      if (finalExamId) {
+        return finalExamId;
       }
     } catch (error) {
       console.error('[JourneyService] Error creating final exam:', error);
@@ -278,12 +283,13 @@ export class JourneyService {
       
       // Spring Data MongoDB uses 'id' (not '_id') in Java entities
       // Backend can return journey directly or wrapped in response.data.journey
+      // ApiClient already normalizes Extended JSON ObjectIds to strings
       const createdJourney = response.data.journey || response.data;
       
       console.log('[JourneyService] Create journey response:', {
         success: response.data.success,
         hasJourney: !!response.data.journey,
-        journeyId: createdJourney?.id || createdJourney?._id,
+        journeyId: extractObjectId(createdJourney?.id || createdJourney?._id),
         fullResponse: response.data
       });
       
@@ -292,14 +298,15 @@ export class JourneyService {
         throw new Error(`Failed to create journey: ${response.data.error || 'Unknown error'}`);
       }
       
-      // Spring Data MongoDB uses 'id' (not '_id') in Java entities
-      if (!createdJourney?.id && !createdJourney?._id) {
+      // Extract ObjectId from response (already normalized by ApiClient, but use extractObjectId for safety)
+      const journeyId = extractObjectId(createdJourney?.id || createdJourney?._id);
+      if (!journeyId) {
         console.error('[JourneyService] No journey ID in response:', response.data);
         throw new Error('Failed to create journey: No journey ID returned');
       }
       
       // Spring Data MongoDB maps MongoDB _id to Java 'id' field
-      existingJourneyId = createdJourney.id || createdJourney._id;
+      existingJourneyId = journeyId;
       
       // Validate that it's a MongoDB ObjectId
       if (!isValidMongoId(existingJourneyId)) {
@@ -410,8 +417,9 @@ export class JourneyService {
     
     // CRITICAL: Spring Data MongoDB uses 'id' (not '_id') in Java entities
     // Backend can return journey directly or wrapped in response.data.journey
+    // ApiClient already normalizes Extended JSON ObjectIds to strings, but use extractObjectId for safety
     const updatedJourney = updateResponse.data.journey || updateResponse.data;
-    const returnedJourneyId = updatedJourney?.id || updatedJourney?._id || existingJourneyId;
+    const returnedJourneyId = extractObjectId(updatedJourney?.id || updatedJourney?._id) || existingJourneyId;
     
     // Validate that it's a MongoDB ObjectId
     if (!returnedJourneyId || !isValidMongoId(returnedJourneyId)) {

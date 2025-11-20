@@ -65,11 +65,15 @@ class ApiClientClass {
 
     try {
       const response = await fetch(url, config);
-      const data = await response.json();
+      const rawData = await response.json();
 
       if (!response.ok) {
-        throw new ApiError(data.message || 'Request failed', response.status, data.errors);
+        throw new ApiError(rawData.message || 'Request failed', response.status, rawData.errors);
       }
+
+      // Normalize ObjectIds from Extended JSON format to strings
+      const { normalizeObjectIds } = await import('./mongoUtils');
+      const data = normalizeObjectIds(rawData);
 
       return {
         data,
