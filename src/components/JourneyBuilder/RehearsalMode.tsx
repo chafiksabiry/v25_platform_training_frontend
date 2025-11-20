@@ -479,10 +479,27 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
       const totalPoints = assessmentQuestions.reduce((sum, q) => sum + (q.points || 10), 0);
       const passingScore = Math.round(totalPoints * 0.7); // Always 70% (rounded to nearest)
 
+      // IMPORTANT: Get draftId first to use MongoDB ObjectId instead of journey.id (which might be a timestamp)
+      const isValidMongoId = (id: string | undefined) => id && /^[0-9a-fA-F]{24}$/.test(id);
+      const currentDraft = DraftService.getDraft();
+      const existingDraftId = currentDraft.draftId; // Never use journey.id as it might be a timestamp
+      
+      // Validate that it's a MongoDB ObjectId
+      if (existingDraftId && !isValidMongoId(existingDraftId)) {
+        console.warn('[RehearsalMode] Invalid draftId format (not MongoDB ObjectId):', existingDraftId, '- will use fallback');
+      }
+      
+      // Use existingDraftId if valid, otherwise use journey._id, never journey.id (timestamp)
+      const journeyIdForUse = (existingDraftId && isValidMongoId(existingDraftId)) 
+        ? existingDraftId 
+        : ((journey as any)._id && isValidMongoId((journey as any)._id)) 
+          ? (journey as any)._id 
+          : undefined;
+
       // Create assessment
       const assessment: Assessment = {
         id: isFinalExam 
-          ? `final-exam-${journey.id}` 
+          ? `final-exam-${journeyIdForUse || 'new'}` 
           : `assessment-${moduleId}-${Date.now()}`,
         title: isFinalExam 
           ? `Final Exam - ${journey.name}` 
@@ -520,17 +537,8 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
       // Sauvegarder dans le brouillon immédiatement
       // IMPORTANT: Only use MongoDB ObjectId format (24 hex characters)
       // Don't use timestamps or other non-MongoDB IDs from journey.id
-      const isValidMongoId = (id: string | undefined) => id && /^[0-9a-fA-F]{24}$/.test(id);
       
       try {
-        const currentDraft = DraftService.getDraft();
-        const existingDraftId = currentDraft.draftId; // Never use journey.id as it might be a timestamp
-        
-        // Validate that it's a MongoDB ObjectId
-        if (existingDraftId && !isValidMongoId(existingDraftId)) {
-          console.warn('[RehearsalMode] Invalid draftId format (not MongoDB ObjectId):', existingDraftId, '- will create new journey');
-        }
-        
         console.log('[RehearsalMode] Current draftId before save:', existingDraftId || 'NEW');
         
         await DraftService.saveDraftImmediately({
@@ -543,23 +551,26 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
       }
 
       // Save to server (optional - quiz is available locally even if save fails)
-      try {
-        const saveData = {
-          moduleId: moduleId,
-          journeyId: journey.id,
-          assessment: assessment,
-          isFinalExam: isFinalExam
-        };
+      // Only save if we have a valid journeyId
+      if (journeyIdForUse) {
+        try {
+          const saveData = {
+            moduleId: moduleId,
+            journeyId: journeyIdForUse, // Use validated MongoDB ObjectId
+            assessment: assessment,
+            isFinalExam: isFinalExam
+          };
 
-        // Try to save to server (endpoint may not exist yet, but quiz is saved locally)
-        await axios.post(`${API_BASE}/api/training-journeys/${journey.id}/modules/${moduleId}/assessments`, saveData);
-        console.log(`✅ ${isFinalExam ? 'Final exam' : 'Quiz'} saved to server`);
-      } catch (saveError: any) {
-        // Silently handle 404 - quiz is still available locally and will be saved when journey is launched
-        if (saveError?.response?.status !== 404) {
-          console.warn('⚠️ Could not save to server, but quiz is generated locally');
+          // Try to save to server (endpoint may not exist yet, but quiz is saved locally)
+          await axios.post(`${API_BASE}/api/training-journeys/${journeyIdForUse}/modules/${moduleId}/assessments`, saveData);
+          console.log(`✅ ${isFinalExam ? 'Final exam' : 'Quiz'} saved to server`);
+        } catch (saveError: any) {
+          // Silently handle 404 - quiz is still available locally and will be saved when journey is launched
+          if (saveError?.response?.status !== 404) {
+            console.warn('⚠️ Could not save to server, but quiz is generated locally');
+          }
+          // Continue even if save fails - quiz is still available locally
         }
-        // Continue even if save fails - quiz is still available locally
       }
 
       if (isFinalExam) {

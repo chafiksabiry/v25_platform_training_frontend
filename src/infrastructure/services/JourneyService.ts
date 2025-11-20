@@ -514,16 +514,20 @@ export class JourneyService {
     } else {
       // Create new journey
       response = await ApiClient.post('/training_journeys', journeyPayload);
-      if (!response.data.success || !response.data.journey?._id) {
+      // Backend can return journey with 'id' (Spring Data MongoDB) or '_id' (MongoDB)
+      const createdJourney = response.data.journey || response.data;
+      const returnedJourneyId = createdJourney?.id || createdJourney?._id;
+      if (!response.data.success || !returnedJourneyId) {
+        console.error('[JourneyService] Failed to create journey. Response:', response.data);
         throw new Error('Failed to create journey');
       }
-      existingJourneyId = response.data.journey._id;
+      existingJourneyId = returnedJourneyId;
       console.log('[JourneyService] Created new journey for launch:', existingJourneyId);
     }
 
     const trainingId = existingJourneyId;
 
-    console.log('[JourneyService] Created journey for launch:', journeyId);
+    console.log('[JourneyService] Launching journey with trainingId:', trainingId);
 
     // Create modules in training_modules collection
     const moduleIds: string[] = [];
@@ -537,7 +541,7 @@ export class JourneyService {
       
       // Step 1: Create module first (without sections and quizzes)
       const moduleData = {
-        trainingJourneyId: journeyId,
+        trainingJourneyId: trainingId, // Use trainingId instead of journeyId parameter
         title: m.title,
         description: m.description || '',
         duration: m.duration ? Math.round(m.duration * 60) : 0, // Convert hours to minutes
@@ -620,7 +624,8 @@ export class JourneyService {
 
     return {
       ...launchResponse.data,
-      journeyId: journeyId,
+      journeyId: existingJourneyId, // Use existingJourneyId instead of journeyId parameter
+      journey_id: existingJourneyId, // Also include as journey_id for clarity
       moduleIds: moduleIds,
       finalExamId: finalExamId
     };
