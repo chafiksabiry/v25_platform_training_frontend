@@ -164,14 +164,14 @@ export class JourneyService {
   /**
    * Create or save a journey
    * Now creates modules and sections in separate collections
+   * @param journeyId Optional: if provided, updates existing journey instead of creating new one
    */
-  static async saveJourney(journey: TrainingJourney, modules: TrainingModule[], companyId?: string, gigId?: string, finalExam?: any): Promise<any> {
-    // First, create the journey WITHOUT modules (only with moduleIds array)
+  static async saveJourney(journey: TrainingJourney, modules: TrainingModule[], companyId?: string, gigId?: string, finalExam?: any, journeyId?: string): Promise<any> {
     const journeyPayload = {
       title: journey.title,
       description: journey.description,
       industry: journey.industry,
-      status: journey.status,
+      status: journey.status || 'draft',
       company: journey.company,
       vision: journey.vision,
       companyId: companyId,
@@ -180,16 +180,69 @@ export class JourneyService {
       finalExamId: null // Will be populated after creating final exam
     };
 
-    const response = await ApiClient.post('/training_journeys', journeyPayload);
+    let existingJourneyId: string | null = null;
+    let isUpdate = false;
     
-    if (!response.data.success || !response.data.journey?._id) {
-      throw new Error('Failed to create journey');
+    // If journeyId is provided, check if journey exists and update it
+    if (journeyId) {
+      try {
+        const existingJourney = await ApiClient.get(`/training_journeys/${journeyId}`);
+        if (existingJourney.data.success && existingJourney.data.journey) {
+          existingJourneyId = journeyId;
+          isUpdate = true;
+          console.log('[JourneyService] Updating existing journey:', journeyId);
+          
+          // Delete old modules and sections before creating new ones
+          const oldModuleIds = existingJourney.data.journey.moduleIds || [];
+          if (oldModuleIds.length > 0) {
+            console.log('[JourneyService] Deleting old modules:', oldModuleIds.length);
+            for (const oldModuleId of oldModuleIds) {
+              try {
+                // Get module to find its sections
+                const oldModule = await TrainingModuleService.getModuleById(oldModuleId);
+                if (oldModule && oldModule.sectionIds) {
+                  // Delete sections
+                  for (const sectionId of oldModule.sectionIds) {
+                    try {
+                      await TrainingModuleService.deleteSection(sectionId);
+                    } catch (error) {
+                      console.warn(`[JourneyService] Could not delete section ${sectionId}:`, error);
+                    }
+                  }
+                }
+                // Delete module
+                await TrainingModuleService.deleteModule(oldModuleId);
+                console.log(`[JourneyService] ✓ Deleted old module: ${oldModuleId}`);
+              } catch (error) {
+                console.warn(`[JourneyService] Could not delete module ${oldModuleId}:`, error);
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.warn('[JourneyService] Journey not found, will create new one:', error);
+      }
     }
 
-    const journeyId = response.data.journey._id;
-    const trainingId = journeyId; // Use journey ID as training ID
+    let response;
+    if (existingJourneyId && isUpdate) {
+      // Update existing journey
+      response = await ApiClient.put(`/training_journeys/${existingJourneyId}`, journeyPayload);
+      if (!response.data.success) {
+        throw new Error('Failed to update journey');
+      }
+      console.log('[JourneyService] Updated journey:', existingJourneyId);
+    } else {
+      // Create new journey
+      response = await ApiClient.post('/training_journeys', journeyPayload);
+      if (!response.data.success || !response.data.journey?._id) {
+        throw new Error('Failed to create journey');
+      }
+      existingJourneyId = response.data.journey._id;
+      console.log('[JourneyService] Created new journey:', existingJourneyId);
+    }
 
-    console.log('[JourneyService] Created journey:', journeyId);
+    const trainingId = existingJourneyId; // Use journey ID as training ID
 
     // Create modules in training_modules collection
     const moduleIds: string[] = [];
@@ -277,6 +330,12 @@ export class JourneyService {
     
     return {
       ...updateResponse.data,
+      success: true,
+      journey: {
+        ...updateResponse.data.journey,
+        _id: journeyId,
+        id: journeyId
+      },
       journeyId: journeyId,
       moduleIds: moduleIds,
       finalExamId: finalExamId

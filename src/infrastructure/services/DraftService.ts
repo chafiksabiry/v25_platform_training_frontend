@@ -98,18 +98,24 @@ export class DraftService {
           };
 
           try {
+            // Use existing draftId if available to update instead of creating new journey
+            const existingJourneyId = updatedDraft.draftId || (updatedDraft.journey as any).id || (updatedDraft.journey as any)._id;
+            
             const response = await JourneyService.saveJourney(
               journeyToSave,
               updatedDraft.modules,
               companyId,
-              gigId
+              gigId,
+              undefined, // finalExam
+              existingJourneyId // Pass existing journeyId to update instead of create
             );
 
-            if (response.success && response.journey?.id) {
+            if (response.success && (response.journey?.id || response.journeyId)) {
               // Sauvegarder l'ID du brouillon
-              updatedDraft.draftId = response.journey.id;
+              const savedJourneyId = response.journey?.id || response.journeyId || response.journey?._id;
+              updatedDraft.draftId = savedJourneyId;
               this.saveDraftLocally(updatedDraft);
-              // Draft saved successfully
+              console.log('[DraftService] Draft saved successfully, journeyId:', savedJourneyId);
             }
           } catch (error) {
             console.warn('[DraftService] Could not save draft to backend (will retry):', error);
@@ -154,17 +160,23 @@ export class DraftService {
         };
 
         try {
+          // Use existing draftId if available to update instead of creating new journey
+          const existingJourneyId = updatedDraft.draftId || (updatedDraft.journey as any).id || (updatedDraft.journey as any)._id;
+          
           const response = await JourneyService.saveJourney(
             journeyToSave,
             updatedDraft.modules,
             companyId,
-            gigId
+            gigId,
+            undefined, // finalExam
+            existingJourneyId // Pass existing journeyId to update instead of create
           );
 
-          if (response.success && response.journey?.id) {
-            updatedDraft.draftId = response.journey.id;
+          if (response.success && (response.journey?.id || response.journeyId)) {
+            const savedJourneyId = response.journey?.id || response.journeyId || response.journey?._id;
+            updatedDraft.draftId = savedJourneyId;
             this.saveDraftLocally(updatedDraft);
-            // Draft saved immediately
+            console.log('[DraftService] Draft saved immediately, journeyId:', savedJourneyId);
           }
         } catch (error) {
           console.warn('[DraftService] Could not save draft immediately to backend:', error);
