@@ -1,8 +1,7 @@
 // src/infrastructure/services/JourneyService.ts
 import { ApiClient } from '../../lib/api';
 import { TrainingJourney, TrainingModule, Rep } from '../../types';
-import { TrainingModuleService, TrainingSection } from './TrainingModuleService';
-import { extractObjectId } from '../../lib/mongoUtils';
+import { extractObjectId, isValidMongoId } from '../../lib/mongoUtils';
 
 export interface LaunchJourneyRequest {
   journey: TrainingJourney;
@@ -62,8 +61,11 @@ export class JourneyService {
     return response.data;
   }
 
+  // Methods createQuizzesForModule and createFinalExam removed - using embedded structure
+  // These methods are no longer needed since modules/quizzes are embedded in the journey document
+  
   /**
-   * Create quizzes separately in module_quizzes collection and return their IDs
+   * @deprecated - No longer used, quizzes are embedded in modules
    */
   static async createQuizzesForModule(moduleId: string, trainingId: string, assessments: any[]): Promise<string[]> {
     const quizIds: string[] = [];
@@ -122,7 +124,7 @@ export class JourneyService {
   }
 
   /**
-   * Create final exam quiz in exam_final_quizzes collection
+   * @deprecated - No longer used, final exam is embedded in journey
    */
   static async createFinalExam(trainingId: string, finalExamData: any): Promise<string | null> {
     if (!finalExamData || !finalExamData.questions || finalExamData.questions.length === 0) {
@@ -172,12 +174,102 @@ export class JourneyService {
   }
 
   /**
-   * Create or save a journey
-   * Now creates modules and sections in separate collections
+   * Create or save a journey with embedded modules, sections, and quizzes
+   * All data is stored in a single collection: training_journeys
    * @param journeyId Optional: if provided, updates existing journey instead of creating new one
    */
   static async saveJourney(journey: TrainingJourney, modules: TrainingModule[], companyId?: string, gigId?: string, finalExam?: any, journeyId?: string): Promise<any> {
-    const journeyPayload = {
+    // Convert modules to embedded structure with sections and quizzes
+    const embeddedModules = modules.map((m, index) => {
+      // Convert sections
+      let sections: any[] = [];
+      if ((m as any).sections && Array.isArray((m as any).sections)) {
+        sections = (m as any).sections;
+      } else if (m.content) {
+        if (Array.isArray(m.content)) {
+          sections = m.content;
+        } else {
+          sections = [m.content];
+        }
+      }
+      
+      // Convert sections to embedded format
+      const embeddedSections = sections.map((section: any, sectionIndex: number) => ({
+        title: section.title || section.content?.title || `Section ${sectionIndex + 1}`,
+        type: section.type || 'document',
+        order: sectionIndex,
+        content: section.content || section,
+        duration: section.duration || section.estimatedDuration || 0
+      }));
+      
+      // Convert assessments to quizzes
+      const embeddedQuizzes = (m.assessments || []).map((assessment: any) => ({
+        title: assessment.title || `Quiz - ${m.title}`,
+        description: assessment.description || '',
+        questions: (assessment.questions || []).map((q: any, qIndex: number) => ({
+          question: q.question || q.text || '',
+          type: q.type || 'multiple-choice',
+          options: q.options || [],
+          correctAnswer: q.correctAnswer,
+          explanation: q.explanation || '',
+          points: q.points || 10,
+          orderIndex: qIndex
+        })),
+        passingScore: assessment.passingScore || 70,
+        timeLimit: assessment.timeLimit || 15,
+        maxAttempts: assessment.maxAttempts || 3,
+        settings: assessment.settings || {
+          shuffleQuestions: false,
+          shuffleOptions: false,
+          showCorrectAnswers: true,
+          allowReview: true,
+          showExplanations: true
+        }
+      }));
+      
+      return {
+        title: m.title || `Module ${index + 1}`,
+        description: m.description || '',
+        duration: m.duration ? Math.round(m.duration * 60) : 0, // Convert hours to minutes
+        difficulty: m.difficulty || 'beginner',
+        learningObjectives: Array.isArray(m.learningObjectives) ? m.learningObjectives : [],
+        prerequisites: Array.isArray(m.prerequisites) ? m.prerequisites : [],
+        topics: Array.isArray(m.topics) ? m.topics : [],
+        sections: embeddedSections,
+        quizzes: embeddedQuizzes,
+        order: index
+      };
+    });
+    
+    // Convert final exam to embedded format
+    let embeddedFinalExam: any = null;
+    if (finalExam) {
+      embeddedFinalExam = {
+        title: finalExam.title || 'Final Exam',
+        description: finalExam.description || 'Final examination for the training journey',
+        questions: (finalExam.questions || []).map((q: any, qIndex: number) => ({
+          question: q.question || q.text || '',
+          type: q.type || 'multiple-choice',
+          options: q.options || [],
+          correctAnswer: q.correctAnswer,
+          explanation: q.explanation || '',
+          points: q.points || 10,
+          orderIndex: qIndex
+        })),
+        passingScore: finalExam.passingScore || 70,
+        timeLimit: finalExam.timeLimit || 60,
+        maxAttempts: finalExam.maxAttempts || 1,
+        settings: finalExam.settings || {
+          shuffleQuestions: true,
+          shuffleOptions: true,
+          showCorrectAnswers: true,
+          allowReview: true,
+          showExplanations: true
+        }
+      };
+    }
+    
+    const journeyPayload: any = {
       title: journey.title,
       description: journey.description,
       industry: journey.industry,
@@ -186,307 +278,162 @@ export class JourneyService {
       vision: journey.vision,
       companyId: companyId,
       gigId: gigId,
-      moduleIds: [], // Will be populated after creating modules
-      finalExamId: null // Will be populated after creating final exam
+      modules: embeddedModules,
+      finalExam: embeddedFinalExam
     };
-
-    let existingJourneyId: string | null = null;
-    let isUpdate = false;
     
-    // If journeyId is provided, validate it's a MongoDB ObjectId format (24 hex characters)
-    // Don't use timestamps or other non-MongoDB IDs
-    const isValidJourneyId = journeyId && isValidMongoId(journeyId);
-    
-    if (journeyId && isValidJourneyId) {
-      try {
-        console.log('[JourneyService] Checking if journey exists:', journeyId);
-        const existingJourneyResponse = await ApiClient.get(`/training_journeys/${journeyId}`);
-        
-        // Backend can return either:
-        // 1. Direct entity: {id: "...", title: "...", ...} (Spring Data MongoDB maps _id to id)
-        // 2. Wrapped response: {success: true, journey: {...}}
-        const journeyData = existingJourneyResponse.data.journey || existingJourneyResponse.data;
-        // Spring Data MongoDB uses 'id' (not '_id') in Java entities
-        const hasJourneyId = journeyData && (journeyData.id || journeyData._id);
-        const isSuccess = existingJourneyResponse.data.success !== false && hasJourneyId;
-        
-        console.log('[JourneyService] Journey check response:', {
-          hasData: !!existingJourneyResponse.data,
-          hasJourney: !!existingJourneyResponse.data.journey,
-          hasDirectJourney: !!hasJourneyId,
-          journeyId: journeyData?.id || journeyData?._id,
-          isSuccess: isSuccess
-        });
-        
-        if (isSuccess && journeyData) {
-          existingJourneyId = journeyId;
-          isUpdate = true;
-          console.log('[JourneyService] ✓ Journey exists, will UPDATE:', journeyId);
-          
-          // Delete old modules and sections before creating new ones
-          const oldModuleIds = journeyData.moduleIds || [];
-          if (oldModuleIds.length > 0) {
-            console.log('[JourneyService] Deleting old modules:', oldModuleIds.length);
-            for (const oldModuleId of oldModuleIds) {
-              try {
-                // Get module to find its sections
-                const oldModule = await TrainingModuleService.getModuleById(oldModuleId);
-                if (oldModule && oldModule.sectionIds) {
-                  // Delete sections
-                  for (const sectionId of oldModule.sectionIds) {
-                    try {
-                      await TrainingModuleService.deleteSection(sectionId);
-                    } catch (error) {
-                      console.warn(`[JourneyService] Could not delete section ${sectionId}:`, error);
-                    }
-                  }
-                }
-                // Delete module
-                await TrainingModuleService.deleteModule(oldModuleId);
-                console.log(`[JourneyService] ✓ Deleted old module: ${oldModuleId}`);
-              } catch (error) {
-                console.warn(`[JourneyService] Could not delete module ${oldModuleId}:`, error);
-              }
-            }
-          } else {
-            console.log('[JourneyService] No old modules to delete');
-          }
-        } else {
-          console.warn('[JourneyService] Journey check returned no valid journey data');
-        }
-      } catch (error: any) {
-        console.warn('[JourneyService] Journey not found (404 or error), will create new one:', {
-          journeyId,
-          errorMessage: error?.message,
-          errorStatus: error?.response?.status,
-          errorData: error?.response?.data
-        });
-      }
-    } else if (journeyId && !isValidJourneyId) {
-      console.warn('[JourneyService] Invalid journeyId format (not a MongoDB ObjectId):', journeyId, '- will create new journey');
-    } else {
-      console.log('[JourneyService] No journeyId provided, will create new journey');
+    // If journeyId is provided, include it for update
+    if (journeyId && isValidMongoId(journeyId)) {
+      journeyPayload.id = journeyId;
+      journeyPayload._id = journeyId;
     }
 
+    console.log('[JourneyService] Saving journey with embedded modules:', {
+      journeyId: journeyId || 'NEW',
+      modulesCount: embeddedModules.length,
+      hasFinalExam: !!embeddedFinalExam
+    });
+
     let response;
-    if (existingJourneyId && isUpdate) {
+    if (journeyId && isValidMongoId(journeyId)) {
       // Update existing journey
-      response = await ApiClient.put(`/training_journeys/${existingJourneyId}`, journeyPayload);
+      response = await ApiClient.put(`/training_journeys/${journeyId}`, journeyPayload);
       if (!response.data.success) {
         throw new Error('Failed to update journey');
       }
-      console.log('[JourneyService] Updated journey:', existingJourneyId);
+      console.log('[JourneyService] Updated journey:', journeyId);
     } else {
       // Create new journey
-      console.log('[JourneyService] Creating new journey with payload:', JSON.stringify(journeyPayload, null, 2));
       response = await ApiClient.post('/training_journeys', journeyPayload);
-      
-      // Spring Data MongoDB uses 'id' (not '_id') in Java entities
-      // Backend can return journey directly or wrapped in response.data.journey
-      // ApiClient already normalizes Extended JSON ObjectIds to strings
-      const createdJourney = response.data.journey || response.data;
-      
-      console.log('[JourneyService] Create journey response:', {
-        success: response.data.success,
-        hasJourney: !!response.data.journey,
-        journeyId: extractObjectId(createdJourney?.id || createdJourney?._id),
-        fullResponse: response.data
-      });
       
       if (!response.data.success) {
         console.error('[JourneyService] Create journey failed:', response.data);
         throw new Error(`Failed to create journey: ${response.data.error || 'Unknown error'}`);
       }
       
-      // Extract ObjectId from response (already normalized by ApiClient, but use extractObjectId for safety)
-      const journeyId = extractObjectId(createdJourney?.id || createdJourney?._id);
-      if (!journeyId) {
-        console.error('[JourneyService] No journey ID in response:', response.data);
-        throw new Error('Failed to create journey: No journey ID returned');
+      const createdJourney = response.data.journey || response.data;
+      const returnedJourneyId = extractObjectId(createdJourney?.id || createdJourney?._id);
+      
+      if (!returnedJourneyId || !isValidMongoId(returnedJourneyId)) {
+        console.error('[JourneyService] ⚠️ Invalid journeyId returned from backend:', returnedJourneyId);
+        throw new Error('Invalid journeyId returned from backend');
       }
       
-      // Spring Data MongoDB maps MongoDB _id to Java 'id' field
-      existingJourneyId = journeyId;
-      
-      // Validate that it's a MongoDB ObjectId
-      if (!isValidMongoId(existingJourneyId)) {
-        console.error('[JourneyService] ⚠️ Invalid journeyId returned from backend:', existingJourneyId);
-        throw new Error(`Invalid journeyId returned from backend: ${existingJourneyId}`);
-      }
-      
-      console.log('[JourneyService] Created new journey:', existingJourneyId);
+      journeyId = returnedJourneyId;
+      console.log('[JourneyService] Created new journey:', journeyId);
     }
-
-    const trainingId = existingJourneyId; // Use journey ID as training ID
-
-    // Create modules in training_modules collection
-    const moduleIds: string[] = [];
     
-    for (let index = 0; index < modules.length; index++) {
-      const m = modules[index];
-      // CRITICAL: Use sections array if available, otherwise check if content is a single object (not array)
-      // If content is an array, it might contain multiple items - we should only use it if sections is not available
+    const savedJourney = response.data.journey || response.data;
+    const savedJourneyId = extractObjectId(savedJourney?.id || savedJourney?._id) || journeyId;
+    
+    return {
+      ...response.data,
+      success: true,
+      journey: {
+        ...savedJourney,
+        _id: savedJourneyId,
+        id: savedJourneyId
+      },
+      journeyId: savedJourneyId,
+      journey_id: savedJourneyId
+    };
+  }
+
+  /**
+   * Launch a training journey with embedded modules, sections, and quizzes
+   * All data is stored in a single collection: training_journeys
+   * @param journeyId Optional: if provided, updates existing journey instead of creating new one
+   */
+  static async launchJourney(request: LaunchJourneyRequest, finalExam?: any, journeyId?: string): Promise<LaunchJourneyResponse> {
+    // Convert modules to embedded structure with sections and quizzes
+    const embeddedModules = request.modules.map((m, index) => {
+      // Convert sections
       let sections: any[] = [];
       if ((m as any).sections && Array.isArray((m as any).sections)) {
         sections = (m as any).sections;
       } else if (m.content) {
-        // If content is an array, treat each item as a section
-        // If content is a single object, wrap it in an array
         if (Array.isArray(m.content)) {
           sections = m.content;
         } else {
           sections = [m.content];
         }
       }
-      const sectionIds: string[] = [];
       
-      console.log(`[JourneyService] Creating module ${index + 1}/${modules.length}: ${m.title}`, {
-        hasSections: (m as any).sections?.length || 0,
-        hasContent: !!m.content,
-        contentIsArray: Array.isArray(m.content),
-        sectionsToCreate: sections.length
-      });
+      // Convert sections to embedded format
+      const embeddedSections = sections.map((section: any, sectionIndex: number) => ({
+        title: section.title || section.content?.title || `Section ${sectionIndex + 1}`,
+        type: section.type || 'document',
+        order: sectionIndex,
+        content: section.content || section,
+        duration: section.duration || section.estimatedDuration || 0
+      }));
       
-      // Step 1: Create module first (without sections and quizzes)
-      // IMPORTANT: Don't include _id - let MongoDB generate ObjectId automatically
-      const moduleData: any = {
-        trainingJourneyId: existingJourneyId, // Use existingJourneyId, not journeyId
-        title: m.title,
+      // Convert assessments to quizzes
+      const embeddedQuizzes = (m.assessments || []).map((assessment: any) => ({
+        title: assessment.title || `Quiz - ${m.title}`,
+        description: assessment.description || '',
+        questions: (assessment.questions || []).map((q: any, qIndex: number) => ({
+          question: q.question || q.text || '',
+          type: q.type || 'multiple-choice',
+          options: q.options || [],
+          correctAnswer: q.correctAnswer,
+          explanation: q.explanation || '',
+          points: q.points || 10,
+          orderIndex: qIndex
+        })),
+        passingScore: assessment.passingScore || 70,
+        timeLimit: assessment.timeLimit || 15,
+        maxAttempts: assessment.maxAttempts || 3,
+        settings: assessment.settings || {
+          shuffleQuestions: false,
+          shuffleOptions: false,
+          showCorrectAnswers: true,
+          allowReview: true,
+          showExplanations: true
+        }
+      }));
+      
+      return {
+        title: m.title || `Module ${index + 1}`,
         description: m.description || '',
         duration: m.duration ? Math.round(m.duration * 60) : 0, // Convert hours to minutes
         difficulty: m.difficulty || 'beginner',
-        learningObjectives: m.learningObjectives || [],
-        prerequisites: m.prerequisites || [],
-        topics: m.topics || [],
-        sectionIds: [], // Will be populated after creating sections
-        quizIds: [], // Will be populated after creating quizzes
+        learningObjectives: Array.isArray(m.learningObjectives) ? m.learningObjectives : [],
+        prerequisites: Array.isArray(m.prerequisites) ? m.prerequisites : [],
+        topics: Array.isArray(m.topics) ? m.topics : [],
+        sections: embeddedSections,
+        quizzes: embeddedQuizzes,
         order: index
       };
-      // Explicitly remove _id if present to ensure MongoDB generates ObjectId
-      delete moduleData._id;
-      delete moduleData.id;
-
-      const createdModule = await TrainingModuleService.createModule(moduleData);
-      const moduleId = createdModule._id || createdModule.id;
-      moduleIds.push(moduleId);
-      console.log(`[JourneyService] ✓ Created module: ${moduleId} - ${m.title}`);
-
-      // Step 2: Create sections for this module
-      if (sections.length > 0) {
-        console.log(`[JourneyService] Creating ${sections.length} sections for module ${m.title}`);
-        for (let sectionIndex = 0; sectionIndex < sections.length; sectionIndex++) {
-          const section = sections[sectionIndex];
-          try {
-            // IMPORTANT: Don't include _id - let MongoDB generate ObjectId automatically
-            const sectionData: any = {
-              moduleId: moduleId,
-              title: section.title || section.content?.title || `Section ${sectionIndex + 1}`,
-              type: section.type || 'document',
-              order: sectionIndex,
-              content: section.content || section,
-              duration: section.duration || section.estimatedDuration || 0
-            };
-            // Explicitly remove _id if present to ensure MongoDB generates ObjectId
-            delete sectionData._id;
-            delete sectionData.id;
-            
-            const createdSection = await TrainingModuleService.createSection(moduleId, sectionData);
-            sectionIds.push(createdSection._id || createdSection.id);
-            console.log(`[JourneyService] ✓ Created section: ${createdSection._id} - ${sectionData.title}`);
-          } catch (error) {
-            console.error(`[JourneyService] ✗ Error creating section ${sectionIndex}:`, error);
-          }
-        }
-
-        // Update module with sectionIds
-        await TrainingModuleService.updateModule(moduleId, { sectionIds });
-        console.log(`[JourneyService] ✓ Updated module with ${sectionIds.length} sectionIds`);
-      }
-
-      // Step 3: Create quizzes for this module
-      const quizIds = await this.createQuizzesForModule(moduleId, trainingId, m.assessments || []);
-      console.log(`[JourneyService] ✓ Created ${quizIds.length} quizzes for module ${m.title}`);
-
-      // Update module with quizIds
-      await TrainingModuleService.updateModule(moduleId, { quizIds });
-      console.log(`[JourneyService] ✓ Updated module with ${quizIds.length} quizIds`);
-    }
-
-    // Create final exam if provided
-    let finalExamId: string | null = null;
+    });
+    
+    // Convert final exam to embedded format
+    let embeddedFinalExam: any = null;
     if (finalExam) {
-      finalExamId = await this.createFinalExam(trainingId, finalExam);
-      console.log('[JourneyService] Created final exam:', finalExamId);
+      embeddedFinalExam = {
+        title: finalExam.title || 'Final Exam',
+        description: finalExam.description || 'Final examination for the training journey',
+        questions: (finalExam.questions || []).map((q: any, qIndex: number) => ({
+          question: q.question || q.text || '',
+          type: q.type || 'multiple-choice',
+          options: q.options || [],
+          correctAnswer: q.correctAnswer,
+          explanation: q.explanation || '',
+          points: q.points || 10,
+          orderIndex: qIndex
+        })),
+        passingScore: finalExam.passingScore || 70,
+        timeLimit: finalExam.timeLimit || 60,
+        maxAttempts: finalExam.maxAttempts || 1,
+        settings: finalExam.settings || {
+          shuffleQuestions: true,
+          shuffleOptions: true,
+          showCorrectAnswers: true,
+          allowReview: true,
+          showExplanations: true
+        }
+      };
     }
-
-    // Update journey with moduleIds and finalExamId (NOT the full modules)
-    const updatePayload = {
-      ...journeyPayload,
-      moduleIds: moduleIds,
-      finalExamId: finalExamId
-    };
-
-    console.log('[JourneyService] Updating journey with moduleIds:', moduleIds);
-    const updateResponse = await ApiClient.put(`/training_journeys/${existingJourneyId}`, updatePayload);
-    
-    if (!updateResponse.data.success) {
-      throw new Error('Failed to update journey');
-    }
-    
-    // CRITICAL: Spring Data MongoDB uses 'id' (not '_id') in Java entities
-    // Backend can return journey directly or wrapped in response.data.journey
-    // ApiClient already normalizes Extended JSON ObjectIds to strings, but use extractObjectId for safety
-    const updatedJourney = updateResponse.data.journey || updateResponse.data;
-    const returnedJourneyId = extractObjectId(updatedJourney?.id || updatedJourney?._id) || existingJourneyId;
-    
-    // Validate that it's a MongoDB ObjectId
-    if (!returnedJourneyId || !isValidMongoId(returnedJourneyId)) {
-      console.error('[JourneyService] ⚠️ Invalid journeyId returned from backend:', returnedJourneyId);
-      throw new Error('Invalid journeyId returned from backend');
-    }
-    
-    return {
-      ...updateResponse.data,
-      success: true,
-      journey: {
-        ...updatedJourney,
-        _id: returnedJourneyId,
-        id: returnedJourneyId
-      },
-      journeyId: returnedJourneyId,
-      journey_id: returnedJourneyId, // Also include as journey_id for clarity
-      moduleIds: moduleIds,
-      finalExamId: finalExamId
-    };
-  }
-
-  /**
-   * Launch a training journey
-   * Now creates modules and sections in separate collections
-   * @param journeyId Optional: if provided, updates existing journey instead of creating new one
-   */
-  static async launchJourney(request: LaunchJourneyRequest, finalExam?: any, journeyId?: string): Promise<LaunchJourneyResponse> {
-    const journeyPayload = {
-      title: (request.journey as any).title || request.journey.name || 'Untitled Journey',
-      description: request.journey.description,
-      industry: (request.journey as any).industry || (request.journey as any).company?.industry || null,
-      status: 'active',
-      company: (request.journey as any).company,
-      vision: (request.journey as any).vision,
-      companyId: request.companyId,
-      gigId: request.gigId,
-      moduleIds: [], // Will be populated after creating modules
-      finalExamId: null, // Will be populated after creating final exam
-      launchSettings: request.launchSettings,
-      rehearsalData: request.rehearsalData
-    };
-
-    let existingJourneyId: string | null = null;
-    let isUpdate = false;
-    
-    // If journeyId is provided, check if journey exists and update it
-    // IMPORTANT: Only use MongoDB ObjectId format (24 hex characters)
-    // Don't use timestamps or other non-MongoDB IDs from journey.id
     
     // Priority: journeyId parameter > journey._id (never use journey.id as it might be a timestamp)
     let journeyIdToUse = journeyId || (request.journey as any)._id;
@@ -497,203 +444,51 @@ export class JourneyService {
       journeyIdToUse = null;
     }
     
-    if (journeyIdToUse) {
-      try {
-        console.log('[JourneyService] Checking if journey exists for launch:', journeyIdToUse);
-        const existingJourney = await ApiClient.get(`/training_journeys/${journeyIdToUse}`);
-        console.log('[JourneyService] Journey check response (launch):', {
-          hasData: !!existingJourney.data,
-          hasSuccess: existingJourney.data?.success,
-          hasJourney: !!existingJourney.data?.journey,
-          hasDirectJourney: !!existingJourney.data,
-          journeyId: existingJourney.data?.journey?.id || existingJourney.data?.journey?._id || existingJourney.data?.id || existingJourney.data?._id,
-          isSuccess: existingJourney.data?.success !== false && (existingJourney.data?.journey || existingJourney.data)
-        });
-        
-        // Backend can return journey in different formats:
-        // 1. {success: true, journey: {...}}
-        // 2. Direct journey object: {...}
-        const journeyData = existingJourney.data?.journey || existingJourney.data;
-        const isSuccess = existingJourney.data?.success !== false && journeyData && (journeyData.id || journeyData._id);
-        
-        if (isSuccess) {
-          existingJourneyId = journeyIdToUse;
-          isUpdate = true;
-          console.log('[JourneyService] ✓ Journey exists, will UPDATE for launch:', journeyIdToUse);
-          
-          // Delete old modules and sections before creating new ones
-          const oldModuleIds = journeyData.moduleIds || [];
-          if (oldModuleIds.length > 0) {
-            console.log('[JourneyService] Deleting old modules before launch:', oldModuleIds.length);
-            for (const oldModuleId of oldModuleIds) {
-              try {
-                // Get module to find its sections
-                const oldModule = await TrainingModuleService.getModuleById(oldModuleId);
-                if (oldModule && oldModule.sectionIds) {
-                  // Delete sections
-                  for (const sectionId of oldModule.sectionIds) {
-                    try {
-                      await TrainingModuleService.deleteSection(sectionId);
-                    } catch (error) {
-                      console.warn(`[JourneyService] Could not delete section ${sectionId}:`, error);
-                    }
-                  }
-                }
-                // Delete module
-                await TrainingModuleService.deleteModule(oldModuleId);
-                console.log(`[JourneyService] ✓ Deleted old module: ${oldModuleId}`);
-              } catch (error) {
-                console.warn(`[JourneyService] Could not delete module ${oldModuleId}:`, error);
-              }
-            }
-          }
-        } else {
-          console.warn('[JourneyService] Journey check failed (launch), will create new one. Response:', existingJourney.data);
-        }
-      } catch (error) {
-        console.warn('[JourneyService] Journey not found (launch), will create new one:', error);
-      }
-    }
-
-    // CRITICAL: Don't create/update journey here - let /launch endpoint handle it
-    // If journeyIdToUse is provided, use it as trainingId for modules
-    // The backend /launch endpoint will create/update the journey with moduleIds
-    let trainingId: string;
+    const journeyPayload: any = {
+      title: (request.journey as any).title || request.journey.name || 'Untitled Journey',
+      description: request.journey.description,
+      industry: (request.journey as any).industry || (request.journey as any).company?.industry || null,
+      status: 'active',
+      company: (request.journey as any).company,
+      vision: (request.journey as any).vision,
+      companyId: request.companyId,
+      gigId: request.gigId,
+      modules: embeddedModules,
+      finalExam: embeddedFinalExam,
+      launchSettings: request.launchSettings,
+      rehearsalData: request.rehearsalData
+    };
     
+    // If journeyId is provided, include it for update
     if (journeyIdToUse && isValidMongoId(journeyIdToUse)) {
-      // Use provided journeyId - backend /launch will update it if exists, or create if not
-      trainingId = journeyIdToUse;
-      existingJourneyId = journeyIdToUse;
-      isUpdate = true;
-      console.log('[JourneyService] Using provided journeyId for launch (backend will update/create):', journeyIdToUse);
-    } else {
-      // No valid journeyId provided - we'll need to create journey first to get an ID for modules
-      // But actually, we can create modules with a temporary ID and let /launch create the journey
-      // For now, create journey first to get an ID
-      const createResponse = await ApiClient.post('/training_journeys', {
-        ...journeyPayload,
-        status: 'draft' // Create as draft first, /launch will activate it
-      });
-      const createdJourney = createResponse.data.journey || createResponse.data;
-      const returnedJourneyId = createdJourney?.id || createdJourney?._id;
-      if (!createResponse.data.success || !returnedJourneyId) {
-        console.error('[JourneyService] Failed to create journey. Response:', createResponse.data);
-        throw new Error('Failed to create journey');
-      }
-      trainingId = returnedJourneyId;
-      existingJourneyId = returnedJourneyId;
-      console.log('[JourneyService] Created new journey (draft) for launch:', existingJourneyId);
+      journeyPayload.id = journeyIdToUse;
+      journeyPayload._id = journeyIdToUse;
     }
 
-    console.log('[JourneyService] Launching journey with trainingId:', trainingId);
+    console.log('[JourneyService] Launching journey with embedded modules:', {
+      journeyId: journeyIdToUse || 'NEW',
+      modulesCount: embeddedModules.length,
+      hasFinalExam: !!embeddedFinalExam
+    });
 
-    // Create modules in training_modules collection
-    const moduleIds: string[] = [];
-    
-    for (let index = 0; index < request.modules.length; index++) {
-      const m = request.modules[index];
-      const sections = (m as any).sections || m.content || [];
-      const sectionIds: string[] = [];
-      
-      console.log(`[JourneyService] Creating module ${index + 1}/${request.modules.length}: ${m.title}`);
-      
-      // Step 1: Create module first (without sections and quizzes)
-      // IMPORTANT: Don't include _id - let MongoDB generate ObjectId automatically
-      const moduleData: any = {
-        trainingJourneyId: trainingId, // Use trainingId instead of journeyId parameter
-        title: m.title,
-        description: m.description || '',
-        duration: m.duration ? Math.round(m.duration * 60) : 0, // Convert hours to minutes
-        difficulty: m.difficulty || 'beginner',
-        learningObjectives: m.learningObjectives || [],
-        prerequisites: m.prerequisites || [],
-        topics: m.topics || [],
-        sectionIds: [], // Will be populated after creating sections
-        quizIds: [], // Will be populated after creating quizzes
-        order: index
-      };
-      // Explicitly remove _id if present to ensure MongoDB generates ObjectId
-      delete moduleData._id;
-      delete moduleData.id;
-
-      const createdModule = await TrainingModuleService.createModule(moduleData);
-      const moduleId = createdModule._id || createdModule.id;
-      moduleIds.push(moduleId);
-      console.log(`[JourneyService] ✓ Created module: ${moduleId} - ${m.title}`);
-
-      // Step 2: Create sections for this module
-      if (sections.length > 0) {
-        console.log(`[JourneyService] Creating ${sections.length} sections for module ${m.title}`);
-        for (let sectionIndex = 0; sectionIndex < sections.length; sectionIndex++) {
-          const section = sections[sectionIndex];
-          try {
-            // IMPORTANT: Don't include _id - let MongoDB generate ObjectId automatically
-            const sectionData: any = {
-              moduleId: moduleId,
-              title: section.title || section.content?.title || `Section ${sectionIndex + 1}`,
-              type: section.type || 'document',
-              order: sectionIndex,
-              content: section.content || section,
-              duration: section.duration || section.estimatedDuration || 0
-            };
-            // Explicitly remove _id if present to ensure MongoDB generates ObjectId
-            delete sectionData._id;
-            delete sectionData.id;
-            
-            const createdSection = await TrainingModuleService.createSection(moduleId, sectionData);
-            sectionIds.push(createdSection._id || createdSection.id);
-            console.log(`[JourneyService] ✓ Created section: ${createdSection._id} - ${sectionData.title}`);
-          } catch (error) {
-            console.error(`[JourneyService] ✗ Error creating section ${sectionIndex}:`, error);
-          }
-        }
-
-        // Update module with sectionIds
-        await TrainingModuleService.updateModule(moduleId, { sectionIds });
-        console.log(`[JourneyService] ✓ Updated module with ${sectionIds.length} sectionIds`);
-      }
-
-      // Step 3: Create quizzes for this module
-      const quizIds = await this.createQuizzesForModule(moduleId, trainingId, m.assessments || []);
-      console.log(`[JourneyService] ✓ Created ${quizIds.length} quizzes for module ${m.title}`);
-
-      // Update module with quizIds
-      await TrainingModuleService.updateModule(moduleId, { quizIds });
-      console.log(`[JourneyService] ✓ Updated module with ${quizIds.length} quizIds`);
-    }
-
-    // Create final exam if provided
-    let finalExamId: string | null = null;
-    if (finalExam) {
-      finalExamId = await this.createFinalExam(trainingId, finalExam);
-      console.log('[JourneyService] Created final exam:', finalExamId);
-    }
-
-    // Launch the journey with enrolled reps
     const launchPayload = {
-      journey: {
-        ...journeyPayload,
-        id: existingJourneyId, // Include journey ID for update
-        _id: existingJourneyId, // Also include _id for MongoDB compatibility
-        moduleIds: moduleIds,
-        finalExamId: finalExamId
-      },
+      journey: journeyPayload,
       enrolledRepIds: request.enrolledRepIds
     };
 
-    console.log('[JourneyService] Launching journey with ID:', existingJourneyId, 'moduleIds:', moduleIds);
     const launchResponse = await ApiClient.post('/training_journeys/launch', launchPayload);
     
     if (!launchResponse.data.success) {
       throw new Error(launchResponse.data.error || 'Failed to launch journey');
     }
 
+    const launchedJourney = launchResponse.data.journey || launchResponse.data;
+    const launchedJourneyId = extractObjectId(launchedJourney?.id || launchedJourney?._id) || journeyIdToUse;
+
     return {
       ...launchResponse.data,
-      journeyId: existingJourneyId, // Use existingJourneyId instead of journeyId parameter
-      journey_id: existingJourneyId, // Also include as journey_id for clarity
-      moduleIds: moduleIds,
-      finalExamId: finalExamId
+      journeyId: launchedJourneyId,
+      journey_id: launchedJourneyId
     };
   }
 

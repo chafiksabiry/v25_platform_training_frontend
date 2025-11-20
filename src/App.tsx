@@ -51,7 +51,7 @@ import { useTrainingProgress } from './hooks/useTrainingProgress';
 import { Company, TrainingJourney, TrainingModule, Rep } from './types';
 import { getCurrentUserName } from './utils/userUtils';
 import { JourneyService } from './infrastructure/services/JourneyService';
-import { TrainingModuleService } from './infrastructure/services/TrainingModuleService';
+// TrainingModuleService no longer needed - using embedded structure
 import Cookies from 'js-cookie';
 import { extractObjectId } from './lib/mongoUtils';
 
@@ -678,44 +678,53 @@ function App() {
                     setLoadingModules(true);
                     
                     try {
-                      // Load modules from separate collection using moduleIds
-                      // ApiClient already normalizes Extended JSON ObjectIds to strings, but use extractObjectId for safety
+                      // Load modules from embedded structure (journey.modules)
                       const journeyIdStr = extractObjectId(journey.id || journey._id) || '';
-                      const moduleIds = (journey.moduleIds || []).map((id: any) => extractObjectId(id)).filter((id: string | null): id is string => id !== null);
-                      const hasOldStructure = journey.modules && Array.isArray(journey.modules) && journey.modules.length > 0;
+                      const embeddedModules = journey.modules || [];
                       
-                      console.log('[App] Loading modules for journey:', journeyIdStr);
-                      console.log('[App] Has moduleIds:', moduleIds.length > 0, 'Has old modules:', hasOldStructure);
+                      console.log('[App] Loading modules from embedded structure:', {
+                        journeyId: journeyIdStr,
+                        modulesCount: embeddedModules.length
+                      });
                       
                       let modules: TrainingModule[] = [];
                       
-                      if (moduleIds && Array.isArray(moduleIds) && moduleIds.length > 0) {
-                        // New structure: Load modules from training_modules collection
-                        console.log('[App] Using new structure - loading modules from API');
-                        const loadedModules = await TrainingModuleService.getModulesByJourney(journeyIdStr);
-                        console.log('[App] Loaded', loadedModules.length, 'modules from API');
-                        
-                        if (loadedModules.length === 0) {
-                          console.warn('[App] No modules found in API, falling back to old structure');
-                          throw new Error('No modules found in API');
-                        }
-                        
-                        // For each module, load its sections
-                        modules = await Promise.all(loadedModules.map(async (module: any, index: number) => {
-                          // ApiClient already normalizes Extended JSON ObjectIds to strings, but use extractObjectId for safety
+                      if (embeddedModules && Array.isArray(embeddedModules) && embeddedModules.length > 0) {
+                        // New embedded structure: modules are directly in journey.modules
+                        modules = embeddedModules.map((module: any, index: number) => {
+                          // Extract module ID (may be _id or id)
                           const moduleId = extractObjectId(module._id || module.id) || `module-${journeyIdStr}-${index}`;
-                          const sectionIds = (module.sectionIds || []).map((id: any) => extractObjectId(id)).filter((id: string | null): id is string => id !== null);
-                          let sections: any[] = [];
                           
-                          if (sectionIds && Array.isArray(sectionIds) && sectionIds.length > 0) {
-                            // Load sections from training_sections collection
-                            try {
-                              sections = await TrainingModuleService.getSectionsByModule(moduleId);
-                              console.log(`[App] Loaded ${sections.length} sections for module ${module.title}`);
-                            } catch (error) {
-                              console.warn(`[App] Error loading sections for module ${module.title}:`, error);
-                            }
-                          }
+                          // Extract sections from embedded module
+                          const embeddedSections = module.sections || [];
+                          const sections = embeddedSections.map((section: any, sectionIndex: number) => ({
+                            id: extractObjectId(section._id || section.id) || `section-${moduleId}-${sectionIndex}`,
+                            type: section.type || 'document',
+                            title: section.title || `Section ${sectionIndex + 1}`,
+                            content: section.content || {},
+                            duration: section.duration || 0
+                          }));
+                          
+                          // Extract quizzes from embedded module
+                          const embeddedQuizzes = module.quizzes || [];
+                          const assessments = embeddedQuizzes.map((quiz: any) => ({
+                            id: extractObjectId(quiz._id || quiz.id) || `quiz-${moduleId}`,
+                            title: quiz.title || 'Quiz',
+                            description: quiz.description || '',
+                            questions: (quiz.questions || []).map((q: any) => ({
+                              id: extractObjectId(q._id || q.id) || `q-${Date.now()}`,
+                              text: q.question || '',
+                              type: q.type || 'multiple-choice',
+                              options: q.options || [],
+                              correctAnswer: q.correctAnswer,
+                              explanation: q.explanation || '',
+                              points: q.points || 10
+                            })),
+                            passingScore: quiz.passingScore || 70,
+                            timeLimit: quiz.timeLimit || 15,
+                            maxAttempts: quiz.maxAttempts || 3,
+                            settings: quiz.settings || {}
+                          }));
                           
                           const topics = Array.isArray(module.topics) 
                             ? module.topics 
@@ -735,70 +744,18 @@ function App() {
                             learningObjectives: Array.isArray(module.learningObjectives) 
                               ? module.learningObjectives.map((obj: any) => typeof obj === 'string' ? obj : obj.text || obj.title || '')
                               : [],
-                            assessments: [],
-                            content: sections.map((s: any) => ({
-                              id: s._id || s.id,
-                              type: s.type || 'document',
-                              title: s.title,
-                              content: s.content || {},
-                              duration: s.duration || 0
-                            })),
-                            sections: sections.map((s: any) => ({
-                              id: s._id || s.id,
-                              type: s.type || 'document',
-                              title: s.title,
-                              content: s.content || {},
-                              duration: s.duration || 0
-                            })),
+                            assessments: assessments,
+                            content: sections,
+                            sections: sections,
                             topics: topics,
                             progress: 0,
                             completed: false,
                             order: module.order !== undefined ? module.order : index,
-                            quizIds: Array.isArray(module.quizIds) ? module.quizIds : []
-                          };
-                        }));
-                      } else if (hasOldStructure) {
-                        // Fallback: try to use journey.modules if moduleIds not available (backward compatibility)
-                        console.log('[App] Using old structure - journey.modules');
-                        modules = journey.modules.map((module: any, index: number) => {
-                          const topics = Array.isArray(module.topics) 
-                            ? module.topics 
-                            : (Array.isArray(module.learningObjectives) 
-                                ? module.learningObjectives.slice(0, 5).map((obj: any) => typeof obj === 'string' ? obj : obj.text || obj.title || '')
-                                : []);
-                          
-                          let duration = 0;
-                          if (typeof module.duration === 'number') {
-                            duration = module.duration;
-                          } else if (Array.isArray(module.content) && module.content.length > 0) {
-                            duration = module.content.reduce((sum: number, item: any) => {
-                              return sum + (item.duration || 0);
-                            }, 0);
-                          }
-                          const durationHours = duration > 0 ? Math.round(duration / 60 * 10) / 10 : 0;
-                          
-                          return {
-                            id: module.id || module._id || `module-${journeyIdStr}-${index}`,
-                            title: module.title || 'Untitled Module',
-                            description: module.description || '',
-                            duration: durationHours,
-                            difficulty: (module.difficulty || 'beginner') as 'beginner' | 'intermediate' | 'advanced',
-                            prerequisites: Array.isArray(module.prerequisites) ? module.prerequisites : [],
-                            learningObjectives: Array.isArray(module.learningObjectives) 
-                              ? module.learningObjectives.map((obj: any) => typeof obj === 'string' ? obj : obj.text || obj.title || '')
-                              : [],
-                            assessments: Array.isArray(module.assessments) ? module.assessments : [],
-                            content: Array.isArray(module.content) ? module.content : [],
-                            sections: Array.isArray(module.sections) ? module.sections : [],
-                            topics: topics,
-                            progress: 0,
-                            completed: false,
-                            order: index,
-                            quizIds: Array.isArray(module.quizIds) ? module.quizIds : []
+                            quizIds: assessments.map((a: any) => a.id).filter((id: string) => !!id)
                           };
                         });
                       } else {
-                        console.warn('[App] Journey has no modules or moduleIds');
+                        console.warn('[App] Journey has no embedded modules');
                         modules = [];
                       }
                       

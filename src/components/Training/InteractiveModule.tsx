@@ -47,84 +47,39 @@ export default function InteractiveModule({ module, onProgress, onComplete }: In
     setCompletedSections(new Set());
   }, [module.id]);
 
-  // Load quizzes from API if module has quizIds, otherwise use assessments
+  // Load quizzes from embedded structure (module.assessments contains quizzes from embedded structure)
   useEffect(() => {
-    const loadQuizzes = async () => {
-      const quizIds = (module as any).quizIds;
-      console.log('[InteractiveModule] Loading quizzes for module:', module.title, 'quizIds:', quizIds);
+    console.log('[InteractiveModule] Loading quizzes for module:', module.title);
+    
+    setLoadingQuizzes(true);
+    
+    // Use embedded quizzes from module.assessments (which now contains quizzes from embedded structure)
+    if (module.assessments && Array.isArray(module.assessments) && module.assessments.length > 0) {
+      // Convert assessments to Quiz format
+      const quizzesFromAssessments: Quiz[] = module.assessments.map((assessment: any) => ({
+        id: assessment.id || `quiz-${Date.now()}`,
+        title: assessment.title || 'Quiz',
+        questions: (assessment.questions || []).map((q: any) => ({
+          id: q.id || `q-${Date.now()}`,
+          text: q.text || q.question || '',
+          type: q.type || 'multiple-choice',
+          options: q.options || [],
+          correctAnswer: q.correctAnswer,
+          explanation: q.explanation || '',
+          points: q.points || 10
+        })),
+        passingScore: assessment.passingScore || 70,
+        timeLimit: assessment.timeLimit || 15
+      }));
       
-      // If module has quizIds, fetch quizzes from API
-      if (quizIds && Array.isArray(quizIds) && quizIds.length > 0) {
-        console.log('[InteractiveModule] Found', quizIds.length, 'quizIds, fetching from API...');
-        setLoadingQuizzes(true);
-        try {
-          const allQuestions: Quiz[] = [];
-          
-          // Fetch each quiz by ID from module_quizzes collection
-          for (const quizId of quizIds) {
-            try {
-              console.log('[InteractiveModule] Fetching quiz:', quizId);
-              const response = await ApiClient.get(`/training_journeys/modules/quizzes/${quizId}`);
-              console.log('[InteractiveModule] Quiz response:', response.data);
-              if (response.data.success && response.data.data) {
-                const quiz = response.data.data;
-                console.log('[InteractiveModule] Quiz data:', quiz);
-                // Convert quiz questions to Quiz format
-                if (quiz.questions && Array.isArray(quiz.questions)) {
-                  console.log('[InteractiveModule] Found', quiz.questions.length, 'questions in quiz');
-                  const questions = quiz.questions.map((q: any, idx: number) => ({
-                    id: q._id || q.id || `quiz-${quizId}-${idx}`,
-                    question: q.question || q.text || '',
-                    options: q.options || [],
-                    correctAnswer: q.correctAnswer,
-                    explanation: q.explanation || '',
-                    type: q.type || 'multiple-choice',
-                    points: q.points || 10
-                  }));
-                  allQuestions.push(...questions);
-                } else {
-                  console.warn('[InteractiveModule] Quiz has no questions array:', quiz);
-                }
-              } else {
-                console.warn('[InteractiveModule] Quiz response not successful:', response.data);
-              }
-            } catch (error) {
-              console.error(`[InteractiveModule] Error loading quiz ${quizId}:`, error);
-            }
-          }
-          
-          console.log('[InteractiveModule] Total questions loaded:', allQuestions.length);
-          setQuizzes(allQuestions);
-        } catch (error) {
-          console.error('[InteractiveModule] Error loading quizzes:', error);
-          setQuizzes([]);
-        } finally {
-          setLoadingQuizzes(false);
-        }
-      } else {
-        console.log('[InteractiveModule] No quizIds found, using assessments fallback');
-        // Fallback to assessments if no quizIds
-        const quizzesFromAssessments = module.assessments && Array.isArray(module.assessments) && module.assessments.length > 0
-          ? module.assessments.flatMap((assessment: any) => 
-              assessment.questions && Array.isArray(assessment.questions) 
-                ? assessment.questions.map((q: any, idx: number) => ({
-                    id: q.id || `quiz-${idx}`,
-                    question: q.question || q.text || '',
-                    options: q.options || [],
-                    correctAnswer: q.correctAnswer,
-                    explanation: q.explanation || '',
-                    type: q.type || 'multiple-choice',
-                    points: q.points || 10
-                  }))
-                : []
-            )
-          : [];
-        console.log('[InteractiveModule] Using', quizzesFromAssessments.length, 'questions from assessments');
-        setQuizzes(quizzesFromAssessments);
-      }
-    };
-
-    loadQuizzes();
+      console.log('[InteractiveModule] Using', quizzesFromAssessments.length, 'quizzes from embedded assessments');
+      setQuizzes(quizzesFromAssessments);
+    } else {
+      console.log('[InteractiveModule] No embedded quizzes found');
+      setQuizzes([]);
+    }
+    
+    setLoadingQuizzes(false);
   }, [module]);
 
   // Debug log

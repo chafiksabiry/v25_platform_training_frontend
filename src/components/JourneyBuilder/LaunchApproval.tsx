@@ -257,42 +257,26 @@ export default function LaunchApproval({
 
       setUpdatedModules(updatedModulesList);
 
-      // Sauvegarder dans le brouillon immédiatement
-      // IMPORTANT: Get draft first to ensure we have draftId before saving
+      // CRITICAL: Only save locally, NOT to backend during quiz generation
+      // This prevents deleting and recreating modules unnecessarily
+      // The quizzes will be saved to backend when the journey is launched
       try {
-        console.log('[LaunchApproval] Current draftId before save:', existingDraftId || 'NEW');
+        console.log('[LaunchApproval] Saving quiz locally only (not to backend yet)');
         
-        await DraftService.saveDraftImmediately({
-          modules: updatedModulesList,
-          draftId: existingDraftId && isValidMongoId(existingDraftId) ? existingDraftId : undefined // Explicitly pass draftId to prevent duplicate creation
+        // Save locally to preserve the quiz in localStorage
+        DraftService.saveDraftLocally({
+          modules: updatedModulesList
         });
-        console.log('[LaunchApproval] ✓ Draft saved with updated quizzes');
+        console.log('[LaunchApproval] ✓ Quiz saved locally');
       } catch (draftError) {
-        console.warn('[LaunchApproval] Could not save draft:', draftError);
+        console.warn('[LaunchApproval] Could not save quiz locally:', draftError);
       }
 
-      // Save to server (optional - quiz is available locally even if save fails)
-      // Only save if we have a valid journeyId
-      if (journeyIdForUse) {
-        try {
-          const saveData = {
-            moduleId: moduleId,
-            journeyId: journeyIdForUse, // Use validated MongoDB ObjectId
-            assessment: assessment,
-            isFinalExam: isFinalExam
-          };
-
-          // Try to save to server (endpoint may not exist yet, but quiz is saved locally)
-          await axios.post(`${API_BASE}/api/training-journeys/${journeyIdForUse}/modules/${moduleId}/assessments`, saveData);
-          console.log(`✅ ${isFinalExam ? 'Final exam' : 'Quiz'} saved to server`);
-        } catch (saveError: any) {
-          // Silently handle 404 - quiz is still available locally and will be saved when journey is launched
-          if (saveError?.response?.status !== 404) {
-            console.warn('⚠️ Could not save to server, but quiz is generated locally');
-          }
-          // Continue even if save fails - quiz is still available locally
-        }
-      }
+      // NOTE: We do NOT save to backend here because:
+      // 1. Modules might still have temporary IDs (module-1, module-2, etc.)
+      // 2. Saving to backend would delete and recreate all modules unnecessarily
+      // 3. Quizzes will be properly saved when the journey is launched via JourneyService.launchJourney
+      console.log('[LaunchApproval] Quiz will be saved to backend when journey is launched');
 
       if (isFinalExam) {
         console.log(`[Final Exam] Generated ${assessmentQuestions.length} questions (requested: ${finalConfig.totalQuestions})`);
