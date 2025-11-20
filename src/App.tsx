@@ -106,6 +106,14 @@ function App() {
     }
   }, []);
 
+  // For reps, automatically skip welcome screen and mark setup as completed
+  useEffect(() => {
+    if (userType === 'rep' && showWelcome) {
+      setShowWelcome(false);
+      setHasCompletedSetup(true);
+    }
+  }, [userType, showWelcome]);
+
   // Load real training journeys and convert them to modules (only for trainer)
   useEffect(() => {
     // Only load journeys if user is a trainer
@@ -175,7 +183,19 @@ function App() {
     loadTrainingJourneys();
   }, [userType]);
 
+  // Route to appropriate view based on user type
+  // IMPORTANT: This must be AFTER all hooks to comply with React rules
+  // All hooks must be called before any conditional returns
+  if (userType === 'rep') {
+    return <RepView />;
+  }
+  
+  if (userType === 'trainer') {
+    return <TrainerView />;
+  }
+
   // Use real modules if available, otherwise fallback to mock
+  // Only executed if userType is null (fallback mode)
   const modulesToUse = realModules.length > 0 ? realModules : mockTrainingModules;
   
   console.log('[App] Using', modulesToUse.length, 'modules (real:', realModules.length, ', mock:', mockTrainingModules.length, ')');
@@ -409,18 +429,9 @@ function App() {
     }
   }, [userType, showWelcome]);
 
-  // Route to appropriate view based on user type FIRST
-  // IMPORTANT: Reps should never see the welcome screen or trainer features
-  if (userType === 'rep') {
-    return <RepView />;
-  }
-  
-  if (userType === 'trainer') {
-    return <TrainerView />;
-  }
-
   // Scroll to top when welcome screen is shown
   // IMPORTANT: Only for trainers, not for reps
+  // This hook is only executed if userType is null (fallback mode)
   useEffect(() => {
     if (!hasCompletedSetup && showWelcome && !showJourneyBuilder && !showManualTraining && !showJourneySuccess && userType !== 'rep') {
       window.scrollTo({ top: 0, behavior: 'smooth' });
