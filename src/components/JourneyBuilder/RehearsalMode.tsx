@@ -518,11 +518,16 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
       setUpdatedModules(updatedModulesList);
 
       // Sauvegarder dans le brouillon immédiatement
+      // IMPORTANT: Get draft first to ensure we have draftId before saving
       try {
+        const currentDraft = DraftService.getDraft();
+        console.log('[RehearsalMode] Current draftId before save:', currentDraft.draftId);
+        
         await DraftService.saveDraftImmediately({
-          modules: updatedModulesList
+          modules: updatedModulesList,
+          draftId: currentDraft.draftId // Explicitly pass draftId to prevent duplicate creation
         });
-        console.log('[RehearsalMode] Draft saved with updated quizzes');
+        console.log('[RehearsalMode] ✓ Draft saved with updated quizzes');
       } catch (draftError) {
         console.warn('[RehearsalMode] Could not save draft:', draftError);
       }
