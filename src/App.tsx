@@ -401,15 +401,35 @@ function App() {
     }
   };
 
-  // Scroll to top when welcome screen is shown
+  // For reps, automatically skip welcome screen and mark setup as completed
   useEffect(() => {
-    if (!hasCompletedSetup && showWelcome && !showJourneyBuilder && !showManualTraining && !showJourneySuccess) {
+    if (userType === 'rep' && showWelcome) {
+      setShowWelcome(false);
+      setHasCompletedSetup(true);
+    }
+  }, [userType, showWelcome]);
+
+  // Route to appropriate view based on user type FIRST
+  // IMPORTANT: Reps should never see the welcome screen or trainer features
+  if (userType === 'rep') {
+    return <RepView />;
+  }
+  
+  if (userType === 'trainer') {
+    return <TrainerView />;
+  }
+
+  // Scroll to top when welcome screen is shown
+  // IMPORTANT: Only for trainers, not for reps
+  useEffect(() => {
+    if (!hasCompletedSetup && showWelcome && !showJourneyBuilder && !showManualTraining && !showJourneySuccess && userType !== 'rep') {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
-  }, [hasCompletedSetup, showWelcome, showJourneyBuilder, showManualTraining, showJourneySuccess]);
+  }, [hasCompletedSetup, showWelcome, showJourneyBuilder, showManualTraining, showJourneySuccess, userType]);
 
   // Show welcome screen for first-time users (but not if showing success page)
-  if (!hasCompletedSetup && showWelcome && !showJourneyBuilder && !showManualTraining && !showJourneySuccess) {
+  // IMPORTANT: Only show welcome screen for trainers, not for reps
+  if (!hasCompletedSetup && showWelcome && !showJourneyBuilder && !showManualTraining && !showJourneySuccess && userType !== 'rep') {
     return (
       <div className="h-screen bg-gradient-to-br from-blue-50 to-indigo-100 overflow-y-auto">
         <div className="container mx-auto px-4 py-4">
@@ -1213,17 +1233,9 @@ function App() {
     }
   };
 
-  // Route to appropriate view based on user type
-  if (userType === 'trainer') {
-    return <TrainerView />;
-  }
-  
-  if (userType === 'rep') {
-    return <RepView />;
-  }
-
   // Fallback: Show loading or default view if user type not detected
   // This allows backward compatibility with existing code
+  // Note: The routing to TrainerView/RepView is done earlier in the component
   return (
     <div className="h-screen bg-gray-50 relative overflow-hidden flex">
       {/* Sidebar - Always rendered first */}
