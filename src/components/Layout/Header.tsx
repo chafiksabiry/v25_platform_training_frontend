@@ -8,7 +8,7 @@ interface HeaderProps {
 
 export default function Header({ repName, onMenuToggle }: HeaderProps) {
   return (
-    <header className="bg-white border-b border-gray-200 px-6 py-4 shadow-sm">
+    <header className="bg-white border-b border-gray-200 px-6 py-4 shadow-sm relative z-10">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
           <button

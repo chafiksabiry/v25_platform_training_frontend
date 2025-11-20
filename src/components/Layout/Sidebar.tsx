@@ -39,7 +39,7 @@ export default function Sidebar({ activeTab, onTabChange, isOpen }: SidebarProps
   return (
     <aside className={`bg-gray-900 text-white w-64 min-h-screen p-4 transition-transform duration-300 ${
       isOpen ? 'translate-x-0' : '-translate-x-full'
-    } md:translate-x-0 fixed z-30 top-0 left-0 overflow-y-auto`}>
+    } md:translate-x-0 fixed z-40 top-0 left-0 overflow-y-auto h-screen`}>
       <div className="mb-8">
         <h2 className="text-xl font-bold">Learning Portal</h2>
       </div>

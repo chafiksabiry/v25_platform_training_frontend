@@ -1,6 +1,7 @@
 // src/infrastructure/services/JourneyService.ts
 import { ApiClient } from '../../lib/api';
 import { TrainingJourney, TrainingModule, Rep } from '../../types';
+import { TrainingModuleService, TrainingSection } from './TrainingModuleService';
 
 export interface LaunchJourneyRequest {
   journey: TrainingJourney;
@@ -162,9 +163,10 @@ export class JourneyService {
 
   /**
    * Create or save a journey
+   * Now creates modules and sections in separate collections
    */
   static async saveJourney(journey: TrainingJourney, modules: TrainingModule[], companyId?: string, gigId?: string, finalExam?: any): Promise<any> {
-    // First, create the journey to get its ID
+    // First, create the journey WITHOUT modules (only with moduleIds array)
     const journeyPayload = {
       title: journey.title,
       description: journey.description,
@@ -174,20 +176,8 @@ export class JourneyService {
       vision: journey.vision,
       companyId: companyId,
       gigId: gigId,
-      modules: modules.map(m => ({
-        _id: (m as any)._id || m.id,
-        id: (m as any)._id || m.id,
-        title: m.title,
-        description: m.description,
-        duration: m.duration,
-        difficulty: m.difficulty,
-        learningObjectives: m.learningObjectives,
-        prerequisites: m.prerequisites,
-        topics: m.topics,
-        content: m.content,
-        sections: (m as any).sections || [],
-        quizIds: [] // Will be populated after creating quizzes
-      }))
+      moduleIds: [], // Will be populated after creating modules
+      finalExamId: null // Will be populated after creating final exam
     };
 
     const response = await ApiClient.post('/training_journeys', journeyPayload);
@@ -199,148 +189,227 @@ export class JourneyService {
     const journeyId = response.data.journey._id;
     const trainingId = journeyId; // Use journey ID as training ID
 
-    // Create quizzes for each module
-    const updatedModules = await Promise.all(
-      modules.map(async (m) => {
-        const moduleId = (m as any)._id || m.id;
-        const quizIds = await this.createQuizzesForModule(moduleId, trainingId, m.assessments || []);
-        return {
-          ...m,
-          quizIds: quizIds
-        };
-      })
-    );
+    console.log('[JourneyService] Created journey:', journeyId);
+
+    // Create modules in training_modules collection
+    const moduleIds: string[] = [];
+    
+    for (let index = 0; index < modules.length; index++) {
+      const m = modules[index];
+      const sections = (m as any).sections || m.content || [];
+      const sectionIds: string[] = [];
+      
+      console.log(`[JourneyService] Creating module ${index + 1}/${modules.length}: ${m.title}`);
+      
+      // Step 1: Create module first (without sections and quizzes)
+      const moduleData = {
+        trainingJourneyId: journeyId,
+        title: m.title,
+        description: m.description || '',
+        duration: m.duration ? Math.round(m.duration * 60) : 0, // Convert hours to minutes
+        difficulty: m.difficulty || 'beginner',
+        learningObjectives: m.learningObjectives || [],
+        prerequisites: m.prerequisites || [],
+        topics: m.topics || [],
+        sectionIds: [], // Will be populated after creating sections
+        quizIds: [], // Will be populated after creating quizzes
+        order: index
+      };
+
+      const createdModule = await TrainingModuleService.createModule(moduleData);
+      const moduleId = createdModule._id || createdModule.id;
+      moduleIds.push(moduleId);
+      console.log(`[JourneyService] ✓ Created module: ${moduleId} - ${m.title}`);
+
+      // Step 2: Create sections for this module
+      if (sections.length > 0) {
+        console.log(`[JourneyService] Creating ${sections.length} sections for module ${m.title}`);
+        for (let sectionIndex = 0; sectionIndex < sections.length; sectionIndex++) {
+          const section = sections[sectionIndex];
+          try {
+            const sectionData: TrainingSection = {
+              moduleId: moduleId,
+              title: section.title || section.content?.title || `Section ${sectionIndex + 1}`,
+              type: section.type || 'document',
+              order: sectionIndex,
+              content: section.content || section,
+              duration: section.duration || section.estimatedDuration || 0
+            };
+            
+            const createdSection = await TrainingModuleService.createSection(moduleId, sectionData);
+            sectionIds.push(createdSection._id || createdSection.id);
+            console.log(`[JourneyService] ✓ Created section: ${createdSection._id} - ${sectionData.title}`);
+          } catch (error) {
+            console.error(`[JourneyService] ✗ Error creating section ${sectionIndex}:`, error);
+          }
+        }
+
+        // Update module with sectionIds
+        await TrainingModuleService.updateModule(moduleId, { sectionIds });
+        console.log(`[JourneyService] ✓ Updated module with ${sectionIds.length} sectionIds`);
+      }
+
+      // Step 3: Create quizzes for this module
+      const quizIds = await this.createQuizzesForModule(moduleId, trainingId, m.assessments || []);
+      console.log(`[JourneyService] ✓ Created ${quizIds.length} quizzes for module ${m.title}`);
+
+      // Update module with quizIds
+      await TrainingModuleService.updateModule(moduleId, { quizIds });
+      console.log(`[JourneyService] ✓ Updated module with ${quizIds.length} quizIds`);
+    }
 
     // Create final exam if provided
     let finalExamId: string | null = null;
     if (finalExam) {
       finalExamId = await this.createFinalExam(trainingId, finalExam);
+      console.log('[JourneyService] Created final exam:', finalExamId);
     }
 
-    // Update journey with quiz references
+    // Update journey with moduleIds and finalExamId (NOT the full modules)
     const updatePayload = {
       ...journeyPayload,
-      modules: updatedModules.map(m => ({
-        _id: (m as any)._id || m.id,
-        id: (m as any)._id || m.id,
-        title: m.title,
-        description: m.description,
-        duration: m.duration,
-        difficulty: m.difficulty,
-        learningObjectives: m.learningObjectives,
-        prerequisites: m.prerequisites,
-        topics: m.topics,
-        content: m.content,
-        sections: (m as any).sections || [],
-        quizIds: (m as any).quizIds || []
-      })),
+      moduleIds: moduleIds,
       finalExamId: finalExamId
     };
 
-    // Update the journey with quiz references
+    console.log('[JourneyService] Updating journey with moduleIds:', moduleIds);
     const updateResponse = await ApiClient.put(`/training_journeys/${journeyId}`, updatePayload);
     
     return {
-      ...response.data,
-      quizIds: updatedModules.flatMap(m => (m as any).quizIds || []),
+      ...updateResponse.data,
+      journeyId: journeyId,
+      moduleIds: moduleIds,
       finalExamId: finalExamId
     };
   }
 
   /**
    * Launch a training journey
+   * Now creates modules and sections in separate collections
    */
   static async launchJourney(request: LaunchJourneyRequest, finalExam?: any): Promise<LaunchJourneyResponse> {
-      // First, create quizzes for each module and get their IDs
-      const modulesWithQuizIds = await Promise.all(
-        request.modules.map(async (m) => {
-          const quizIds = await this.createQuizzesForModule(
-            (m as any)._id || m.id,
-            (request.journey as any)._id || request.journey.id || 'temp-id', // Will be updated after journey creation
-            m.assessments || []
-          );
-          return {
-            ...m,
-            quizIds: quizIds
-          };
-        })
-      );
+    // First, create the journey WITHOUT modules (only with moduleIds array)
+    const journeyPayload = {
+      title: (request.journey as any).title || request.journey.name || 'Untitled Journey',
+      description: request.journey.description,
+      industry: (request.journey as any).industry || (request.journey as any).company?.industry || null,
+      status: 'active',
+      company: (request.journey as any).company,
+      vision: (request.journey as any).vision,
+      companyId: request.companyId,
+      gigId: request.gigId,
+      moduleIds: [], // Will be populated after creating modules
+      finalExamId: null, // Will be populated after creating final exam
+      launchSettings: request.launchSettings,
+      rehearsalData: request.rehearsalData
+    };
 
-      // Create final exam if provided
-      let finalExamId: string | null = null;
-      if (finalExam) {
-        finalExamId = await this.createFinalExam(
-          (request.journey as any)._id || request.journey.id || 'temp-id',
-          finalExam
-        );
+    const response = await ApiClient.post('/training_journeys', journeyPayload);
+    
+    if (!response.data.success || !response.data.journey?._id) {
+      throw new Error('Failed to create journey');
+    }
+
+    const journeyId = response.data.journey._id;
+    const trainingId = journeyId;
+
+    console.log('[JourneyService] Created journey for launch:', journeyId);
+
+    // Create modules in training_modules collection
+    const moduleIds: string[] = [];
+    
+    for (let index = 0; index < request.modules.length; index++) {
+      const m = request.modules[index];
+      const sections = (m as any).sections || m.content || [];
+      const sectionIds: string[] = [];
+      
+      console.log(`[JourneyService] Creating module ${index + 1}/${request.modules.length}: ${m.title}`);
+      
+      // Step 1: Create module first (without sections and quizzes)
+      const moduleData = {
+        trainingJourneyId: journeyId,
+        title: m.title,
+        description: m.description || '',
+        duration: m.duration ? Math.round(m.duration * 60) : 0, // Convert hours to minutes
+        difficulty: m.difficulty || 'beginner',
+        learningObjectives: m.learningObjectives || [],
+        prerequisites: m.prerequisites || [],
+        topics: m.topics || [],
+        sectionIds: [], // Will be populated after creating sections
+        quizIds: [], // Will be populated after creating quizzes
+        order: index
+      };
+
+      const createdModule = await TrainingModuleService.createModule(moduleData);
+      const moduleId = createdModule._id || createdModule.id;
+      moduleIds.push(moduleId);
+      console.log(`[JourneyService] ✓ Created module: ${moduleId} - ${m.title}`);
+
+      // Step 2: Create sections for this module
+      if (sections.length > 0) {
+        console.log(`[JourneyService] Creating ${sections.length} sections for module ${m.title}`);
+        for (let sectionIndex = 0; sectionIndex < sections.length; sectionIndex++) {
+          const section = sections[sectionIndex];
+          try {
+            const sectionData: TrainingSection = {
+              moduleId: moduleId,
+              title: section.title || section.content?.title || `Section ${sectionIndex + 1}`,
+              type: section.type || 'document',
+              order: sectionIndex,
+              content: section.content || section,
+              duration: section.duration || section.estimatedDuration || 0
+            };
+            
+            const createdSection = await TrainingModuleService.createSection(moduleId, sectionData);
+            sectionIds.push(createdSection._id || createdSection.id);
+            console.log(`[JourneyService] ✓ Created section: ${createdSection._id} - ${sectionData.title}`);
+          } catch (error) {
+            console.error(`[JourneyService] ✗ Error creating section ${sectionIndex}:`, error);
+          }
+        }
+
+        // Update module with sectionIds
+        await TrainingModuleService.updateModule(moduleId, { sectionIds });
+        console.log(`[JourneyService] ✓ Updated module with ${sectionIds.length} sectionIds`);
       }
 
-    const payload = {
+      // Step 3: Create quizzes for this module
+      const quizIds = await this.createQuizzesForModule(moduleId, trainingId, m.assessments || []);
+      console.log(`[JourneyService] ✓ Created ${quizIds.length} quizzes for module ${m.title}`);
+
+      // Update module with quizIds
+      await TrainingModuleService.updateModule(moduleId, { quizIds });
+      console.log(`[JourneyService] ✓ Updated module with ${quizIds.length} quizIds`);
+    }
+
+    // Create final exam if provided
+    let finalExamId: string | null = null;
+    if (finalExam) {
+      finalExamId = await this.createFinalExam(trainingId, finalExam);
+      console.log('[JourneyService] Created final exam:', finalExamId);
+    }
+
+    // Launch the journey with enrolled reps
+    const launchPayload = {
       journey: {
-        // Map name to title (frontend uses 'name', backend expects 'title')
-        title: (request.journey as any).title || request.journey.name || 'Untitled Journey',
-        description: request.journey.description,
-        // Get industry from journey or company if available
-        industry: (request.journey as any).industry || (request.journey as any).company?.industry || null,
-        status: 'active',
-        company: (request.journey as any).company,
-        vision: (request.journey as any).vision,
-        launchSettings: request.launchSettings,
-        rehearsalData: request.rehearsalData,
-        companyId: request.companyId,
-        gigId: request.gigId,
-        finalExamId: finalExamId,
-        modules: modulesWithQuizIds.map(m => {
-          // Convert sections to content format for backend compatibility
-          const sections = (m as any).sections || [];
-          const contentFromSections = sections.map((section: any, index: number) => ({
-            id: section.id || `content-${m.id}-${index}`,
-            type: section.type || 'document',
-            title: section.title || `Section ${index + 1}`,
-            content: {
-              text: section.content?.text || '',
-              file: section.content?.file || null,
-              youtubeUrl: section.content?.youtubeUrl || null,
-              keyPoints: section.content?.keyPoints || []
-            },
-            duration: section.estimatedDuration || 10
-          }));
-          
-          // Combine existing content with sections
-          const combinedContent = [
-            ...(m.content || []),
-            ...contentFromSections
-          ];
-          
-          const moduleId = (m as any)._id || m.id;
-          return {
-            _id: moduleId,
-            id: moduleId,
-            title: m.title,
-            description: m.description,
-            duration: m.duration,
-            difficulty: m.difficulty,
-            learningObjectives: m.learningObjectives,
-            prerequisites: m.prerequisites,
-            topics: m.topics,
-            content: combinedContent, // Include sections converted to content
-            sections: sections, // Also include sections for frontend compatibility
-            quizIds: (m as any).quizIds || [] // Include quiz IDs instead of full assessments
-          };
-        })
+        ...journeyPayload,
+        moduleIds: moduleIds,
+        finalExamId: finalExamId
       },
       enrolledRepIds: request.enrolledRepIds
     };
 
-    const response = await ApiClient.post('/training_journeys/launch', payload);
+    console.log('[JourneyService] Launching journey with moduleIds:', moduleIds);
+    const launchResponse = await ApiClient.post('/training_journeys/launch', launchPayload);
     
-    if (!response.data.success) {
-      throw new Error(response.data.error || 'Failed to launch journey');
+    if (!launchResponse.data.success) {
+      throw new Error(launchResponse.data.error || 'Failed to launch journey');
     }
 
     return {
-      ...response.data,
-      quizIds: modulesWithQuizIds.flatMap(m => (m as any).quizIds || []),
+      ...launchResponse.data,
+      journeyId: journeyId,
+      moduleIds: moduleIds,
       finalExamId: finalExamId
     };
   }

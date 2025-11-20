@@ -15,33 +15,50 @@ export default function JourneyTraining({ journeys, onJourneySelect }: JourneyTr
   console.log('[JourneyTraining] Received', journeys.length, 'journeys');
 
   const calculateJourneyDuration = (journey: any): number => {
-    if (!journey.modules || !Array.isArray(journey.modules)) return 0;
-    const totalMinutes = journey.modules.reduce((sum: number, module: any) => {
-      if (typeof module.duration === 'number') {
-        return sum + module.duration;
-      } else if (Array.isArray(module.content) && module.content.length > 0) {
-        return sum + module.content.reduce((contentSum: number, item: any) => {
-          return contentSum + (item.duration || 0);
+    // Check if using new structure (moduleIds) or old structure (modules array)
+    const moduleIds = journey.moduleIds || [];
+    const modules = journey.modules || [];
+    
+    if (moduleIds.length > 0 || modules.length > 0) {
+      // For new structure, we can't calculate duration without loading modules
+      // For old structure, calculate from embedded modules
+      if (modules.length > 0) {
+        const totalMinutes = modules.reduce((sum: number, module: any) => {
+          if (typeof module.duration === 'number') {
+            return sum + module.duration;
+          } else if (Array.isArray(module.content) && module.content.length > 0) {
+            return sum + module.content.reduce((contentSum: number, item: any) => {
+              return contentSum + (item.duration || 0);
+            }, 0);
+          }
+          return sum;
         }, 0);
+        return Math.round(totalMinutes / 60 * 10) / 10; // Convert to hours
       }
-      return sum;
-    }, 0);
-    return Math.round(totalMinutes / 60 * 10) / 10; // Convert to hours
+      // For new structure, return 0 or estimate based on moduleIds count
+      return moduleIds.length * 1; // Estimate 1 hour per module
+    }
+    return 0;
   };
 
   const getJourneyTopics = (journey: any): string[] => {
-    if (!journey.modules || !Array.isArray(journey.modules)) return [];
-    const allTopics: string[] = [];
-    journey.modules.forEach((module: any) => {
-      if (Array.isArray(module.topics)) {
-        allTopics.push(...module.topics);
-      } else if (Array.isArray(module.learningObjectives)) {
-        allTopics.push(...module.learningObjectives.slice(0, 3).map((obj: any) => 
-          typeof obj === 'string' ? obj : obj.text || obj.title || ''
-        ));
-      }
-    });
-    return [...new Set(allTopics)].slice(0, 5); // Remove duplicates and limit to 5
+    // Check if using new structure (moduleIds) or old structure (modules array)
+    const modules = journey.modules || [];
+    
+    if (modules.length > 0) {
+      const allTopics: string[] = [];
+      modules.forEach((module: any) => {
+        if (Array.isArray(module.topics)) {
+          allTopics.push(...module.topics);
+        } else if (Array.isArray(module.learningObjectives)) {
+          allTopics.push(...module.learningObjectives.slice(0, 3).map((obj: any) => 
+            typeof obj === 'string' ? obj : obj.text || obj.title || ''
+          ));
+        }
+      });
+      return [...new Set(allTopics)].slice(0, 5); // Remove duplicates and limit to 5
+    }
+    return [];
   };
 
   return (
@@ -59,7 +76,10 @@ export default function JourneyTraining({ journeys, onJourneySelect }: JourneyTr
         {journeys.map((journey) => {
           const isCompleted = journey.status === 'completed';
           const isActive = journey.status === 'active';
-          const modulesCount = Array.isArray(journey.modules) ? journey.modules.length : 0;
+          // Support both new structure (moduleIds) and old structure (modules)
+          const modulesCount = Array.isArray(journey.moduleIds) && journey.moduleIds.length > 0
+            ? journey.moduleIds.length
+            : (Array.isArray(journey.modules) ? journey.modules.length : 0);
           const duration = calculateJourneyDuration(journey);
           const topics = getJourneyTopics(journey);
           const enrolledCount = Array.isArray(journey.enrolledRepIds) ? journey.enrolledRepIds.length : 0;

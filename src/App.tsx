@@ -51,6 +51,7 @@ import { useTrainingProgress } from './hooks/useTrainingProgress';
 import { Company, TrainingJourney, TrainingModule, Rep } from './types';
 import { getCurrentUserName } from './utils/userUtils';
 import { JourneyService } from './infrastructure/services/JourneyService';
+import { TrainingModuleService } from './infrastructure/services/TrainingModuleService';
 import Cookies from 'js-cookie';
 
 function App() {
@@ -668,60 +669,162 @@ function App() {
             ) : realJourneys.length > 0 ? (
               <JourneyTraining 
                 journeys={realJourneys} 
-                onJourneySelect={(journeyId) => {
+                onJourneySelect={async (journeyId) => {
                   const journey = realJourneys.find(j => (j.id || j._id) === journeyId);
                   if (journey) {
-                    console.log('[App] Journey selected:', journeyId);
+                    console.log('[App] Journey selected:', journeyId, journey);
                     setSelectedJourney(journey);
-                    // Transform journey modules to TrainingModule format
-                    const modules: TrainingModule[] = (journey.modules || []).map((module: any, index: number) => {
-                      const topics = Array.isArray(module.topics) 
-                        ? module.topics 
-                        : (Array.isArray(module.learningObjectives) 
-                            ? module.learningObjectives.slice(0, 5).map((obj: any) => typeof obj === 'string' ? obj : obj.text || obj.title || '')
-                            : []);
+                    setLoadingModules(true);
+                    
+                    try {
+                      // Load modules from separate collection using moduleIds
+                      const journeyIdStr = journey.id || journey._id;
+                      const moduleIds = journey.moduleIds || [];
+                      const hasOldStructure = journey.modules && Array.isArray(journey.modules) && journey.modules.length > 0;
                       
-                      let duration = 0;
-                      if (typeof module.duration === 'number') {
-                        duration = module.duration;
-                      } else if (Array.isArray(module.content) && module.content.length > 0) {
-                        duration = module.content.reduce((sum: number, item: any) => {
-                          return sum + (item.duration || 0);
-                        }, 0);
+                      console.log('[App] Loading modules for journey:', journeyIdStr);
+                      console.log('[App] Has moduleIds:', moduleIds.length > 0, 'Has old modules:', hasOldStructure);
+                      
+                      let modules: TrainingModule[] = [];
+                      
+                      if (moduleIds && Array.isArray(moduleIds) && moduleIds.length > 0) {
+                        // New structure: Load modules from training_modules collection
+                        console.log('[App] Using new structure - loading modules from API');
+                        const loadedModules = await TrainingModuleService.getModulesByJourney(journeyIdStr);
+                        console.log('[App] Loaded', loadedModules.length, 'modules from API');
+                        
+                        if (loadedModules.length === 0) {
+                          console.warn('[App] No modules found in API, falling back to old structure');
+                          throw new Error('No modules found in API');
+                        }
+                        
+                        // For each module, load its sections
+                        modules = await Promise.all(loadedModules.map(async (module: any, index: number) => {
+                          const sectionIds = module.sectionIds || [];
+                          let sections: any[] = [];
+                          
+                          if (sectionIds && Array.isArray(sectionIds) && sectionIds.length > 0) {
+                            // Load sections from training_sections collection
+                            try {
+                              sections = await TrainingModuleService.getSectionsByModule(module._id || module.id);
+                              console.log(`[App] Loaded ${sections.length} sections for module ${module.title}`);
+                            } catch (error) {
+                              console.warn(`[App] Error loading sections for module ${module.title}:`, error);
+                            }
+                          }
+                          
+                          const topics = Array.isArray(module.topics) 
+                            ? module.topics 
+                            : (Array.isArray(module.learningObjectives) 
+                                ? module.learningObjectives.slice(0, 5).map((obj: any) => typeof obj === 'string' ? obj : obj.text || obj.title || '')
+                                : []);
+                          
+                          const durationHours = module.duration ? Math.round(module.duration / 60 * 10) / 10 : 0;
+                          
+                          return {
+                            id: module._id || module.id || `module-${journeyIdStr}-${index}`,
+                            title: module.title || 'Untitled Module',
+                            description: module.description || '',
+                            duration: durationHours,
+                            difficulty: (module.difficulty || 'beginner') as 'beginner' | 'intermediate' | 'advanced',
+                            prerequisites: Array.isArray(module.prerequisites) ? module.prerequisites : [],
+                            learningObjectives: Array.isArray(module.learningObjectives) 
+                              ? module.learningObjectives.map((obj: any) => typeof obj === 'string' ? obj : obj.text || obj.title || '')
+                              : [],
+                            assessments: [],
+                            content: sections.map((s: any) => ({
+                              id: s._id || s.id,
+                              type: s.type || 'document',
+                              title: s.title,
+                              content: s.content || {},
+                              duration: s.duration || 0
+                            })),
+                            sections: sections.map((s: any) => ({
+                              id: s._id || s.id,
+                              type: s.type || 'document',
+                              title: s.title,
+                              content: s.content || {},
+                              duration: s.duration || 0
+                            })),
+                            topics: topics,
+                            progress: 0,
+                            completed: false,
+                            order: module.order !== undefined ? module.order : index,
+                            quizIds: Array.isArray(module.quizIds) ? module.quizIds : []
+                          };
+                        }));
+                      } else if (hasOldStructure) {
+                        // Fallback: try to use journey.modules if moduleIds not available (backward compatibility)
+                        console.log('[App] Using old structure - journey.modules');
+                        modules = journey.modules.map((module: any, index: number) => {
+                          const topics = Array.isArray(module.topics) 
+                            ? module.topics 
+                            : (Array.isArray(module.learningObjectives) 
+                                ? module.learningObjectives.slice(0, 5).map((obj: any) => typeof obj === 'string' ? obj : obj.text || obj.title || '')
+                                : []);
+                          
+                          let duration = 0;
+                          if (typeof module.duration === 'number') {
+                            duration = module.duration;
+                          } else if (Array.isArray(module.content) && module.content.length > 0) {
+                            duration = module.content.reduce((sum: number, item: any) => {
+                              return sum + (item.duration || 0);
+                            }, 0);
+                          }
+                          const durationHours = duration > 0 ? Math.round(duration / 60 * 10) / 10 : 0;
+                          
+                          return {
+                            id: module.id || module._id || `module-${journeyIdStr}-${index}`,
+                            title: module.title || 'Untitled Module',
+                            description: module.description || '',
+                            duration: durationHours,
+                            difficulty: (module.difficulty || 'beginner') as 'beginner' | 'intermediate' | 'advanced',
+                            prerequisites: Array.isArray(module.prerequisites) ? module.prerequisites : [],
+                            learningObjectives: Array.isArray(module.learningObjectives) 
+                              ? module.learningObjectives.map((obj: any) => typeof obj === 'string' ? obj : obj.text || obj.title || '')
+                              : [],
+                            assessments: Array.isArray(module.assessments) ? module.assessments : [],
+                            content: Array.isArray(module.content) ? module.content : [],
+                            sections: Array.isArray(module.sections) ? module.sections : [],
+                            topics: topics,
+                            progress: 0,
+                            completed: false,
+                            order: index,
+                            quizIds: Array.isArray(module.quizIds) ? module.quizIds : []
+                          };
+                        });
+                      } else {
+                        console.warn('[App] Journey has no modules or moduleIds');
+                        modules = [];
                       }
-                      const durationHours = duration > 0 ? Math.round(duration / 60 * 10) / 10 : 0;
                       
-                      return {
-                        id: module.id || module._id || `module-${journey.id || journey._id}-${index}`,
-                        title: module.title || 'Untitled Module',
-                        description: module.description || '',
-                        duration: durationHours,
-                        difficulty: (module.difficulty || 'beginner') as 'beginner' | 'intermediate' | 'advanced',
-                        prerequisites: Array.isArray(module.prerequisites) ? module.prerequisites : [],
-                        learningObjectives: Array.isArray(module.learningObjectives) 
-                          ? module.learningObjectives.map((obj: any) => typeof obj === 'string' ? obj : obj.text || obj.title || '')
-                          : [],
-                        assessments: Array.isArray(module.assessments) ? module.assessments : [],
-                        content: Array.isArray(module.content) ? module.content : [],
-                        sections: Array.isArray(module.sections) ? module.sections : [],
-                        topics: topics,
-                        progress: 0,
-                        completed: false,
-                        order: index,
-                        quizIds: Array.isArray(module.quizIds) ? module.quizIds : []
-                      };
-                    });
-                    setSelectedJourneyModules(modules);
-                    console.log('[App] Selected journey:', journey.title || journey.name, 'with', modules.length, 'modules');
-                    modules.forEach((m, idx) => {
-                      const quizIds = (m as any).quizIds;
-                      console.log(`[App] Module ${idx + 1} (${m.title}):`, {
-                        quizIds: quizIds,
-                        hasQuizIds: !!quizIds && Array.isArray(quizIds) && quizIds.length > 0,
-                        quizIdsCount: Array.isArray(quizIds) ? quizIds.length : 0
+                      if (modules.length === 0) {
+                        console.error('[App] No modules loaded for journey:', journeyIdStr);
+                        alert('No modules found for this journey. Please check the journey configuration.');
+                        return;
+                      }
+                      
+                      setSelectedJourneyModules(modules);
+                      console.log('[App] Selected journey:', journey.title || journey.name, 'with', modules.length, 'modules');
+                      modules.forEach((m, idx) => {
+                        const quizIds = (m as any).quizIds;
+                        console.log(`[App] Module ${idx + 1} (${m.title}):`, {
+                          quizIds: quizIds,
+                          hasQuizIds: !!quizIds && Array.isArray(quizIds) && quizIds.length > 0,
+                          quizIdsCount: Array.isArray(quizIds) ? quizIds.length : 0,
+                          sectionsCount: m.sections?.length || 0,
+                          contentCount: m.content?.length || 0
+                        });
                       });
-                    });
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    } catch (error) {
+                      console.error('[App] Error loading modules:', error);
+                      alert('Error loading modules. Please try again.');
+                    } finally {
+                      setLoadingModules(false);
+                    }
+                  } else {
+                    console.error('[App] Journey not found:', journeyId);
                   }
                 }} 
               />
@@ -1135,23 +1238,26 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 relative">
+      {/* Sidebar - Always rendered first */}
       <Sidebar 
         activeTab={activeTab} 
         onTabChange={setActiveTab}
         isOpen={sidebarOpen}
       />
       
+      {/* Overlay for mobile */}
       {sidebarOpen && (
         <div 
-          className="fixed inset-0 bg-black bg-opacity-50 z-20 md:hidden"
+          className="fixed inset-0 bg-black bg-opacity-50 z-30 md:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
       
-      <div className="flex-1 flex flex-col md:ml-64 transition-all duration-300">
+      {/* Main content - Always has margin on md+ screens */}
+      <div className="flex-1 flex flex-col ml-0 md:ml-64 transition-all duration-300 w-full">
         {/* Fixed Top Bar */}
-        <div className="bg-white border-b border-gray-200 sticky top-0 z-20">
+        <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
           <div className="flex items-center justify-between px-6 py-2">
             <div className="flex items-center space-x-4">
               <span className="text-sm text-gray-600">View as:</span>
@@ -1196,7 +1302,7 @@ function App() {
         </div>
         
         {/* Fixed Header */}
-        <div className="sticky top-[42px] z-20">
+        <div className="sticky top-[42px] z-10">
         <Header 
             repName={getCurrentUserName()} 
           onMenuToggle={() => setSidebarOpen(!sidebarOpen)}
