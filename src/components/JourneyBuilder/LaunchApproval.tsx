@@ -5,7 +5,6 @@ import DocumentViewer from '../DocumentViewer/DocumentViewer';
 import { JourneyService } from '../../infrastructure/services/JourneyService';
 import { DraftService } from '../../infrastructure/services/DraftService';
 import { AIService } from '../../infrastructure/services/AIService';
-import { DraftService } from '../../infrastructure/services/DraftService';
 import axios from 'axios';
 import Cookies from 'js-cookie';
 

@@ -277,7 +277,6 @@ export class JourneyService {
       response = await ApiClient.post('/training_journeys', journeyPayload);
       
       // Spring Data MongoDB uses 'id' (not '_id') in Java entities
-      const createdJourney = response.data.journey || response.data;
       // Backend can return journey directly or wrapped in response.data.journey
       const createdJourney = response.data.journey || response.data;
       
