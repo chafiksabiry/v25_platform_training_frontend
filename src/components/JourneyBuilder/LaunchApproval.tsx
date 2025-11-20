@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CheckCircle, AlertTriangle, MessageSquare, Star, Users, Rocket, ArrowLeft, Clock, BarChart3, Eye, Play, Zap, Video, ChevronDown, ChevronUp, FileQuestion, Loader2, FileText, Edit3, Save, X as XIcon } from 'lucide-react';
 import { TrainingJourney, TrainingModule, RehearsalFeedback, Rep, Assessment, Question } from '../../types';
 import DocumentViewer from '../DocumentViewer/DocumentViewer';
@@ -50,6 +50,21 @@ export default function LaunchApproval({
   const [editingQuestionId, setEditingQuestionId] = useState<string | null>(null);
   const [editedQuestions, setEditedQuestions] = useState<Record<string, Question>>({});
   // Quiz configuration is now automatic - no modal needed
+
+  // CRITICAL: Load modules from localStorage on mount to get quizzes generated in RehearsalMode
+  useEffect(() => {
+    const draft = DraftService.getDraft();
+    if (draft.modules && draft.modules.length > 0) {
+      console.log('[LaunchApproval] Loading modules from localStorage (with quizzes):', draft.modules.length);
+      // Check if modules have quizzes
+      const modulesWithQuizzes = draft.modules.filter(m => m.assessments && m.assessments.length > 0);
+      console.log('[LaunchApproval] Modules with quizzes:', modulesWithQuizzes.length);
+      setUpdatedModules(draft.modules);
+    } else {
+      console.log('[LaunchApproval] No modules found in localStorage, using props');
+      setUpdatedModules(modules);
+    }
+  }, []); // Only run on mount
 
   // Save edited question
   const saveQuestionEdit = (moduleId: string, assessmentId: string, questionIndex: number, editedQuestion: Question) => {
@@ -388,14 +403,27 @@ export default function LaunchApproval({
       
       console.log('[LaunchApproval] Launching journey with ID:', existingJourneyId || 'NEW');
       
+      // CRITICAL: Re-load modules from localStorage right before launch to ensure we have the latest quizzes
+      const latestDraft = DraftService.getDraft();
+      const modulesToLaunch = latestDraft.modules && latestDraft.modules.length > 0 ? latestDraft.modules : updatedModules;
+      
+      // Log quiz information for debugging
+      const modulesWithQuizzes = modulesToLaunch.filter(m => m.assessments && m.assessments.length > 0);
+      console.log('[LaunchApproval] Modules to launch:', modulesToLaunch.length);
+      console.log('[LaunchApproval] Modules with quizzes:', modulesWithQuizzes.length);
+      modulesToLaunch.forEach((m, idx) => {
+        const quizCount = m.assessments ? m.assessments.length : 0;
+        console.log(`[LaunchApproval] Module ${idx + 1} (${m.title}): ${quizCount} quiz(es)`);
+      });
+      
       const launchResponse = await JourneyService.launchJourney({
         journey: journeyWithIndustry,
-        modules: updatedModules, // Use updated modules with quizzes
+        modules: modulesToLaunch, // Use modules from localStorage with quizzes
         enrolledRepIds: enrolledReps.map(r => r.id),
         launchSettings: launchSettings,
         rehearsalData: {
           rating: rehearsalRating,
-          modulesCompleted: updatedModules.length,
+          modulesCompleted: modulesToLaunch.length,
           feedback: rehearsalFeedback.map(f => f.message)
         },
         companyId: companyId || undefined,
@@ -405,12 +433,12 @@ export default function LaunchApproval({
       console.log('✅ Journey saved to MongoDB:', launchResponse);
       console.log('📊 Launching with:', {
         journey: updatedJourney.name,
-        modules: updatedModules.length,
+        modules: modulesToLaunch.length,
         enrolledReps: enrolledReps.length,
         assessments: updatedModules.reduce((sum, m) => sum + (m.assessments?.length || 0), 0)
       });
       
-      onLaunch(updatedJourney, updatedModules, enrolledReps);
+      onLaunch(updatedJourney, modulesToLaunch, enrolledReps);
     } catch (error) {
       console.error('❌ Failed to save journey to MongoDB:', error);
       alert('Erreur lors de la sauvegarde du training. Veuillez réessayer.');
