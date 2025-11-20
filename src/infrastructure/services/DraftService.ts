@@ -20,6 +20,7 @@ export interface JourneyDraft {
 
 export class DraftService {
   private static saveTimeout: NodeJS.Timeout | null = null;
+  private static isCleaning: boolean = false; // Flag to prevent infinite recursion during cleanup
 
   /**
    * Sauvegarder le brouillon localement (localStorage)
@@ -50,28 +51,42 @@ export class DraftService {
         
         // CRITICAL: Clean up invalid draftId (timestamps) from localStorage
         // If journey.id is a timestamp (not MongoDB ObjectId), remove it
-        const isValidMongoId = (id: string | undefined) => id && /^[0-9a-fA-F]{24}$/.test(id);
-        
-        if (draft.journey && (draft.journey as any).id) {
-          const journeyId = (draft.journey as any).id;
-          if (!isValidMongoId(journeyId)) {
-            console.warn('[DraftService] Found invalid journey.id (timestamp) in localStorage:', journeyId, '- removing it');
-            delete (draft.journey as any).id;
-            // Also clear draftId if it's the same invalid value
-            if (draft.draftId === journeyId) {
-              console.warn('[DraftService] Clearing invalid draftId:', draft.draftId);
-              draft.draftId = undefined;
+        // Use a flag to prevent infinite recursion
+        if (!this.isCleaning) {
+          this.isCleaning = true;
+          try {
+            const isValidMongoId = (id: string | undefined) => id && /^[0-9a-fA-F]{24}$/.test(id);
+            let needsSave = false;
+            
+            if (draft.journey && (draft.journey as any).id) {
+              const journeyId = (draft.journey as any).id;
+              if (!isValidMongoId(journeyId)) {
+                console.warn('[DraftService] Found invalid journey.id (timestamp) in localStorage:', journeyId, '- removing it');
+                delete (draft.journey as any).id;
+                // Also clear draftId if it's the same invalid value
+                if (draft.draftId === journeyId) {
+                  console.warn('[DraftService] Clearing invalid draftId:', draft.draftId);
+                  draft.draftId = undefined;
+                }
+                needsSave = true;
+              }
             }
-            // Save cleaned draft back to localStorage
-            this.saveDraftLocally(draft);
+            
+            // Also validate draftId
+            if (draft.draftId && !isValidMongoId(draft.draftId)) {
+              console.warn('[DraftService] Found invalid draftId (timestamp) in localStorage:', draft.draftId, '- clearing it');
+              draft.draftId = undefined;
+              needsSave = true;
+            }
+            
+            // Save cleaned draft back to localStorage only if changes were made
+            if (needsSave) {
+              // Use direct localStorage.setItem to avoid recursion
+              localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft));
+            }
+          } finally {
+            this.isCleaning = false;
           }
-        }
-        
-        // Also validate draftId
-        if (draft.draftId && !isValidMongoId(draft.draftId)) {
-          console.warn('[DraftService] Found invalid draftId (timestamp) in localStorage:', draft.draftId, '- clearing it');
-          draft.draftId = undefined;
-          this.saveDraftLocally(draft);
         }
         
         return draft;
