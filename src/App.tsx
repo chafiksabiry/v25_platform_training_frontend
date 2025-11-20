@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Sparkles, Zap, Upload, Wand2, Rocket, Eye, Target } from 'lucide-react';
+import { User, Sparkles, Zap, Upload, Wand2, Rocket, Eye, Target, BookOpen, Play, CheckCircle } from 'lucide-react';
 // import { useAuth } from './hooks/useAuth';
 import JourneyBuilder from './components/JourneyBuilder/JourneyBuilder';
 import { TrainingHub } from './components/Training';
@@ -98,6 +98,7 @@ function App() {
   const [userType, setUserType] = useState<'company' | 'rep' | null>(null);
   const [checkingUserType, setCheckingUserType] = useState(true);
   const [traineeProgressData, setTraineeProgressData] = useState<Record<string, any>>({});
+  const [showTraineeJourneyList, setShowTraineeJourneyList] = useState(true); // Show list first
 
   // Load real training journeys and convert them to modules
   useEffect(() => {
@@ -195,32 +196,36 @@ function App() {
               
               setTraineeJourneys(activeJourneys);
               
-              // If there's at least one journey, select the first one and load its progress
-              if (activeJourneys.length > 0) {
-                const firstJourney = activeJourneys[0];
-                setSelectedTraineeJourney(firstJourney);
-                console.log('[App] Selected first trainee journey:', firstJourney.title || firstJourney.name);
-                
-                // Load progress for this journey
-                try {
-                  const journeyId = firstJourney.id || firstJourney._id;
-                  const progressData = await TrainingService.getRepProgress(detectedAgentId, journeyId);
-                  console.log('[App] Loaded progress data:', progressData);
-                  
-                  // Store progress data by journey ID
-                  if (progressData) {
-                    const progressArray = Array.isArray(progressData) ? progressData : [progressData];
-                    const progressMap: Record<string, any> = {};
-                    progressArray.forEach((p: any) => {
-                      if (p.moduleId) {
-                        progressMap[p.moduleId] = p;
-                      }
-                    });
-                    setTraineeProgressData(prev => ({ ...prev, [journeyId]: progressMap }));
+              // Load progress for all journeys
+              if (activeJourneys.length > 0 && detectedAgentId) {
+                console.log('[App] Loading progress for all journeys...');
+                const progressPromises = activeJourneys.map(async (journey: any) => {
+                  const journeyId = journey.id || journey._id;
+                  try {
+                    const progressData = await TrainingService.getRepProgress(detectedAgentId, journeyId);
+                    if (progressData) {
+                      const progressArray = Array.isArray(progressData) ? progressData : [progressData];
+                      const progressMap: Record<string, any> = {};
+                      progressArray.forEach((p: any) => {
+                        if (p.moduleId) {
+                          progressMap[p.moduleId] = p;
+                        }
+                      });
+                      return { journeyId, progressMap };
+                    }
+                  } catch (error) {
+                    console.warn(`[App] Could not load progress for journey ${journeyId}:`, error);
                   }
-                } catch (progressError) {
-                  console.warn('[App] Could not load progress data:', progressError);
-                }
+                  return null;
+                });
+                
+                const progressResults = await Promise.all(progressPromises);
+                progressResults.forEach((result) => {
+                  if (result) {
+                    setTraineeProgressData(prev => ({ ...prev, [result.journeyId]: result.progressMap }));
+                  }
+                });
+                console.log('[App] Loaded progress for all journeys');
               }
             } catch (error) {
               console.error('[App] Error loading trainee journeys:', error);
@@ -672,7 +677,230 @@ function App() {
     return <JourneyBuilder onComplete={handleJourneyComplete} />;
   }
 
-  // Auto-show TraineePortal if userType is 'rep' and journeys are loaded
+  // Show journey list first for trainees, then allow selection
+  if (userType === 'rep' && agentId && traineeJourneys.length > 0 && !selectedTraineeJourney && !showTraineePortal && !showLaunchedDashboard && !showJourneyBuilder && !showJourneySuccess && !showManualTraining && !checkingUserType) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Sidebar 
+          activeTab={activeTab} 
+          onTabChange={setActiveTab}
+          isOpen={sidebarOpen}
+          userType={userType}
+        />
+        {sidebarOpen && (
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 z-30 md:hidden"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+        <div className="flex-1 flex flex-col ml-0 md:ml-64 transition-all duration-300 w-full">
+          <div className="bg-white border-b border-gray-200 flex-shrink-0 z-10">
+            <Header 
+              repName={getCurrentUserName()} 
+              onMenuToggle={() => setSidebarOpen(!sidebarOpen)}
+            />
+          </div>
+          <main className="flex-1 p-6 overflow-y-auto">
+            <div className="max-w-7xl mx-auto">
+              {/* Header */}
+              <div className="mb-8">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h1 className="text-3xl font-bold text-gray-900 mb-2">Mes Formations</h1>
+                    <p className="text-gray-600">Sélectionnez une formation pour commencer votre apprentissage</p>
+                  </div>
+                  {traineeJourneys.length > 0 && (
+                    <div className="text-right">
+                      <div className="text-sm text-gray-600 mb-1">
+                        {traineeJourneys.filter((j: any) => {
+                          const journeyId = j.id || j._id;
+                          const progress = traineeProgressData[journeyId] || {};
+                          const completed = Object.values(progress).filter((p: any) => 
+                            p.status === 'completed' || p.progress >= 100
+                          ).length;
+                          const modulesCount = Array.isArray(j.modules) ? j.modules.length : 0;
+                          return modulesCount > 0 && completed >= modulesCount;
+                        }).length} sur {traineeJourneys.length} terminées
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Loading State */}
+              {loadingTraineeJourneys ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                  <span className="ml-3 text-gray-600">Chargement de vos formations...</span>
+                </div>
+              ) : traineeJourneys.length === 0 ? (
+                <div className="text-center py-12 bg-white rounded-xl border border-gray-200">
+                  <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-600 text-lg mb-2">Aucune formation disponible</p>
+                  <p className="text-gray-500 text-sm">Contactez votre administrateur pour être inscrit à une formation.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {traineeJourneys.map((journey: any) => {
+                    const journeyId = journey.id || journey._id;
+                    const modulesCount = Array.isArray(journey.modules) ? journey.modules.length : 0;
+                    const journeyProgress = traineeProgressData[journeyId] || {};
+                    
+                    // Calculate overall progress for this journey
+                    const completedModules = Object.values(journeyProgress).filter((p: any) => 
+                      p.status === 'completed' || p.progress >= 100
+                    ).length;
+                    const overallProgress = modulesCount > 0 
+                      ? Math.round((completedModules / modulesCount) * 100)
+                      : 0;
+                    
+                    const isCompleted = journey.status === 'completed' || overallProgress >= 100;
+                    const isActive = journey.status === 'active' && overallProgress < 100;
+                    
+                    return (
+                      <div
+                        key={journeyId}
+                        className="bg-white rounded-xl shadow-sm border-2 border-gray-200 overflow-hidden hover:shadow-lg hover:border-blue-300 transition-all duration-200 cursor-pointer"
+                        onClick={async () => {
+                          // Load progress if not already loaded
+                          if (agentId && !traineeProgressData[journeyId]) {
+                            try {
+                              const progressData = await TrainingService.getRepProgress(agentId, journeyId);
+                              if (progressData) {
+                                const progressArray = Array.isArray(progressData) ? progressData : [progressData];
+                                const progressMap: Record<string, any> = {};
+                                progressArray.forEach((p: any) => {
+                                  if (p.moduleId) {
+                                    progressMap[p.moduleId] = p;
+                                  }
+                                });
+                                setTraineeProgressData(prev => ({ ...prev, [journeyId]: progressMap }));
+                              }
+                            } catch (error) {
+                              console.error('[App] Error loading progress:', error);
+                            }
+                          }
+                          // Select the journey
+                          setSelectedTraineeJourney(journey);
+                        }}
+                      >
+                        <div className="p-6">
+                          {/* Header */}
+                          <div className="flex items-start justify-between mb-4">
+                            <div className="flex items-center space-x-3">
+                              <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
+                                isCompleted 
+                                  ? 'bg-green-100' 
+                                  : isActive 
+                                  ? 'bg-blue-100' 
+                                  : 'bg-gray-100'
+                              }`}>
+                                <BookOpen className={`h-6 w-6 ${
+                                  isCompleted 
+                                    ? 'text-green-600' 
+                                    : isActive 
+                                    ? 'text-blue-600' 
+                                    : 'text-gray-600'
+                                }`} />
+                              </div>
+                              <div>
+                                <div className={`text-xs font-semibold px-2 py-1 rounded-full ${
+                                  isCompleted 
+                                    ? 'bg-green-100 text-green-700' 
+                                    : isActive 
+                                    ? 'bg-blue-100 text-blue-700' 
+                                    : 'bg-gray-100 text-gray-700'
+                                }`}>
+                                  {isCompleted ? 'Terminé' : isActive ? 'En cours' : 'Disponible'}
+                                </div>
+                              </div>
+                            </div>
+                            {isCompleted && (
+                              <CheckCircle className="h-6 w-6 text-green-500" />
+                            )}
+                          </div>
+
+                          {/* Title */}
+                          <h3 className="text-xl font-bold text-gray-900 mb-2">
+                            {journey.title || journey.name || 'Formation sans titre'}
+                          </h3>
+                          
+                          {/* Description */}
+                          {journey.description && (
+                            <p className="text-gray-600 text-sm mb-4 line-clamp-2">
+                              {journey.description}
+                            </p>
+                          )}
+
+                          {/* Stats */}
+                          <div className="flex items-center space-x-4 mb-4 text-sm text-gray-600">
+                            <div className="flex items-center space-x-1">
+                              <BookOpen className="h-4 w-4" />
+                              <span>{modulesCount} modules</span>
+                            </div>
+                            {overallProgress > 0 && (
+                              <div className="flex items-center space-x-1">
+                                <CheckCircle className="h-4 w-4 text-green-500" />
+                                <span>{completedModules}/{modulesCount} complétés</span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Progress Bar */}
+                          {overallProgress > 0 && (
+                            <div className="mb-4">
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-xs font-medium text-gray-700">Progression</span>
+                                <span className="text-xs font-bold text-gray-900">{overallProgress}%</span>
+                              </div>
+                              <div className="w-full bg-gray-200 rounded-full h-2">
+                                <div 
+                                  className={`h-2 rounded-full transition-all duration-300 ${
+                                    isCompleted ? 'bg-green-500' : 'bg-blue-500'
+                                  }`}
+                                  style={{ width: `${overallProgress}%` }}
+                                />
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Action Button */}
+                          <button
+                            className={`w-full flex items-center justify-center space-x-2 py-3 px-4 rounded-lg font-semibold transition-all ${
+                              isCompleted
+                                ? 'bg-green-50 text-green-700 hover:bg-green-100 border border-green-200'
+                                : overallProgress > 0
+                                ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800'
+                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
+                            }`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedTraineeJourney(journey);
+                            }}
+                          >
+                            <Play className="h-4 w-4" />
+                            <span>
+                              {isCompleted
+                                ? 'Réviser'
+                                : overallProgress > 0
+                                ? 'Continuer'
+                                : 'Commencer'}
+                            </span>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
+
+  // Auto-show TraineePortal if userType is 'rep' and a journey is selected
   if (userType === 'rep' && agentId && selectedTraineeJourney && !showTraineePortal && !showLaunchedDashboard && !showJourneyBuilder && !showJourneySuccess && !showManualTraining && !checkingUserType) {
     // Create a mock trainee object from agentId
     const autoTrainee: Rep = {
@@ -834,15 +1062,8 @@ function App() {
         }}
         onAssessmentComplete={(assessmentId, score) => updateAssessmentResult(assessmentId, score, score >= 80 ? 'passed' : 'failed')}
         onBack={() => {
-          // If there are multiple journeys, allow switching
-          if (traineeJourneys.length > 1) {
-            const currentIndex = traineeJourneys.findIndex(j => (j.id || j._id) === (selectedTraineeJourney.id || selectedTraineeJourney._id));
-            const nextIndex = (currentIndex + 1) % traineeJourneys.length;
-            setSelectedTraineeJourney(traineeJourneys[nextIndex]);
-          } else {
-            // If only one journey, just reload the page or show a message
-            console.log('[App] Only one journey available');
-          }
+          // Return to journey list
+          setSelectedTraineeJourney(null);
         }}
       />
     );

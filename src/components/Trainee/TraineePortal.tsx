@@ -560,10 +560,10 @@ export default function TraineePortal({
                   </button>
                   <button
                     onClick={onBack}
-                    className="flex items-center space-x-2 px-4 py-2 text-gray-600 hover:text-gray-900 rounded-lg transition-colors"
+                    className="flex items-center space-x-2 px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
                   >
                     <ArrowLeft className="h-4 w-4" />
-                    <span>Mes Formations</span>
+                    <span>Retour aux Formations</span>
                   </button>
                   <button
                     onClick={() => setActiveView('progress')}
