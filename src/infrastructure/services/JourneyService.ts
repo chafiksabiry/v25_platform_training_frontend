@@ -324,10 +324,28 @@ export class JourneyService {
     
     for (let index = 0; index < modules.length; index++) {
       const m = modules[index];
-      const sections = (m as any).sections || m.content || [];
+      // CRITICAL: Use sections array if available, otherwise check if content is a single object (not array)
+      // If content is an array, it might contain multiple items - we should only use it if sections is not available
+      let sections: any[] = [];
+      if ((m as any).sections && Array.isArray((m as any).sections)) {
+        sections = (m as any).sections;
+      } else if (m.content) {
+        // If content is an array, treat each item as a section
+        // If content is a single object, wrap it in an array
+        if (Array.isArray(m.content)) {
+          sections = m.content;
+        } else {
+          sections = [m.content];
+        }
+      }
       const sectionIds: string[] = [];
       
-      console.log(`[JourneyService] Creating module ${index + 1}/${modules.length}: ${m.title}`);
+      console.log(`[JourneyService] Creating module ${index + 1}/${modules.length}: ${m.title}`, {
+        hasSections: (m as any).sections?.length || 0,
+        hasContent: !!m.content,
+        contentIsArray: Array.isArray(m.content),
+        sectionsToCreate: sections.length
+      });
       
       // Step 1: Create module first (without sections and quizzes)
       // IMPORTANT: Don't include _id - let MongoDB generate ObjectId automatically
