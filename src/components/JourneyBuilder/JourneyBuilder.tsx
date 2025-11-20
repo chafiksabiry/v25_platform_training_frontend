@@ -52,9 +52,10 @@ export default function JourneyBuilder({ onComplete }: JourneyBuilderProps) {
     restoreDraft();
   }, []);
 
-  // Sauvegarder automatiquement à chaque changement
+  // Sauvegarder automatiquement à chaque changement (avec debounce)
   useEffect(() => {
     if (!isRestoringDraft && (company || journey || uploads.length > 0 || modules.length > 0)) {
+      // Use debounced save to prevent multiple rapid saves
       DraftService.saveDraftToBackend({
         company,
         journey,

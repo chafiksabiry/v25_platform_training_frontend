@@ -345,9 +345,9 @@ export class JourneyService {
   /**
    * Launch a training journey
    * Now creates modules and sections in separate collections
+   * @param journeyId Optional: if provided, updates existing journey instead of creating new one
    */
-  static async launchJourney(request: LaunchJourneyRequest, finalExam?: any): Promise<LaunchJourneyResponse> {
-    // First, create the journey WITHOUT modules (only with moduleIds array)
+  static async launchJourney(request: LaunchJourneyRequest, finalExam?: any, journeyId?: string): Promise<LaunchJourneyResponse> {
     const journeyPayload = {
       title: (request.journey as any).title || request.journey.name || 'Untitled Journey',
       description: request.journey.description,
@@ -363,14 +363,71 @@ export class JourneyService {
       rehearsalData: request.rehearsalData
     };
 
-    const response = await ApiClient.post('/training_journeys', journeyPayload);
+    let existingJourneyId: string | null = null;
+    let isUpdate = false;
     
-    if (!response.data.success || !response.data.journey?._id) {
-      throw new Error('Failed to create journey');
+    // If journeyId is provided, check if journey exists and update it
+    const journeyIdToUse = journeyId || (request.journey as any).id || (request.journey as any)._id;
+    
+    if (journeyIdToUse) {
+      try {
+        const existingJourney = await ApiClient.get(`/training_journeys/${journeyIdToUse}`);
+        if (existingJourney.data.success && existingJourney.data.journey) {
+          existingJourneyId = journeyIdToUse;
+          isUpdate = true;
+          console.log('[JourneyService] Launching existing journey:', journeyIdToUse);
+          
+          // Delete old modules and sections before creating new ones
+          const oldModuleIds = existingJourney.data.journey.moduleIds || [];
+          if (oldModuleIds.length > 0) {
+            console.log('[JourneyService] Deleting old modules before launch:', oldModuleIds.length);
+            for (const oldModuleId of oldModuleIds) {
+              try {
+                // Get module to find its sections
+                const oldModule = await TrainingModuleService.getModuleById(oldModuleId);
+                if (oldModule && oldModule.sectionIds) {
+                  // Delete sections
+                  for (const sectionId of oldModule.sectionIds) {
+                    try {
+                      await TrainingModuleService.deleteSection(sectionId);
+                    } catch (error) {
+                      console.warn(`[JourneyService] Could not delete section ${sectionId}:`, error);
+                    }
+                  }
+                }
+                // Delete module
+                await TrainingModuleService.deleteModule(oldModuleId);
+                console.log(`[JourneyService] ✓ Deleted old module: ${oldModuleId}`);
+              } catch (error) {
+                console.warn(`[JourneyService] Could not delete module ${oldModuleId}:`, error);
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.warn('[JourneyService] Journey not found, will create new one:', error);
+      }
     }
 
-    const journeyId = response.data.journey._id;
-    const trainingId = journeyId;
+    let response;
+    if (existingJourneyId && isUpdate) {
+      // Update existing journey
+      response = await ApiClient.put(`/training_journeys/${existingJourneyId}`, journeyPayload);
+      if (!response.data.success) {
+        throw new Error('Failed to update journey');
+      }
+      console.log('[JourneyService] Updated journey for launch:', existingJourneyId);
+    } else {
+      // Create new journey
+      response = await ApiClient.post('/training_journeys', journeyPayload);
+      if (!response.data.success || !response.data.journey?._id) {
+        throw new Error('Failed to create journey');
+      }
+      existingJourneyId = response.data.journey._id;
+      console.log('[JourneyService] Created new journey for launch:', existingJourneyId);
+    }
+
+    const trainingId = existingJourneyId;
 
     console.log('[JourneyService] Created journey for launch:', journeyId);
 
@@ -452,13 +509,15 @@ export class JourneyService {
     const launchPayload = {
       journey: {
         ...journeyPayload,
+        id: existingJourneyId, // Include journey ID for update
+        _id: existingJourneyId, // Also include _id for MongoDB compatibility
         moduleIds: moduleIds,
         finalExamId: finalExamId
       },
       enrolledRepIds: request.enrolledRepIds
     };
 
-    console.log('[JourneyService] Launching journey with moduleIds:', moduleIds);
+    console.log('[JourneyService] Launching journey with ID:', existingJourneyId, 'moduleIds:', moduleIds);
     const launchResponse = await ApiClient.post('/training_journeys/launch', launchPayload);
     
     if (!launchResponse.data.success) {

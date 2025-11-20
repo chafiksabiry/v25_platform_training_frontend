@@ -74,6 +74,14 @@ export class DraftService {
 
     // Programmer une sauvegarde après un délai
     this.saveTimeout = setTimeout(async () => {
+      // Prevent concurrent saves
+      if (this.isSaving) {
+        console.log('[DraftService] Save already in progress, skipping debounced save...');
+        return;
+      }
+
+      this.isSaving = true;
+
       try {
         const fullDraft = this.getDraftLocally();
         const updatedDraft: JourneyDraft = {
@@ -101,6 +109,8 @@ export class DraftService {
             // Use existing draftId if available to update instead of creating new journey
             const existingJourneyId = updatedDraft.draftId || (updatedDraft.journey as any).id || (updatedDraft.journey as any)._id;
             
+            console.log('[DraftService] Saving draft (debounced) with journeyId:', existingJourneyId || 'NEW');
+            
             const response = await JourneyService.saveJourney(
               journeyToSave,
               updatedDraft.modules,
@@ -115,7 +125,7 @@ export class DraftService {
               const savedJourneyId = response.journey?.id || response.journeyId || response.journey?._id;
               updatedDraft.draftId = savedJourneyId;
               this.saveDraftLocally(updatedDraft);
-              console.log('[DraftService] Draft saved successfully, journeyId:', savedJourneyId);
+              console.log('[DraftService] ✓ Draft saved successfully (debounced), journeyId:', savedJourneyId);
             }
           } catch (error) {
             console.warn('[DraftService] Could not save draft to backend (will retry):', error);
@@ -124,18 +134,29 @@ export class DraftService {
         }
       } catch (error) {
         console.error('[DraftService] Error saving draft to backend:', error);
+      } finally {
+        this.isSaving = false;
       }
     }, DRAFT_SAVE_INTERVAL);
   }
 
   /**
    * Sauvegarder immédiatement (sans debounce)
+   * Prevents concurrent saves to avoid creating multiple journeys
    */
   static async saveDraftImmediately(draft: Partial<JourneyDraft>): Promise<void> {
+    // Prevent concurrent saves
+    if (this.isSaving) {
+      console.log('[DraftService] Save already in progress, skipping...');
+      return;
+    }
+
     if (this.saveTimeout) {
       clearTimeout(this.saveTimeout);
       this.saveTimeout = null;
     }
+
+    this.isSaving = true;
 
     try {
       const fullDraft = this.getDraftLocally();
@@ -163,6 +184,8 @@ export class DraftService {
           // Use existing draftId if available to update instead of creating new journey
           const existingJourneyId = updatedDraft.draftId || (updatedDraft.journey as any).id || (updatedDraft.journey as any)._id;
           
+          console.log('[DraftService] Saving draft with journeyId:', existingJourneyId || 'NEW');
+          
           const response = await JourneyService.saveJourney(
             journeyToSave,
             updatedDraft.modules,
@@ -176,7 +199,7 @@ export class DraftService {
             const savedJourneyId = response.journey?.id || response.journeyId || response.journey?._id;
             updatedDraft.draftId = savedJourneyId;
             this.saveDraftLocally(updatedDraft);
-            console.log('[DraftService] Draft saved immediately, journeyId:', savedJourneyId);
+            console.log('[DraftService] ✓ Draft saved immediately, journeyId:', savedJourneyId);
           }
         } catch (error) {
           console.warn('[DraftService] Could not save draft immediately to backend:', error);
@@ -184,6 +207,8 @@ export class DraftService {
       }
     } catch (error) {
       console.error('[DraftService] Error saving draft immediately:', error);
+    } finally {
+      this.isSaving = false;
     }
   }
 

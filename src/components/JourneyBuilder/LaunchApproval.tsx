@@ -3,6 +3,7 @@ import { CheckCircle, AlertTriangle, MessageSquare, Star, Users, Rocket, ArrowLe
 import { TrainingJourney, TrainingModule, RehearsalFeedback, Rep, Assessment, Question } from '../../types';
 import DocumentViewer from '../DocumentViewer/DocumentViewer';
 import { JourneyService } from '../../infrastructure/services/JourneyService';
+import { DraftService } from '../../infrastructure/services/DraftService';
 import { AIService } from '../../infrastructure/services/AIService';
 import { DraftService } from '../../infrastructure/services/DraftService';
 import axios from 'axios';
@@ -364,6 +365,12 @@ export default function LaunchApproval({
         industry: company?.industry || (updatedJourney as any).industry || null
       };
       
+      // Get draftId from DraftService to use existing journey
+      const draft = DraftService.getDraft();
+      const existingJourneyId = draft.draftId || journey.id || (journey as any)._id;
+      
+      console.log('[LaunchApproval] Launching journey with ID:', existingJourneyId);
+      
       const launchResponse = await JourneyService.launchJourney({
         journey: journeyWithIndustry,
         modules: updatedModules, // Use updated modules with quizzes
@@ -376,7 +383,7 @@ export default function LaunchApproval({
         },
         companyId: companyId || undefined,
         gigId: gigId || undefined
-      });
+      }, undefined, existingJourneyId); // Pass existingJourneyId as third parameter
       
       console.log('✅ Journey saved to MongoDB:', launchResponse);
       console.log('📊 Launching with:', {
