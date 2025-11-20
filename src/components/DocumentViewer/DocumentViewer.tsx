@@ -21,10 +21,7 @@ export default function DocumentViewer({ fileUrl, fileName, mimeType }: Document
     });
   }, [fileUrl, fileName, mimeType]);
 
-  // Scroll to top when document loads
-  useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [fileUrl]);
+  // Don't scroll automatically - let the container handle it
 
   // Detect file type from URL, mimeType, or fileName
   useEffect(() => {
@@ -81,7 +78,7 @@ export default function DocumentViewer({ fileUrl, fileName, mimeType }: Document
   const isBlobUrl = fileUrl.startsWith("blob:");
 
   return (
-    <div className="w-full h-full flex flex-col" style={{ height: '100%', width: '100%', minHeight: 'calc(100vh - 300px)', maxHeight: '100%', flex: '1 1 auto', display: 'flex', flexDirection: 'column' }}>
+    <div className="w-full h-full flex flex-col" style={{ height: '100%', width: '100%', maxHeight: '100%', flex: '1 1 auto', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* PDF VIEWER */}
       {type === "pdf" && (
         <>
@@ -90,11 +87,7 @@ export default function DocumentViewer({ fileUrl, fileName, mimeType }: Document
               src={fileUrl}
               type="application/pdf"
               className="w-full h-full"
-              style={{ height: '100%', width: '100%', flex: '1 1 auto', minHeight: 'calc(100vh - 300px)', border: 'none' }}
-              onLoad={() => {
-                // Scroll to top when embed loads
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-              }}
+              style={{ height: '100%', width: '100%', flex: '1 1 auto', border: 'none' }}
             />
           ) : (
             <iframe
@@ -136,7 +129,7 @@ export default function DocumentViewer({ fileUrl, fileName, mimeType }: Document
               src={`https://docs.google.com/gview?url=${encodeURIComponent(fileUrl)}&embedded=true`}
               className="w-full h-full border-0 rounded-lg shadow"
               title="Word Viewer"
-              style={{ minHeight: '400px' }}
+              style={{ height: '100%', width: '100%' }}
             />
           )}
         </>

@@ -589,7 +589,7 @@ function App() {
             onMenuToggle={() => setSidebarOpen(!sidebarOpen)}
           />
           
-          <main className="flex-1 p-6">
+          <main className="flex-1 p-6 overflow-y-auto">
             <LaunchedJourneyDashboard
               journey={launchedJourney.journey}
               modules={launchedJourney.modules}
@@ -1270,13 +1270,13 @@ function App() {
         />
         </div>
         
-        <main className={`flex-1 flex gap-6 overflow-hidden ${selectedModule ? 'p-6 pb-0' : 'p-6'}`} style={{ display: 'flex', flexDirection: 'row', height: '100%', minHeight: 0, overflow: 'hidden' }}>
-          <div className="flex-1 overflow-hidden" style={{ height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <main className={`flex-1 flex gap-6 ${selectedModule ? 'p-6 pb-0' : 'p-6'}`} style={{ display: 'flex', flexDirection: 'row', minHeight: 0, overflow: 'visible' }}>
+          <div className="flex-1 overflow-y-auto" style={{ minHeight: 0 }}>
             {renderContent()}
           </div>
           
           {showAITutor && (
-            <div className="w-96 flex-shrink-0 overflow-hidden">
+            <div className="w-96 flex-shrink-0 overflow-y-auto">
               <AITutor 
                 tutor={mockAITutor}
                 currentModule={selectedModule || undefined}
