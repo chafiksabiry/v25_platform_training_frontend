@@ -240,10 +240,15 @@ function App() {
 
   const handleViewDashboard = () => {
     setShowJourneySuccess(false);
-    setShowLaunchedDashboard(true);
+    setShowLaunchedDashboard(false); // Don't show LaunchedJourneyDashboard, use main layout instead
     setHasCompletedSetup(true);
     setShowWelcome(false);
     setActiveTab('dashboard');
+    // Reset selected journey/module to show main content
+    setSelectedJourney(null);
+    setSelectedModule(null);
+    setSelectedJourneyModules([]);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleCreateAnotherJourney = () => {

@@ -54,26 +54,48 @@ export default function InteractiveModule({ module, onProgress, onComplete }: In
     setLoadingQuizzes(true);
     
     // Use embedded quizzes from module.assessments (which now contains quizzes from embedded structure)
-    if (module.assessments && Array.isArray(module.assessments) && module.assessments.length > 0) {
-      // Convert assessments to Quiz format
-      const quizzesFromAssessments: Quiz[] = module.assessments.map((assessment: any) => ({
-        id: assessment.id || `quiz-${Date.now()}`,
-        title: assessment.title || 'Quiz',
-        questions: (assessment.questions || []).map((q: any) => ({
-          id: q.id || `q-${Date.now()}`,
-          text: q.text || q.question || '',
-          type: q.type || 'multiple-choice',
-          options: q.options || [],
-          correctAnswer: q.correctAnswer,
-          explanation: q.explanation || '',
-          points: q.points || 10
-        })),
-        passingScore: assessment.passingScore || 70,
-        timeLimit: assessment.timeLimit || 15
-      }));
+    // Also check module.quizzes for backward compatibility
+    const assessments = module.assessments || (module as any).quizzes || [];
+    
+    if (assessments && Array.isArray(assessments) && assessments.length > 0) {
+      // Convert assessments to Quiz format - flatten all questions from all assessments into individual quiz items
+      // Each question becomes a separate Quiz object
+      const allQuestions: Quiz[] = [];
       
-      console.log('[InteractiveModule] Using', quizzesFromAssessments.length, 'quizzes from embedded assessments');
-      setQuizzes(quizzesFromAssessments);
+      assessments.forEach((assessment: any, assessmentIndex: number) => {
+        const questions = assessment.questions || [];
+        if (questions.length > 0) {
+          // Create a quiz item for each question
+          questions.forEach((q: any, qIndex: number) => {
+            // Handle correctAnswer which can be number, string, or array
+            let correctAnswerIndex: number;
+            if (typeof q.correctAnswer === 'number') {
+              correctAnswerIndex = q.correctAnswer;
+            } else if (Array.isArray(q.correctAnswer) && q.correctAnswer.length > 0) {
+              // For multiple correct answers, use the first one as the index
+              correctAnswerIndex = typeof q.correctAnswer[0] === 'number' ? q.correctAnswer[0] : 0;
+            } else {
+              // Try to find the index in options
+              const options = q.options || [];
+              correctAnswerIndex = options.findIndex((opt: string) => opt === q.correctAnswer);
+              if (correctAnswerIndex === -1) correctAnswerIndex = 0;
+            }
+            
+            allQuestions.push({
+              id: q.id || `quiz-${assessmentIndex}-q-${qIndex}`,
+              question: q.question || q.text || '',
+              options: q.options || [],
+              correctAnswer: correctAnswerIndex,
+              explanation: q.explanation || '',
+              difficulty: q.difficulty || 5,
+              aiGenerated: true
+            });
+          });
+        }
+      });
+      
+      console.log('[InteractiveModule] Using', allQuestions.length, 'quiz questions from', assessments.length, 'assessments');
+      setQuizzes(allQuestions);
     } else {
       console.log('[InteractiveModule] No embedded quizzes found');
       setQuizzes([]);
@@ -267,12 +289,15 @@ export default function InteractiveModule({ module, onProgress, onComplete }: In
                   <h3 className="text-lg font-semibold text-gray-700">
                     Question {currentQuizIndex + 1} of {quizzes.length}
                   </h3>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Complete all questions to finish this module
+                  </p>
                 </div>
               </div>
               
               {/* Quiz Content */}
               <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
-                <p className="text-gray-700 mb-6 text-lg font-medium">{currentQuiz.question}</p>
+                <p className="text-gray-700 mb-6 text-lg font-medium">{currentQuiz.question || currentQuiz.text || 'No question text available'}</p>
                 
                 {currentQuiz.options && currentQuiz.options.length > 0 ? (
                 <div className="space-y-3 mb-6">
