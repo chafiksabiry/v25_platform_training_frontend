@@ -465,14 +465,30 @@ export class JourneyService {
     
     if (journeyIdToUse) {
       try {
+        console.log('[JourneyService] Checking if journey exists for launch:', journeyIdToUse);
         const existingJourney = await ApiClient.get(`/training_journeys/${journeyIdToUse}`);
-        if (existingJourney.data.success && existingJourney.data.journey) {
+        console.log('[JourneyService] Journey check response (launch):', {
+          hasData: !!existingJourney.data,
+          hasSuccess: existingJourney.data?.success,
+          hasJourney: !!existingJourney.data?.journey,
+          hasDirectJourney: !!existingJourney.data,
+          journeyId: existingJourney.data?.journey?.id || existingJourney.data?.journey?._id || existingJourney.data?.id || existingJourney.data?._id,
+          isSuccess: existingJourney.data?.success !== false && (existingJourney.data?.journey || existingJourney.data)
+        });
+        
+        // Backend can return journey in different formats:
+        // 1. {success: true, journey: {...}}
+        // 2. Direct journey object: {...}
+        const journeyData = existingJourney.data?.journey || existingJourney.data;
+        const isSuccess = existingJourney.data?.success !== false && journeyData && (journeyData.id || journeyData._id);
+        
+        if (isSuccess) {
           existingJourneyId = journeyIdToUse;
           isUpdate = true;
-          console.log('[JourneyService] Launching existing journey:', journeyIdToUse);
+          console.log('[JourneyService] ✓ Journey exists, will UPDATE for launch:', journeyIdToUse);
           
           // Delete old modules and sections before creating new ones
-          const oldModuleIds = existingJourney.data.journey.moduleIds || [];
+          const oldModuleIds = journeyData.moduleIds || [];
           if (oldModuleIds.length > 0) {
             console.log('[JourneyService] Deleting old modules before launch:', oldModuleIds.length);
             for (const oldModuleId of oldModuleIds) {
@@ -497,35 +513,43 @@ export class JourneyService {
               }
             }
           }
+        } else {
+          console.warn('[JourneyService] Journey check failed (launch), will create new one. Response:', existingJourney.data);
         }
       } catch (error) {
-        console.warn('[JourneyService] Journey not found, will create new one:', error);
+        console.warn('[JourneyService] Journey not found (launch), will create new one:', error);
       }
     }
 
-    let response;
-    if (existingJourneyId && isUpdate) {
-      // Update existing journey
-      response = await ApiClient.put(`/training_journeys/${existingJourneyId}`, journeyPayload);
-      if (!response.data.success) {
-        throw new Error('Failed to update journey');
-      }
-      console.log('[JourneyService] Updated journey for launch:', existingJourneyId);
+    // CRITICAL: Don't create/update journey here - let /launch endpoint handle it
+    // If journeyIdToUse is provided, use it as trainingId for modules
+    // The backend /launch endpoint will create/update the journey with moduleIds
+    let trainingId: string;
+    
+    if (journeyIdToUse && isValidMongoId(journeyIdToUse)) {
+      // Use provided journeyId - backend /launch will update it if exists, or create if not
+      trainingId = journeyIdToUse;
+      existingJourneyId = journeyIdToUse;
+      isUpdate = true;
+      console.log('[JourneyService] Using provided journeyId for launch (backend will update/create):', journeyIdToUse);
     } else {
-      // Create new journey
-      response = await ApiClient.post('/training_journeys', journeyPayload);
-      // Backend can return journey with 'id' (Spring Data MongoDB) or '_id' (MongoDB)
-      const createdJourney = response.data.journey || response.data;
+      // No valid journeyId provided - we'll need to create journey first to get an ID for modules
+      // But actually, we can create modules with a temporary ID and let /launch create the journey
+      // For now, create journey first to get an ID
+      const createResponse = await ApiClient.post('/training_journeys', {
+        ...journeyPayload,
+        status: 'draft' // Create as draft first, /launch will activate it
+      });
+      const createdJourney = createResponse.data.journey || createResponse.data;
       const returnedJourneyId = createdJourney?.id || createdJourney?._id;
-      if (!response.data.success || !returnedJourneyId) {
-        console.error('[JourneyService] Failed to create journey. Response:', response.data);
+      if (!createResponse.data.success || !returnedJourneyId) {
+        console.error('[JourneyService] Failed to create journey. Response:', createResponse.data);
         throw new Error('Failed to create journey');
       }
+      trainingId = returnedJourneyId;
       existingJourneyId = returnedJourneyId;
-      console.log('[JourneyService] Created new journey for launch:', existingJourneyId);
+      console.log('[JourneyService] Created new journey (draft) for launch:', existingJourneyId);
     }
-
-    const trainingId = existingJourneyId;
 
     console.log('[JourneyService] Launching journey with trainingId:', trainingId);
 
