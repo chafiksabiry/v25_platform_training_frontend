@@ -323,7 +323,8 @@ export class JourneyService {
       console.log(`[JourneyService] Creating module ${index + 1}/${modules.length}: ${m.title}`);
       
       // Step 1: Create module first (without sections and quizzes)
-      const moduleData = {
+      // IMPORTANT: Don't include _id - let MongoDB generate ObjectId automatically
+      const moduleData: any = {
         trainingJourneyId: existingJourneyId, // Use existingJourneyId, not journeyId
         title: m.title,
         description: m.description || '',
@@ -336,6 +337,9 @@ export class JourneyService {
         quizIds: [], // Will be populated after creating quizzes
         order: index
       };
+      // Explicitly remove _id if present to ensure MongoDB generates ObjectId
+      delete moduleData._id;
+      delete moduleData.id;
 
       const createdModule = await TrainingModuleService.createModule(moduleData);
       const moduleId = createdModule._id || createdModule.id;
@@ -348,7 +352,8 @@ export class JourneyService {
         for (let sectionIndex = 0; sectionIndex < sections.length; sectionIndex++) {
           const section = sections[sectionIndex];
           try {
-            const sectionData: TrainingSection = {
+            // IMPORTANT: Don't include _id - let MongoDB generate ObjectId automatically
+            const sectionData: any = {
               moduleId: moduleId,
               title: section.title || section.content?.title || `Section ${sectionIndex + 1}`,
               type: section.type || 'document',
@@ -356,6 +361,9 @@ export class JourneyService {
               content: section.content || section,
               duration: section.duration || section.estimatedDuration || 0
             };
+            // Explicitly remove _id if present to ensure MongoDB generates ObjectId
+            delete sectionData._id;
+            delete sectionData.id;
             
             const createdSection = await TrainingModuleService.createSection(moduleId, sectionData);
             sectionIds.push(createdSection._id || createdSection.id);
@@ -564,7 +572,8 @@ export class JourneyService {
       console.log(`[JourneyService] Creating module ${index + 1}/${request.modules.length}: ${m.title}`);
       
       // Step 1: Create module first (without sections and quizzes)
-      const moduleData = {
+      // IMPORTANT: Don't include _id - let MongoDB generate ObjectId automatically
+      const moduleData: any = {
         trainingJourneyId: trainingId, // Use trainingId instead of journeyId parameter
         title: m.title,
         description: m.description || '',
@@ -577,6 +586,9 @@ export class JourneyService {
         quizIds: [], // Will be populated after creating quizzes
         order: index
       };
+      // Explicitly remove _id if present to ensure MongoDB generates ObjectId
+      delete moduleData._id;
+      delete moduleData.id;
 
       const createdModule = await TrainingModuleService.createModule(moduleData);
       const moduleId = createdModule._id || createdModule.id;
@@ -589,7 +601,8 @@ export class JourneyService {
         for (let sectionIndex = 0; sectionIndex < sections.length; sectionIndex++) {
           const section = sections[sectionIndex];
           try {
-            const sectionData: TrainingSection = {
+            // IMPORTANT: Don't include _id - let MongoDB generate ObjectId automatically
+            const sectionData: any = {
               moduleId: moduleId,
               title: section.title || section.content?.title || `Section ${sectionIndex + 1}`,
               type: section.type || 'document',
@@ -597,6 +610,9 @@ export class JourneyService {
               content: section.content || section,
               duration: section.duration || section.estimatedDuration || 0
             };
+            // Explicitly remove _id if present to ensure MongoDB generates ObjectId
+            delete sectionData._id;
+            delete sectionData.id;
             
             const createdSection = await TrainingModuleService.createSection(moduleId, sectionData);
             sectionIds.push(createdSection._id || createdSection.id);

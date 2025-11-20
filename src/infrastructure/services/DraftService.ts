@@ -24,6 +24,7 @@ export class DraftService {
 
   /**
    * Sauvegarder le brouillon localement (localStorage)
+   * IMPORTANT: Validates and cleans IDs to ensure only MongoDB ObjectIds are stored
    */
   static saveDraftLocally(draft: Partial<JourneyDraft>): void {
     try {
@@ -33,6 +34,58 @@ export class DraftService {
         ...draft,
         lastSaved: new Date().toISOString()
       };
+      
+      // CRITICAL: Clean up invalid IDs before saving to localStorage
+      // Only store MongoDB ObjectIds (24 hex characters), not UUIDs or timestamps
+      const isValidMongoId = (id: string | undefined) => id && /^[0-9a-fA-F]{24}$/.test(id);
+      
+      // Clean journey.id if present and invalid
+      if (updatedDraft.journey && (updatedDraft.journey as any).id) {
+        const journeyId = (updatedDraft.journey as any).id;
+        if (!isValidMongoId(journeyId)) {
+          delete (updatedDraft.journey as any).id;
+        }
+      }
+      
+      // Clean draftId if invalid
+      if (updatedDraft.draftId && !isValidMongoId(updatedDraft.draftId)) {
+        updatedDraft.draftId = undefined;
+      }
+      
+      // Clean module IDs (remove UUIDs, keep only ObjectIds)
+      if (updatedDraft.modules && Array.isArray(updatedDraft.modules)) {
+        updatedDraft.modules = updatedDraft.modules.map(module => {
+          const cleanedModule = { ...module };
+          // Remove invalid IDs from module
+          if (cleanedModule.id && !isValidMongoId(cleanedModule.id)) {
+            delete cleanedModule.id;
+          }
+          // Clean section IDs if present
+          if ((cleanedModule as any).sections && Array.isArray((cleanedModule as any).sections)) {
+            (cleanedModule as any).sections = (cleanedModule as any).sections.map((section: any) => {
+              if (section.id && !isValidMongoId(section.id)) {
+                const cleanedSection = { ...section };
+                delete cleanedSection.id;
+                return cleanedSection;
+              }
+              return section;
+            });
+          }
+          // Clean content IDs if present
+          if (cleanedModule.content && Array.isArray(cleanedModule.content)) {
+            cleanedModule.content = cleanedModule.content.map((content: any) => {
+              if (content.id && !isValidMongoId(content.id)) {
+                const cleanedContent = { ...content };
+                delete cleanedContent.id;
+                return cleanedContent;
+              }
+              return content;
+            });
+          }
+          return cleanedModule;
+        });
+      }
+      
       localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(updatedDraft));
       // Removed verbose logging
     } catch (error) {
@@ -77,6 +130,46 @@ export class DraftService {
               console.warn('[DraftService] Found invalid draftId (timestamp) in localStorage:', draft.draftId, '- clearing it');
               draft.draftId = undefined;
               needsSave = true;
+            }
+            
+            // CRITICAL: Clean module IDs (remove UUIDs, keep only ObjectIds)
+            if (draft.modules && Array.isArray(draft.modules)) {
+              draft.modules = draft.modules.map((module: any) => {
+                const cleanedModule = { ...module };
+                // Remove invalid IDs from module
+                if (cleanedModule.id && !isValidMongoId(cleanedModule.id)) {
+                  console.warn('[DraftService] Found invalid module.id (UUID/timestamp) in localStorage:', cleanedModule.id, '- removing it');
+                  delete cleanedModule.id;
+                  needsSave = true;
+                }
+                // Clean section IDs if present
+                if (cleanedModule.sections && Array.isArray(cleanedModule.sections)) {
+                  cleanedModule.sections = cleanedModule.sections.map((section: any) => {
+                    if (section.id && !isValidMongoId(section.id)) {
+                      console.warn('[DraftService] Found invalid section.id (UUID/timestamp) in localStorage:', section.id, '- removing it');
+                      const cleanedSection = { ...section };
+                      delete cleanedSection.id;
+                      needsSave = true;
+                      return cleanedSection;
+                    }
+                    return section;
+                  });
+                }
+                // Clean content IDs if present
+                if (cleanedModule.content && Array.isArray(cleanedModule.content)) {
+                  cleanedModule.content = cleanedModule.content.map((content: any) => {
+                    if (content.id && !isValidMongoId(content.id)) {
+                      console.warn('[DraftService] Found invalid content.id (UUID/timestamp) in localStorage:', content.id, '- removing it');
+                      const cleanedContent = { ...content };
+                      delete cleanedContent.id;
+                      needsSave = true;
+                      return cleanedContent;
+                    }
+                    return content;
+                  });
+                }
+                return cleanedModule;
+              });
             }
             
             // Save cleaned draft back to localStorage only if changes were made
