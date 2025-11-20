@@ -183,8 +183,11 @@ export class JourneyService {
     let existingJourneyId: string | null = null;
     let isUpdate = false;
     
-    // If journeyId is provided, check if journey exists and update it
-    if (journeyId) {
+    // If journeyId is provided, validate it's a MongoDB ObjectId format (24 hex characters)
+    // Don't use timestamps or other non-MongoDB IDs
+    const isValidMongoId = journeyId && /^[0-9a-fA-F]{24}$/.test(journeyId);
+    
+    if (journeyId && isValidMongoId) {
       try {
         const existingJourney = await ApiClient.get(`/training_journeys/${journeyId}`);
         if (existingJourney.data.success && existingJourney.data.journey) {
@@ -256,7 +259,7 @@ export class JourneyService {
       
       // Step 1: Create module first (without sections and quizzes)
       const moduleData = {
-        trainingJourneyId: journeyId,
+        trainingJourneyId: existingJourneyId, // Use existingJourneyId, not journeyId
         title: m.title,
         description: m.description || '',
         duration: m.duration ? Math.round(m.duration * 60) : 0, // Convert hours to minutes
@@ -326,17 +329,21 @@ export class JourneyService {
     };
 
     console.log('[JourneyService] Updating journey with moduleIds:', moduleIds);
-    const updateResponse = await ApiClient.put(`/training_journeys/${journeyId}`, updatePayload);
+    const updateResponse = await ApiClient.put(`/training_journeys/${existingJourneyId}`, updatePayload);
+    
+    // CRITICAL: Always use _id from backend response, never journey.id (which might be a timestamp)
+    const returnedJourneyId = updateResponse.data.journey?._id || updateResponse.data.journey?.id || existingJourneyId;
     
     return {
       ...updateResponse.data,
       success: true,
       journey: {
         ...updateResponse.data.journey,
-        _id: journeyId,
-        id: journeyId
+        _id: returnedJourneyId,
+        id: returnedJourneyId
       },
-      journeyId: journeyId,
+      journeyId: returnedJourneyId,
+      journey_id: returnedJourneyId, // Also include as journey_id for clarity
       moduleIds: moduleIds,
       finalExamId: finalExamId
     };
@@ -367,7 +374,18 @@ export class JourneyService {
     let isUpdate = false;
     
     // If journeyId is provided, check if journey exists and update it
-    const journeyIdToUse = journeyId || (request.journey as any).id || (request.journey as any)._id;
+    // IMPORTANT: Only use MongoDB ObjectId format (24 hex characters)
+    // Don't use timestamps or other non-MongoDB IDs from journey.id
+    const isValidMongoId = (id: string | undefined) => id && /^[0-9a-fA-F]{24}$/.test(id);
+    
+    // Priority: journeyId parameter > journey._id (never use journey.id as it might be a timestamp)
+    let journeyIdToUse = journeyId || (request.journey as any)._id;
+    
+    // Validate that it's a MongoDB ObjectId
+    if (journeyIdToUse && !isValidMongoId(journeyIdToUse)) {
+      console.warn('[JourneyService] Invalid journeyId format (launch, not MongoDB ObjectId):', journeyIdToUse, '- will create new journey');
+      journeyIdToUse = null;
+    }
     
     if (journeyIdToUse) {
       try {

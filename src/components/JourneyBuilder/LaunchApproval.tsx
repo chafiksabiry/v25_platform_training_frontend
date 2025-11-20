@@ -371,10 +371,20 @@ export default function LaunchApproval({
       };
       
       // Get draftId from DraftService to use existing journey
-      const draft = DraftService.getDraft();
-      const existingJourneyId = draft.draftId || journey.id || (journey as any)._id;
+      // IMPORTANT: Only use MongoDB ObjectId format (24 hex characters)
+      // Don't use timestamps or other non-MongoDB IDs from journey.id
+      const isValidMongoId = (id: string | undefined) => id && /^[0-9a-fA-F]{24}$/.test(id);
       
-      console.log('[LaunchApproval] Launching journey with ID:', existingJourneyId);
+      const draft = DraftService.getDraft();
+      let existingJourneyId = draft.draftId || (journey as any)._id; // Never use journey.id as it might be a timestamp
+      
+      // Validate that it's a MongoDB ObjectId
+      if (existingJourneyId && !isValidMongoId(existingJourneyId)) {
+        console.warn('[LaunchApproval] Invalid journeyId format (not MongoDB ObjectId):', existingJourneyId, '- will create new journey');
+        existingJourneyId = undefined;
+      }
+      
+      console.log('[LaunchApproval] Launching journey with ID:', existingJourneyId || 'NEW');
       
       const launchResponse = await JourneyService.launchJourney({
         journey: journeyWithIndustry,

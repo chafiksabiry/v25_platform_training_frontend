@@ -109,19 +109,33 @@ export class DraftService {
             // CRITICAL: Re-read draft from localStorage to get the most recent draftId
             // This ensures we don't create duplicates if draftId was saved by another call
             const latestDraft = this.getDraftLocally();
-            const existingJourneyId = latestDraft.draftId || updatedDraft.draftId || (updatedDraft.journey as any).id || (updatedDraft.journey as any)._id;
+            
+            // IMPORTANT: Only use MongoDB ObjectId format (24 hex characters)
+            // Don't use timestamps or other non-MongoDB IDs from journey.id
+            const isValidMongoId = (id: string | undefined) => id && /^[0-9a-fA-F]{24}$/.test(id);
+            
+            // Priority: latestDraft.draftId > updatedDraft.draftId > journey._id (never use journey.id as it might be a timestamp)
+            let existingJourneyId = latestDraft.draftId || updatedDraft.draftId || (updatedDraft.journey as any)._id;
+            
+            // Validate that it's a MongoDB ObjectId
+            if (existingJourneyId && !isValidMongoId(existingJourneyId)) {
+              console.warn('[DraftService] ⚠️ Invalid draftId format (debounced, not MongoDB ObjectId):', existingJourneyId, '- will create new journey');
+              existingJourneyId = null;
+            }
             
             console.log('[DraftService] DraftId sources (debounced):', {
               fromLatestDraft: latestDraft.draftId,
               fromUpdatedDraft: updatedDraft.draftId,
-              fromJourney: (updatedDraft.journey as any).id || (updatedDraft.journey as any)._id,
-              finalJourneyId: existingJourneyId
+              fromJourneyId: (updatedDraft.journey as any).id,
+              fromJourney_id: (updatedDraft.journey as any)._id,
+              finalJourneyId: existingJourneyId,
+              isValid: existingJourneyId ? isValidMongoId(existingJourneyId) : false
             });
             
             if (!existingJourneyId) {
-              console.warn('[DraftService] ⚠️ No draftId found (debounced), will create new journey.');
+              console.warn('[DraftService] ⚠️ No valid draftId found (debounced), will create new journey.');
             } else {
-              console.log('[DraftService] ✓ Found existing draftId (debounced):', existingJourneyId);
+              console.log('[DraftService] ✓ Found valid existing draftId (debounced):', existingJourneyId);
             }
             
             console.log('[DraftService] Saving draft (debounced) with journeyId:', existingJourneyId || 'NEW');
@@ -135,19 +149,26 @@ export class DraftService {
               existingJourneyId // Pass existing journeyId to update instead of create
             );
 
-            if (response.success && (response.journey?.id || response.journeyId)) {
-              // Sauvegarder l'ID du brouillon
-              const savedJourneyId = response.journey?.id || response.journeyId || response.journey?._id;
+            if (response.success && (response.journey?.id || response.journeyId || response.journey?._id)) {
+              // CRITICAL: Always use _id from backend response, never journey.id (which might be a timestamp)
+              const savedJourneyId = response.journey?._id || response.journeyId || response.journey?.id;
               
-              // CRITICAL: Re-read draft again to merge with any concurrent updates
-              const finalDraft = this.getDraftLocally();
-              finalDraft.draftId = savedJourneyId;
-              finalDraft.modules = updatedDraft.modules; // Update modules
-              finalDraft.lastSaved = new Date().toISOString();
-              this.saveDraftLocally(finalDraft);
+              // Validate that it's a MongoDB ObjectId
+              const isValidMongoId = (id: string | undefined) => id && /^[0-9a-fA-F]{24}$/.test(id);
               
-              console.log('[DraftService] ✓ Draft saved successfully (debounced), journeyId:', savedJourneyId);
-              console.log('[DraftService] ✓ draftId saved to localStorage (debounced):', savedJourneyId);
+              if (!savedJourneyId || !isValidMongoId(savedJourneyId)) {
+                console.error('[DraftService] ✗ Invalid journeyId returned from backend (debounced):', savedJourneyId);
+              } else {
+                // CRITICAL: Re-read draft again to merge with any concurrent updates
+                const finalDraft = this.getDraftLocally();
+                finalDraft.draftId = savedJourneyId;
+                finalDraft.modules = updatedDraft.modules; // Update modules
+                finalDraft.lastSaved = new Date().toISOString();
+                this.saveDraftLocally(finalDraft);
+                
+                console.log('[DraftService] ✓ Draft saved successfully (debounced), journeyId:', savedJourneyId);
+                console.log('[DraftService] ✓ draftId saved to localStorage (debounced):', savedJourneyId);
+              }
             }
           } catch (error) {
             console.warn('[DraftService] Could not save draft to backend (will retry):', error);
@@ -214,24 +235,37 @@ export class DraftService {
             // CRITICAL: Re-read draft from localStorage MULTIPLE TIMES to get the most recent draftId
             // This ensures we don't create duplicates if draftId was saved by another call
             let latestDraft = this.getDraftLocally();
-            let existingJourneyId = draft.draftId || updatedDraft.draftId || latestDraft.draftId || (updatedDraft.journey as any).id || (updatedDraft.journey as any)._id;
+            
+            // IMPORTANT: Only use MongoDB ObjectId format (24 hex characters)
+            // Don't use timestamps or other non-MongoDB IDs from journey.id
+            const isValidMongoId = (id: string | undefined) => id && /^[0-9a-fA-F]{24}$/.test(id);
+            
+            // Priority: draft.draftId > latestDraft.draftId > journey._id (never use journey.id as it might be a timestamp)
+            let existingJourneyId = draft.draftId || latestDraft.draftId || (updatedDraft.journey as any)._id;
             
             // Double-check: read again right before saving to catch any last-second updates
             latestDraft = this.getDraftLocally();
-            existingJourneyId = draft.draftId || latestDraft.draftId || existingJourneyId || (updatedDraft.journey as any).id || (updatedDraft.journey as any)._id;
+            existingJourneyId = draft.draftId || latestDraft.draftId || existingJourneyId || (updatedDraft.journey as any)._id;
+            
+            // Validate that it's a MongoDB ObjectId
+            if (existingJourneyId && !isValidMongoId(existingJourneyId)) {
+              console.warn('[DraftService] ⚠️ Invalid draftId format (not MongoDB ObjectId):', existingJourneyId, '- will create new journey');
+              existingJourneyId = null;
+            }
             
             console.log('[DraftService] DraftId sources:', {
               fromParam: draft.draftId,
-              fromUpdatedDraft: updatedDraft.draftId,
               fromLatestDraft: latestDraft.draftId,
-              fromJourney: (updatedDraft.journey as any).id || (updatedDraft.journey as any)._id,
-              finalJourneyId: existingJourneyId
+              fromJourneyId: (updatedDraft.journey as any).id,
+              fromJourney_id: (updatedDraft.journey as any)._id,
+              finalJourneyId: existingJourneyId,
+              isValid: existingJourneyId ? isValidMongoId(existingJourneyId) : false
             });
             
             if (!existingJourneyId) {
-              console.warn('[DraftService] ⚠️ No draftId found, will create new journey. Make sure draftId is saved after first creation.');
+              console.warn('[DraftService] ⚠️ No valid draftId found, will create new journey. Make sure draftId is saved after first creation.');
             } else {
-              console.log('[DraftService] ✓ Found existing draftId:', existingJourneyId);
+              console.log('[DraftService] ✓ Found valid existing draftId:', existingJourneyId);
             }
             
             console.log('[DraftService] Saving draft with journeyId:', existingJourneyId || 'NEW');
@@ -245,19 +279,27 @@ export class DraftService {
               existingJourneyId // Pass existing journeyId to update instead of create
             );
 
-            if (response.success && (response.journey?.id || response.journeyId)) {
-              const savedJourneyId = response.journey?.id || response.journeyId || response.journey?._id;
+            if (response.success && (response.journey?.id || response.journeyId || response.journey?._id || response.journeyId)) {
+              // CRITICAL: Always use _id from backend response, never journey.id (which might be a timestamp)
+              const savedJourneyId = response.journey?._id || response.journeyId || response.journey?.id;
               
-              // CRITICAL: Save draftId immediately to localStorage to prevent duplicate creation
-              // Re-read draft again to merge with any concurrent updates
-              const finalDraft = this.getDraftLocally();
-              finalDraft.draftId = savedJourneyId;
-              finalDraft.modules = updatedDraft.modules; // Update modules
-              finalDraft.lastSaved = new Date().toISOString();
-              this.saveDraftLocally(finalDraft);
+              // Validate that it's a MongoDB ObjectId
+              const isValidMongoId = (id: string | undefined) => id && /^[0-9a-fA-F]{24}$/.test(id);
               
-              console.log('[DraftService] ✓ Draft saved immediately, journeyId:', savedJourneyId);
-              console.log('[DraftService] ✓ draftId saved to localStorage:', savedJourneyId);
+              if (!savedJourneyId || !isValidMongoId(savedJourneyId)) {
+                console.error('[DraftService] ✗ Invalid journeyId returned from backend:', savedJourneyId);
+              } else {
+                // CRITICAL: Save draftId immediately to localStorage to prevent duplicate creation
+                // Re-read draft again to merge with any concurrent updates
+                const finalDraft = this.getDraftLocally();
+                finalDraft.draftId = savedJourneyId;
+                finalDraft.modules = updatedDraft.modules; // Update modules
+                finalDraft.lastSaved = new Date().toISOString();
+                this.saveDraftLocally(finalDraft);
+                
+                console.log('[DraftService] ✓ Draft saved immediately, journeyId:', savedJourneyId);
+                console.log('[DraftService] ✓ draftId saved to localStorage:', savedJourneyId);
+              }
             } else {
               console.error('[DraftService] ✗ Save failed - response:', response);
             }
