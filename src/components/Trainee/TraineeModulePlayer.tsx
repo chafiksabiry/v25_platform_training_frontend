@@ -467,7 +467,7 @@ export default function TraineeModulePlayer({
                   </div>
                 )}
 
-                {/* Module Content Sections */}
+                {/* Module Content Sections - Only show if no sections */}
                 {sections.length === 0 && (
                   <div className="p-6">
                     <div className="flex items-center justify-between mb-6">
@@ -563,7 +563,8 @@ export default function TraineeModulePlayer({
                       </div>
                     )}
                   </div>
-                </div>
+                  </div>
+                )}
               </div>
 
               {/* ✅ Section QCM Complète */}

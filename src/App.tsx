@@ -672,8 +672,7 @@ function App() {
                   setShowManualTraining(true);
                 }}
                 disabled={userType === 'rep'}
-                className={userType === 'rep' ? 'opacity-50 cursor-not-allowed' : ''}
-                className="group p-6 bg-gradient-to-br from-green-500 to-teal-600 text-white rounded-xl shadow-lg hover:shadow-2xl transition-all transform hover:scale-105 text-left"
+                className={`group p-6 bg-gradient-to-br from-green-500 to-teal-600 text-white rounded-xl shadow-lg hover:shadow-2xl transition-all transform hover:scale-105 text-left ${userType === 'rep' ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 <Upload className="h-8 w-8 mb-3 group-hover:-translate-y-1 transition-transform" />
                 <h3 className="text-xl font-bold mb-2">✍️ Manual Creation</h3>
