@@ -64,10 +64,28 @@ function AppContent() {
   const { idjourneytraining } = useParams<{ idjourneytraining?: string }>();
   const journeyIdFromUrl = idjourneytraining;
   
+  // Also try to extract from pathname as fallback
+  const pathname = window.location.pathname;
+  let journeyIdFromPathname: string | null = null;
+  
+  // Try to extract ID from pathname if not in params
+  if (!journeyIdFromUrl && pathname) {
+    // Pattern: /training/repashboard/:id or /training/repashboard/:id
+    const match = pathname.match(/\/(?:repashboard|repashboard)\/([a-f0-9]{24})/i);
+    if (match && match[1]) {
+      journeyIdFromPathname = match[1];
+    }
+  }
+  
+  const finalJourneyId = journeyIdFromUrl || journeyIdFromPathname;
+  
   console.log('[App] AppContent rendering:', {
     journeyIdFromUrl,
-    pathname: window.location.pathname,
-    params: { idjourneytraining }
+    journeyIdFromPathname,
+    finalJourneyId,
+    pathname,
+    params: { idjourneytraining },
+    allParams: useParams()
   });
   // const { user, signOut } = useAuth();
   const user = { name: 'User', email: 'user@example.com' }; // Mock user - no auth required
@@ -114,17 +132,18 @@ function AppContent() {
   // Load specific journey by ID if provided in URL
   useEffect(() => {
     const loadJourneyById = async () => {
-      if (!journeyIdFromUrl || !agentId || userType !== 'rep') {
+      // Use finalJourneyId instead of journeyIdFromUrl
+      if (!finalJourneyId || !agentId || userType !== 'rep') {
         return;
       }
 
       try {
-        console.log('[App] Loading journey by ID from URL:', journeyIdFromUrl);
+        console.log('[App] Loading journey by ID from URL:', finalJourneyId);
         
         // Try to get the journey from already loaded journeys first
         const existingJourney = realJourneys.find(j => {
           const jId = j.id || j._id;
-          return jId === journeyIdFromUrl || extractObjectId(jId) === extractObjectId(journeyIdFromUrl);
+          return jId === finalJourneyId || extractObjectId(jId) === extractObjectId(finalJourneyId);
         });
 
         if (existingJourney) {
@@ -133,7 +152,7 @@ function AppContent() {
           
           // Load progress for this journey
           try {
-            const progressData = await TrainingService.getRepProgress(agentId, journeyIdFromUrl);
+            const progressData = await TrainingService.getRepProgress(agentId, finalJourneyId);
             if (progressData) {
               const progressArray = Array.isArray(progressData) ? progressData : [progressData];
               const progressMap: Record<string, any> = {};
@@ -142,7 +161,7 @@ function AppContent() {
                   progressMap[p.moduleId] = p;
                 }
               });
-              setTraineeProgressData(prev => ({ ...prev, [journeyIdFromUrl]: progressMap }));
+              setTraineeProgressData(prev => ({ ...prev, [finalJourneyId]: progressMap }));
             }
           } catch (error) {
             console.error('[App] Error loading progress:', error);
@@ -150,14 +169,14 @@ function AppContent() {
         } else {
           // Journey not in loaded list, fetch it directly
           try {
-            const journey = await JourneyService.getJourneyById(journeyIdFromUrl);
+            const journey = await JourneyService.getJourneyById(finalJourneyId);
             if (journey) {
               console.log('[App] Loaded journey by ID:', journey.title || journey.name);
               setSelectedTraineeJourney(journey);
               
               // Load progress
               try {
-                const progressData = await TrainingService.getRepProgress(agentId, journeyIdFromUrl);
+                const progressData = await TrainingService.getRepProgress(agentId, finalJourneyId);
                 if (progressData) {
                   const progressArray = Array.isArray(progressData) ? progressData : [progressData];
                   const progressMap: Record<string, any> = {};
@@ -166,7 +185,7 @@ function AppContent() {
                       progressMap[p.moduleId] = p;
                     }
                   });
-                  setTraineeProgressData(prev => ({ ...prev, [journeyIdFromUrl]: progressMap }));
+                  setTraineeProgressData(prev => ({ ...prev, [finalJourneyId]: progressMap }));
                 }
               } catch (error) {
                 console.error('[App] Error loading progress:', error);
@@ -183,9 +202,9 @@ function AppContent() {
 
     // Load journey if we have the ID, agentId, and userType is rep
     // Don't wait for realJourneys to be loaded - we can fetch the journey directly
-    if (journeyIdFromUrl && agentId && userType === 'rep') {
+    if (finalJourneyId && agentId && userType === 'rep') {
       console.log('[App] Conditions met for loading journey:', {
-        journeyIdFromUrl,
+        finalJourneyId,
         agentId,
         userType,
         realJourneysCount: realJourneys.length
@@ -193,15 +212,17 @@ function AppContent() {
       loadJourneyById();
     } else {
       console.log('[App] Conditions NOT met for loading journey:', {
+        finalJourneyId,
         journeyIdFromUrl,
+        journeyIdFromPathname,
         agentId,
         userType,
-        hasJourneyId: !!journeyIdFromUrl,
+        hasJourneyId: !!finalJourneyId,
         hasAgentId: !!agentId,
         isRep: userType === 'rep'
       });
     }
-  }, [journeyIdFromUrl, agentId, userType, realJourneys]);
+  }, [finalJourneyId, agentId, userType, realJourneys]);
 
   // Load real training journeys and convert them to modules
   useEffect(() => {
@@ -2103,9 +2124,13 @@ function App() {
     }
   }
   
+  // Extract the relative path after basename for debugging
+  const relativePath = pathname.replace(basename, '') || '/';
+  
   console.log('[App] Routing configuration:', {
     pathname,
     basename,
+    relativePath,
     isStandaloneMode,
     isQiankun: qiankunWindow.__POWERED_BY_QIANKUN__,
     envMode: import.meta.env.VITE_RUN_MODE
