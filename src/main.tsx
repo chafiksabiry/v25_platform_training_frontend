@@ -98,11 +98,19 @@ function render(props: { container?: HTMLElement }) {
         basename = '/training/companydashboard';
       } else if (pathname.startsWith('/training/repdashboard')) {
         // Extract basename up to /repdashboard (before the journey ID)
+        // This handles both /training/repdashboard and /training/repdashboard/:id
         basename = '/training/repdashboard';
       } else if (pathname.startsWith('/training')) {
         basename = '/training';
       }
     }
+    
+    logger.debug('[Training] Routing configuration:', {
+      pathname,
+      basename,
+      isStandaloneMode,
+      isQiankun: qiankunWindow.__POWERED_BY_QIANKUN__
+    });
 
     root.render(
       <StrictMode>
@@ -113,6 +121,7 @@ function render(props: { container?: HTMLElement }) {
               <Route path="/companydashboard" element={<CompanyDashboard />} />
               <Route path="/repdashboard" element={<RepDashboard />} />
               <Route path="/repdashboard/:idjourneytraining" element={<RepDashboard />} />
+              <Route path="/:idjourneytraining" element={<RepDashboard />} />
               <Route path="/*" element={<App />} />
             </Routes>
           </Router>

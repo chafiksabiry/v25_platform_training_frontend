@@ -101,7 +101,7 @@ export class TrainingService {
   }
 
   static async getRepProgress(repId: string, journeyId: string) {
-    const response = await ApiClient.get(`/training/progress?repId=${repId}&journeyId=${journeyId}`);
+    const response = await ApiClient.get(`/training_journeys/rep-progress?repId=${repId}&journeyId=${journeyId}`);
     return response.data;
   }
 

@@ -63,12 +63,31 @@ interface AppProps {
 function App({ journeyIdFromRoute }: AppProps = {}) {
   // Get journey ID from URL pathname (works in both Router and non-Router contexts)
   const pathname = window.location.pathname;
-  const journeyIdFromPathname = pathname.includes('/repdashboard/') 
-    ? pathname.split('/repdashboard/')[1]?.split('/')[0]?.split('?')[0]
-    : null;
+  // Try multiple patterns to extract journey ID
+  let journeyIdFromPathname: string | null = null;
+  
+  // Pattern 1: /training/repdashboard/:idjourneytraining
+  if (pathname.includes('/repdashboard/')) {
+    journeyIdFromPathname = pathname.split('/repdashboard/')[1]?.split('/')[0]?.split('?')[0] || null;
+  }
+  // Pattern 2: /repdashboard/:idjourneytraining (when basename is /training/repdashboard)
+  else if (pathname.match(/^\/[^\/]+$/)) {
+    // If pathname is just one segment (like /691ea45b04327b08456397ba), it's likely the journey ID
+    const segments = pathname.split('/').filter(s => s);
+    if (segments.length === 1 && segments[0].length > 10) {
+      journeyIdFromPathname = segments[0].split('?')[0];
+    }
+  }
   
   // Get journey ID from prop or URL pathname
   const journeyIdFromUrl = journeyIdFromRoute || journeyIdFromPathname;
+  
+  console.log('[App] Journey ID detection:', {
+    pathname,
+    journeyIdFromRoute,
+    journeyIdFromPathname,
+    journeyIdFromUrl
+  });
   // const { user, signOut } = useAuth();
   const user = { name: 'User', email: 'user@example.com' }; // Mock user - no auth required
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -184,7 +203,22 @@ function App({ journeyIdFromRoute }: AppProps = {}) {
     // Load journey if we have the ID, agentId, and userType is rep
     // Don't wait for realJourneys to be loaded - we can fetch the journey directly
     if (journeyIdFromUrl && agentId && userType === 'rep') {
+      console.log('[App] Conditions met for loading journey:', {
+        journeyIdFromUrl,
+        agentId,
+        userType,
+        realJourneysCount: realJourneys.length
+      });
       loadJourneyById();
+    } else {
+      console.log('[App] Conditions NOT met for loading journey:', {
+        journeyIdFromUrl,
+        agentId,
+        userType,
+        hasJourneyId: !!journeyIdFromUrl,
+        hasAgentId: !!agentId,
+        isRep: userType === 'rep'
+      });
     }
   }, [journeyIdFromUrl, agentId, userType, realJourneys]);
 
