@@ -569,6 +569,25 @@ export class JourneyService {
   }
 
   /**
+   * Get all available journeys for trainees (active and completed only)
+   * This endpoint returns all journeys that trainees can see, regardless of enrollment
+   */
+  static async getAllAvailableJourneysForTrainees(): Promise<any> {
+    const endpoint = `/training_journeys/trainee/available`;
+    console.log('[JourneyService] Fetching all available journeys for trainees from:', endpoint);
+    try {
+      const response = await ApiClient.get(endpoint);
+      console.log('[JourneyService] Response for available journeys:', response);
+      // The backend returns {success: true, data: [...], count: N}
+      // ApiClient wraps it in response.data, so we have response.data = {success: true, data: [...], count: N}
+      return response.data;
+    } catch (error: any) {
+      console.error('[JourneyService] Error fetching available journeys for trainees:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Get trainer dashboard statistics
    */
   static async getTrainerDashboard(companyId: string, gigId?: string): Promise<any> {

@@ -109,44 +109,32 @@ function App() {
         
         let journeys: any[] = [];
         
-        // For trainees, load ALL available journeys from backend (not just enrolled ones)
+        // For trainees, load ALL available journeys from backend using dedicated endpoint
         if (userType === 'rep') {
-          // Try to get companyId first, if available use it to get all journeys
-          if (companyId) {
-            try {
-              const response = await JourneyService.getJourneysByCompany(companyId);
-              console.log('[App] Loaded all journeys for trainee from company:', response);
-              
-              // Handle response format: {data: [...], success: true, count: 31}
-              if (Array.isArray(response)) {
-                journeys = response;
-              } else if (response?.data && Array.isArray(response.data)) {
-                journeys = response.data;
-              } else if (response?.data?.data && Array.isArray(response.data.data)) {
-                journeys = response.data.data;
-              } else if (response?.journeys && Array.isArray(response.journeys)) {
-                journeys = response.journeys;
-              }
-              console.log('[App] Loaded all journeys for trainee:', journeys.length);
-            } catch (error) {
-              console.error('[App] Error loading journeys by company for trainee:', error);
-              // Fallback: try to get all journeys
-              try {
-                const allJourneys = await JourneyService.getAllJourneys();
-                journeys = Array.isArray(allJourneys) ? allJourneys : (allJourneys?.data || []);
-                console.log('[App] Fallback: Loaded all journeys:', journeys.length);
-              } catch (fallbackError) {
-                console.error('[App] Error loading all journeys:', fallbackError);
-              }
+          try {
+            const response = await JourneyService.getAllAvailableJourneysForTrainees();
+            console.log('[App] Loaded all available journeys for trainee:', response);
+            
+            // Handle response format: {data: [...], success: true, count: N}
+            if (Array.isArray(response)) {
+              journeys = response;
+            } else if (response?.data && Array.isArray(response.data)) {
+              journeys = response.data;
+            } else if (response?.data?.data && Array.isArray(response.data.data)) {
+              journeys = response.data.data;
+            } else if (response?.journeys && Array.isArray(response.journeys)) {
+              journeys = response.journeys;
             }
-          } else {
-            // No companyId, try to get all journeys
+            console.log('[App] Loaded all available journeys for trainee:', journeys.length);
+          } catch (error) {
+            console.error('[App] Error loading available journeys for trainee:', error);
+            // Fallback: try to get all journeys
             try {
               const allJourneys = await JourneyService.getAllJourneys();
               journeys = Array.isArray(allJourneys) ? allJourneys : (allJourneys?.data || []);
-              console.log('[App] Loaded all journeys for trainee:', journeys.length);
-            } catch (error) {
-              console.error('[App] Error loading all journeys:', error);
+              console.log('[App] Fallback: Loaded all journeys:', journeys.length);
+            } catch (fallbackError) {
+              console.error('[App] Error loading all journeys:', fallbackError);
             }
           }
         } else if (companyId) {
