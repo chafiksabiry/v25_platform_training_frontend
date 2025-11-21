@@ -32,6 +32,7 @@ import TraineeProgressDashboard from './TraineeProgressDashboard';
 import TraineeLiveSession from './TraineeLiveSession';
 import { ProgressService, RepProgress } from '../../infrastructure/services/ProgressService';
 import { getAgentId } from '../../utils/userUtils';
+import { getNormalizedModuleId, extractObjectId } from '../../lib/mongoUtils';
 
 interface TraineePortalProps {
   trainee: Rep;
@@ -172,8 +173,9 @@ export default function TraineePortal({
     }
 
     // Find first module that's in progress
-    for (const module of modules) {
-      const moduleId = module.id || module._id;
+    for (let index = 0; index < modules.length; index++) {
+      const module = modules[index];
+      const moduleId = getNormalizedModuleId(module, journeyId, index);
       const moduleProgress = repProgressData.modules[moduleId];
       
       if (moduleProgress && moduleProgress.status === 'in-progress') {
@@ -182,8 +184,9 @@ export default function TraineePortal({
     }
 
     // If no in-progress, find first not-started
-    for (const module of modules) {
-      const moduleId = module.id || module._id;
+    for (let index = 0; index < modules.length; index++) {
+      const module = modules[index];
+      const moduleId = getNormalizedModuleId(module, journeyId, index);
       const moduleProgress = repProgressData.modules[moduleId];
       
       if (!moduleProgress || moduleProgress.status === 'not-started') {
@@ -195,7 +198,14 @@ export default function TraineePortal({
   }, [modules, repProgressData]);
 
   const handleModuleSelect = (module: TrainingModule) => {
-    setSelectedModule(module);
+    // Find module index for ID normalization
+    const moduleIndex = modules.findIndex(m => {
+      const mId = extractObjectId((m as any)._id) || extractObjectId(m.id);
+      const moduleId = extractObjectId((module as any)._id) || extractObjectId(module.id);
+      return mId === moduleId || m === module;
+    });
+    
+    setSelectedModule({ ...module, moduleIndex: moduleIndex !== -1 ? moduleIndex : undefined } as any);
     setActiveView('module');
   };
 
@@ -364,7 +374,8 @@ export default function TraineePortal({
             
             <div className="space-y-4">
               {modules.map((module, index) => {
-                const moduleId = module.id || module._id;
+                // Use normalized module ID that matches backend format
+                const moduleId = getNormalizedModuleId(module, journeyId, index);
                 const moduleProgress = repProgressData?.modules?.[moduleId];
                 const moduleProgressValue = moduleProgress?.progress ?? module.progress ?? 0;
                 const moduleCompleted = moduleProgress 
@@ -581,6 +592,11 @@ export default function TraineePortal({
         module={selectedModule}
         trainee={trainee}
         journeyId={journeyId}
+        moduleIndex={(selectedModule as any).moduleIndex ?? modules.findIndex(m => {
+          const mId = extractObjectId((m as any)._id) || extractObjectId(m.id);
+          const moduleId = extractObjectId((selectedModule as any)._id) || extractObjectId(selectedModule.id);
+          return mId === moduleId || m === selectedModule;
+        })}
         onProgress={(progress) => {
           onProgressUpdate(selectedModule.id, progress);
           // Reload progress from backend after update

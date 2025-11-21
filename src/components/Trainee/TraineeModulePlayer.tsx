@@ -31,11 +31,13 @@ import {
 import { TrainingModule, Rep, Exercise, Quiz } from '../../types';
 import DocumentViewer from '../DocumentViewer/DocumentViewer';
 import { ProgressService } from '../../infrastructure/services/ProgressService';
+import { extractObjectId, getNormalizedModuleId, findModuleIndex } from '../../lib/mongoUtils';
 
 interface TraineeModulePlayerProps {
   module: TrainingModule;
   trainee: Rep;
   journeyId?: string; // ID of the training journey
+  moduleIndex?: number; // Index of module in the journey (for ID normalization)
   onProgress: (progress: number) => void;
   onComplete: () => void;
   onBack: () => void;
@@ -45,6 +47,7 @@ export default function TraineeModulePlayer({
   module, 
   trainee, 
   journeyId,
+  moduleIndex,
   onProgress, 
   onComplete, 
   onBack 
@@ -78,8 +81,12 @@ export default function TraineeModulePlayer({
   const saveProgressToBackend = async (progressPercent: number, timeSpentSeconds: number) => {
     if (!journeyId || !trainee.id) return;
     
-    const moduleId = module.id || (module as any)._id;
-    if (!moduleId) return;
+    // Get normalized module ID that matches backend format
+    const moduleId = getNormalizedModuleId(module, journeyId, moduleIndex);
+    if (!moduleId) {
+      console.warn('[TraineeModulePlayer] Module has no ID, cannot save progress');
+      return;
+    }
     
     // Only save if progress changed significantly (more than 5%) or every 2 minutes
     const progressDiff = Math.abs(progressPercent - lastSavedProgress.current);
@@ -156,7 +163,7 @@ export default function TraineeModulePlayer({
       }
       // Save progress when component unmounts or stops playing
       if (currentTime > 0 && journeyId && trainee.id) {
-        const moduleId = module.id || (module as any)._id;
+        const moduleId = getNormalizedModuleId(module, journeyId, moduleIndex);
         if (moduleId) {
           const timeSpentMinutes = Math.floor(currentTime / 60);
           const progress = Math.min((currentTime / (parseInt(module.duration) * 60)) * 100, 100);
@@ -196,7 +203,7 @@ export default function TraineeModulePlayer({
       setModuleCompleted(true);
       // Save completed progress
       if (journeyId && trainee.id) {
-        const moduleId = module.id || (module as any)._id;
+        const moduleId = getNormalizedModuleId(module, journeyId, moduleIndex);
         if (moduleId) {
           const timeSpentMinutes = Math.floor(currentTime / 60);
           ProgressService.updateProgress({
@@ -229,7 +236,7 @@ export default function TraineeModulePlayer({
         // No quizzes, complete immediately
         // Save completed progress
         if (journeyId && trainee.id) {
-          const moduleId = module.id || (module as any)._id;
+          const moduleId = getNormalizedModuleId(module, journeyId, moduleIndex);
           if (moduleId) {
             const timeSpentMinutes = Math.floor(currentTime / 60);
             ProgressService.updateProgress({
@@ -275,7 +282,7 @@ export default function TraineeModulePlayer({
       // No more quizzes, complete module
       // Save completed progress
       if (journeyId && trainee.id) {
-        const moduleId = module.id || (module as any)._id;
+        const moduleId = getNormalizedModuleId(module, journeyId, moduleIndex);
         if (moduleId) {
           const timeSpentMinutes = Math.floor(currentTime / 60);
           ProgressService.updateProgress({
@@ -315,7 +322,7 @@ export default function TraineeModulePlayer({
       // All quizzes completed, complete module
       // Save final progress before completing
       if (journeyId && trainee.id) {
-        const moduleId = module.id || (module as any)._id;
+        const moduleId = getNormalizedModuleId(module, journeyId, moduleIndex);
         if (moduleId) {
           const timeSpentMinutes = Math.floor(currentTime / 60);
           ProgressService.updateProgress({

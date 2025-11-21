@@ -149,3 +149,58 @@ export function toExtendedJson<T>(data: any): T {
   return data;
 }
 
+/**
+ * Get normalized module ID that matches backend format
+ * Backend uses: journeyId_module_${index} when module has no _id
+ * This ensures consistency between frontend and backend
+ */
+export function getNormalizedModuleId(
+  module: any, 
+  journeyId: string, 
+  moduleIndex?: number
+): string {
+  // First try to get the real MongoDB _id
+  const moduleId = extractObjectId(module._id) || extractObjectId(module.id);
+  
+  if (moduleId) {
+    return moduleId;
+  }
+  
+  // If no _id exists and we have an index, generate using backend format: journeyId_module_${index}
+  if (moduleIndex !== undefined && moduleIndex !== null) {
+    return `${journeyId}_module_${moduleIndex}`;
+  }
+  
+  // Fallback: try to extract from module.order if available
+  if (module.order !== undefined && module.order !== null) {
+    return `${journeyId}_module_${module.order}`;
+  }
+  
+  // Last resort: return the id as-is (might be a generated ID)
+  return module.id || String(module._id) || '';
+}
+
+/**
+ * Find module index in modules array by matching ID or order
+ */
+export function findModuleIndex(module: any, modules: any[], journeyId: string): number {
+  const moduleId = extractObjectId(module._id) || extractObjectId(module.id);
+  
+  // Try to find by ID first
+  if (moduleId) {
+    const index = modules.findIndex((m: any) => {
+      const mId = extractObjectId(m._id) || extractObjectId(m.id);
+      return mId === moduleId;
+    });
+    if (index !== -1) return index;
+  }
+  
+  // Try to find by order
+  if (module.order !== undefined && module.order !== null) {
+    const index = modules.findIndex((m: any) => m.order === module.order);
+    if (index !== -1) return index;
+  }
+  
+  // Fallback: return -1 (not found)
+  return -1;
+}
