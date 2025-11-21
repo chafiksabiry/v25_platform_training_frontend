@@ -71,8 +71,8 @@ function AppContent() {
   
   // Try to extract ID from pathname if not in params
   if (!journeyIdFromUrl && pathname) {
-    // Pattern: /training/repashboard/:id or /training/repashboard/:id
-    const match = pathname.match(/\/(?:repashboard|repashboard)\/([a-f0-9]{24})/i);
+    // Pattern: /training/repdashboard/:id or /training/repdashboard/:id
+    const match = pathname.match(/\/(?:repdashboard|repdashboard)\/([a-f0-9]{24})/i);
     if (match && match[1]) {
       journeyIdFromPathname = match[1];
     }
@@ -1092,7 +1092,7 @@ function AppContent() {
                               if (userType === 'rep' && agentId) {
                                 const journeyIdStr = journey.id || journey._id;
                                 console.log('[App] Redirecting trainee to journey URL from Continue button:', journeyIdStr);
-                                navigate(`/repashboard/${journeyIdStr}`);
+                                navigate(`/${journeyIdStr}`);
                               } else {
                                 setSelectedTraineeJourney(journey);
                               }
@@ -1885,7 +1885,7 @@ function AppContent() {
                       // Navigate to the journey URL with ID
                       const journeyIdStr = journeyId || journey.id || journey._id;
                       console.log('[App] Redirecting trainee to journey URL:', journeyIdStr);
-                      navigate(`/repashboard/${journeyIdStr}`);
+                      navigate(`/${journeyIdStr}`);
                     } else {
                       // For trainers, show module list as before
                       setSelectedJourney(journey);
@@ -2101,12 +2101,12 @@ function App() {
   let basename = '/';
   if (!isStandaloneMode) {
     // When running in Qiankun, determine basename from pathname
-    // Use the actual pathname to preserve any typos (like "repashboard")
+    // Use the actual pathname to preserve any typos (like "repdashboard")
     if (pathname.startsWith('/training/companydashboard')) {
       basename = '/training/companydashboard';
-    } else if (pathname.startsWith('/training/repashboard')) {
-      // Handle "repashboard" (typo) - use the actual pathname
-      basename = '/training/repashboard';
+    } else if (pathname.startsWith('/training/repdashboard')) {
+      // Handle "repdashboard" (typo) - use the actual pathname
+      basename = '/training/repdashboard';
     } else if (pathname.startsWith('/training/repdashboard')) {
       // Handle "repdashboard" (correct)
       basename = '/training/repdashboard';
@@ -2131,12 +2131,10 @@ function App() {
     <Router basename={basename}>
       <Routes>
         {/* Routes with parameters should come before routes without */}
-        <Route path="/repashboard/:idjourneytraining" element={<AppContent />} />
         <Route path="/repdashboard/:idjourneytraining" element={<AppContent />} />
         <Route path="/:idjourneytraining" element={<AppContent />} />
         {/* Routes without parameters */}
         <Route path="/companydashboard" element={<AppContent />} />
-        <Route path="/repashboard" element={<AppContent />} />
         <Route path="/repdashboard" element={<AppContent />} />
         <Route path="/" element={<AppContent />} />
         {/* Catch-all route should be last */}
