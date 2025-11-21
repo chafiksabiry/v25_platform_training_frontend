@@ -336,13 +336,56 @@ function App() {
   console.log('[App] Progress modules count:', progress.modules.length);
   console.log('[App] Real journeys count:', realJourneys.length);
 
-  const progressStats = {
-    completed: progress.steps.filter(step => step.status === 'completed').length,
-    inProgress: progress.steps.filter(step => step.status === 'in-progress').length,
-    pending: progress.steps.filter(step => step.status === 'pending').length,
-    totalModules: progress.totalModules,
-    overallProgress: progress.overallProgress,
+  // Calculate progress stats from real journeys data, not mock data
+  // For trainees: calculate from their actual progress in realJourneys
+  // For trainers: show 0 or calculate from realJourneys if needed
+  const calculateRealProgressStats = () => {
+    if (userType === 'rep' && agentId && realJourneys.length > 0) {
+      // Calculate from trainee's actual progress in journeys
+      let totalModules = 0;
+      let completedModules = 0;
+      let inProgressModules = 0;
+      
+      realJourneys.forEach((journey: any) => {
+        const journeyId = journey.id || journey._id;
+        const journeyProgress = traineeProgressData[journeyId] || {};
+        const modules = journey.modules || [];
+        
+        modules.forEach((module: any) => {
+          const moduleId = module.id || module._id;
+          const moduleProgress = journeyProgress[moduleId];
+          totalModules++;
+          
+          if (moduleProgress?.status === 'completed' || moduleProgress?.progress >= 100) {
+            completedModules++;
+          } else if (moduleProgress?.progress > 0) {
+            inProgressModules++;
+          }
+        });
+      });
+      
+      const overallProgress = totalModules > 0 ? Math.round((completedModules / totalModules) * 100) : 0;
+      
+      return {
+        completed: completedModules,
+        inProgress: inProgressModules,
+        pending: totalModules - completedModules - inProgressModules,
+        totalModules: totalModules,
+        overallProgress: overallProgress,
+      };
+    }
+    
+    // For trainers or when no real data: return zeros
+    return {
+      completed: 0,
+      inProgress: 0,
+      pending: 0,
+      totalModules: 0,
+      overallProgress: 0,
+    };
   };
+
+  const progressStats = calculateRealProgressStats();
 
   const handleModuleProgress = (moduleId: string, progress: number) => {
     updateModuleProgress(moduleId, progress);
