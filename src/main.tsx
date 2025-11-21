@@ -97,6 +97,7 @@ function render(props: { container?: HTMLElement }) {
       if (pathname.startsWith('/training/companydashboard')) {
         basename = '/training/companydashboard';
       } else if (pathname.startsWith('/training/repdashboard')) {
+        // Extract basename up to /repdashboard (before the journey ID)
         basename = '/training/repdashboard';
       } else if (pathname.startsWith('/training')) {
         basename = '/training';
@@ -111,6 +112,7 @@ function render(props: { container?: HTMLElement }) {
               <Route path="/" element={<App />} />
               <Route path="/companydashboard" element={<CompanyDashboard />} />
               <Route path="/repdashboard" element={<RepDashboard />} />
+              <Route path="/repdashboard/:idjourneytraining" element={<RepDashboard />} />
               <Route path="/*" element={<App />} />
             </Routes>
           </Router>

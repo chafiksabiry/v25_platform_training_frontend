@@ -56,7 +56,19 @@ import { TrainingService } from './infrastructure/services/TrainingService';
 import Cookies from 'js-cookie';
 import { extractObjectId } from './lib/mongoUtils';
 
-function App() {
+interface AppProps {
+  journeyIdFromRoute?: string;
+}
+
+function App({ journeyIdFromRoute }: AppProps = {}) {
+  // Get journey ID from URL pathname (works in both Router and non-Router contexts)
+  const pathname = window.location.pathname;
+  const journeyIdFromPathname = pathname.includes('/repdashboard/') 
+    ? pathname.split('/repdashboard/')[1]?.split('/')[0]?.split('?')[0]
+    : null;
+  
+  // Get journey ID from prop or URL pathname
+  const journeyIdFromUrl = journeyIdFromRoute || journeyIdFromPathname;
   // const { user, signOut } = useAuth();
   const user = { name: 'User', email: 'user@example.com' }; // Mock user - no auth required
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -99,6 +111,83 @@ function App() {
   const [checkingUserType, setCheckingUserType] = useState(true);
   const [traineeProgressData, setTraineeProgressData] = useState<Record<string, any>>({});
 
+  // Load specific journey by ID if provided in URL
+  useEffect(() => {
+    const loadJourneyById = async () => {
+      if (!journeyIdFromUrl || !agentId || userType !== 'rep') {
+        return;
+      }
+
+      try {
+        console.log('[App] Loading journey by ID from URL:', journeyIdFromUrl);
+        
+        // Try to get the journey from already loaded journeys first
+        const existingJourney = realJourneys.find(j => {
+          const jId = j.id || j._id;
+          return jId === journeyIdFromUrl || extractObjectId(jId) === extractObjectId(journeyIdFromUrl);
+        });
+
+        if (existingJourney) {
+          console.log('[App] Found journey in loaded journeys, selecting it');
+          setSelectedTraineeJourney(existingJourney);
+          
+          // Load progress for this journey
+          try {
+            const progressData = await TrainingService.getRepProgress(agentId, journeyIdFromUrl);
+            if (progressData) {
+              const progressArray = Array.isArray(progressData) ? progressData : [progressData];
+              const progressMap: Record<string, any> = {};
+              progressArray.forEach((p: any) => {
+                if (p.moduleId) {
+                  progressMap[p.moduleId] = p;
+                }
+              });
+              setTraineeProgressData(prev => ({ ...prev, [journeyIdFromUrl]: progressMap }));
+            }
+          } catch (error) {
+            console.error('[App] Error loading progress:', error);
+          }
+        } else {
+          // Journey not in loaded list, fetch it directly
+          try {
+            const journey = await JourneyService.getJourneyById(journeyIdFromUrl);
+            if (journey) {
+              console.log('[App] Loaded journey by ID:', journey.title || journey.name);
+              setSelectedTraineeJourney(journey);
+              
+              // Load progress
+              try {
+                const progressData = await TrainingService.getRepProgress(agentId, journeyIdFromUrl);
+                if (progressData) {
+                  const progressArray = Array.isArray(progressData) ? progressData : [progressData];
+                  const progressMap: Record<string, any> = {};
+                  progressArray.forEach((p: any) => {
+                    if (p.moduleId) {
+                      progressMap[p.moduleId] = p;
+                    }
+                  });
+                  setTraineeProgressData(prev => ({ ...prev, [journeyIdFromUrl]: progressMap }));
+                }
+              } catch (error) {
+                console.error('[App] Error loading progress:', error);
+              }
+            }
+          } catch (error) {
+            console.error('[App] Error loading journey by ID:', error);
+          }
+        }
+      } catch (error) {
+        console.error('[App] Error in loadJourneyById:', error);
+      }
+    };
+
+    // Load journey if we have the ID, agentId, and userType is rep
+    // Don't wait for realJourneys to be loaded - we can fetch the journey directly
+    if (journeyIdFromUrl && agentId && userType === 'rep') {
+      loadJourneyById();
+    }
+  }, [journeyIdFromUrl, agentId, userType, realJourneys]);
+
   // Load real training journeys and convert them to modules
   useEffect(() => {
     const loadTrainingJourneys = async () => {
@@ -135,7 +224,7 @@ function App() {
               console.log('[App] Fallback: Loaded all journeys:', journeys.length);
             } catch (fallbackError) {
               console.error('[App] Error loading all journeys:', fallbackError);
-        }
+            }
           }
         } else if (companyId) {
           // For trainers/companies, load by company
