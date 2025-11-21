@@ -1083,7 +1083,7 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             {/* Left Sidebar - Section Navigation */}
             <div className="lg:col-span-2">
-              <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-6 sticky top-6">
+              <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-6 sticky top-6 max-h-[calc(100vh-2rem)] overflow-y-auto">
                 {/* Module Navigation */}
                 <div className="mb-6">
                   <div className="flex items-center justify-between mb-4">
@@ -1108,7 +1108,7 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
                         }`}
                       >
                         <div className="flex items-center justify-between">
-                          <span>{index + 1}. {module.title}</span>
+                          <span className="truncate">{index + 1}. {module.title}</span>
                           {completedModules.includes(module.id) && (
                             <CheckCircle className="h-4 w-4 ml-1 flex-shrink-0" />
                           )}
@@ -1154,7 +1154,7 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
                           }`}
                         >
                           <div className="flex items-center justify-between">
-                            <span>{index + 1}. {section.title}</span>
+                            <span className="truncate">{index + 1}. {section.title}</span>
                             {completedSections.has(section.id || '') && (
                               <CheckCircle className="h-4 w-4 ml-1 flex-shrink-0" />
                             )}
@@ -1168,40 +1168,42 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
             </div>
 
             {/* Main Content Area - Document Viewer */}
-            <div className="lg:col-span-7">
+            <div className="lg:col-span-10">
               {currentModule && (
-                <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-6">
-                  {/* Module Header */}
-                  <div className="mb-6 pb-4 border-b border-gray-200">
+                <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-6 flex flex-col min-h-[600px]">
+                  {/* Module Header - Compact */}
+                  <div className="mb-4 pb-4 border-b border-gray-200">
                     <div className="flex items-center justify-between mb-2">
-                      <h2 className="text-xl font-bold text-gray-900">{currentModule.title}</h2>
+                      <div className="flex-1">
+                        <h2 className="text-2xl font-bold text-gray-900">{currentModule.title}</h2>
+                        <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
+                          <span className="flex items-center">
+                            <Clock className="h-4 w-4 mr-1" />
+                            {currentModule.duration || 0} min
+                          </span>
+                          <span className="flex items-center">
+                            <BookOpen className="h-4 w-4 mr-1" />
+                            {currentModule.sections?.length || 0} sections
+                          </span>
+                          <span className="flex items-center">
+                            <BarChart3 className="h-4 w-4 mr-1" />
+                            {currentModule.competencyLevel || 'Beginner'}
+                          </span>
+                        </div>
+                      </div>
                       {completedModules.includes(currentModule.id) && (
-                        <div className="flex items-center space-x-2 text-green-600">
+                        <div className="flex items-center space-x-2 text-green-600 ml-4">
                           <CheckCircle className="h-5 w-5" />
                           <span className="font-medium text-sm">Completed</span>
                         </div>
                       )}
                     </div>
-                    <div className="flex items-center space-x-4 text-sm text-gray-600">
-                      <span className="flex items-center">
-                        <Clock className="h-4 w-4 mr-1" />
-                        {currentModule.duration || 0} min
-                      </span>
-                      <span className="flex items-center">
-                        <BookOpen className="h-4 w-4 mr-1" />
-                        {currentModule.sections?.length || 0} sections
-                      </span>
-                      <span className="flex items-center">
-                        <BarChart3 className="h-4 w-4 mr-1" />
-                        {currentModule.competencyLevel || 'Beginner'}
-                      </span>
-                    </div>
                   </div>
 
-                  {/* Content */}
-                  <div className="w-full flex-1">
+                  {/* Content - Takes full available space */}
+                  <div className="flex-1 min-h-[500px] mb-6">
                     {hasSections && currentSection ? (
-                      <div className="w-full">
+                      <div className="w-full h-full min-h-[500px]">
                         {renderSectionContent(currentSection)}
                       </div>
                     ) : (
@@ -1217,7 +1219,7 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
                   </div>
 
                   {/* Navigation Controls - Bottom */}
-                  <div className="flex items-center justify-between mt-6 pt-6 border-t border-gray-200">
+                  <div className="flex items-center justify-between pt-4 border-t border-gray-200">
                     <div className="flex items-center space-x-2">
                       {hasSections && (
                         <>
@@ -1600,23 +1602,28 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
                 </div>
               )}
             </div>
+          </div>
 
-            {/* Right Sidebar - Feedback */}
-            <div className="lg:col-span-3 space-y-6">
-              {/* Add Feedback */}
-              <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Add Feedback</h3>
-                
-                {!showFeedbackForm ? (
-                    <button
+          {/* Bottom Section - Feedback and Rating */}
+          <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Feedback Section */}
+            <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-semibold text-gray-900">Feedback ({feedback.length})</h3>
+                {!showFeedbackForm && (
+                  <button
                     onClick={() => setShowFeedbackForm(true)}
-                    className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all"
-                    >
+                    className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all text-sm"
+                  >
                     <MessageSquare className="h-4 w-4" />
                     <span>Add Feedback</span>
-                    </button>
-                ) : (
-                  <div className="space-y-4">
+                  </button>
+                )}
+              </div>
+
+              {showFeedbackForm && (
+                <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     <select
                       value={currentFeedback.type}
                       onChange={(e) => setCurrentFeedback(prev => ({ ...prev, type: e.target.value as RehearsalFeedback['type'] }))}
@@ -1637,105 +1644,100 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
                       <option value="medium">Medium Priority</option>
                       <option value="high">High Priority</option>
                     </select>
+                  </div>
 
-                    <textarea
-                      value={currentFeedback.message}
-                      onChange={(e) => setCurrentFeedback(prev => ({ ...prev, message: e.target.value }))}
-                      placeholder="Describe the issue or suggestion..."
-                      rows={3}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    />
+                  <textarea
+                    value={currentFeedback.message}
+                    onChange={(e) => setCurrentFeedback(prev => ({ ...prev, message: e.target.value }))}
+                    placeholder="Describe the issue or suggestion..."
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent mb-4"
+                  />
 
-                    <div className="flex space-x-2">
+                  <div className="flex space-x-2">
                     <button
-                        onClick={addFeedback}
-                        className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                      >
-                        Add
-                      </button>
-                      <button
-                        onClick={() => setShowFeedbackForm(false)}
-                        className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                      >
-                        Cancel
+                      onClick={addFeedback}
+                      className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                    >
+                      Add Feedback
+                    </button>
+                    <button
+                      onClick={() => setShowFeedbackForm(false)}
+                      className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                    >
+                      Cancel
                     </button>
                   </div>
-            </div>
-                )}
                 </div>
+              )}
 
               {/* Feedback List */}
-              <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                  Feedback ({feedback.length})
-                </h3>
-                
-                <div className="space-y-3 max-h-96 overflow-y-auto">
-                  {feedback.map((item) => (
-                    <div key={item.id} className={`p-3 border rounded-lg ${getSeverityColor(item.severity)}`}>
-                      <div className="flex items-start space-x-2">
-                        {getFeedbackIcon(item.type)}
-                        <div className="flex-1">
+              <div className="space-y-3 max-h-64 overflow-y-auto">
+                {feedback.map((item) => (
+                  <div key={item.id} className={`p-3 border rounded-lg ${getSeverityColor(item.severity)}`}>
+                    <div className="flex items-start space-x-2">
+                      {getFeedbackIcon(item.type)}
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between">
                           <div className="text-sm font-medium capitalize">{item.type}</div>
-                          <div className="text-sm mt-1">{item.message}</div>
-                          <div className="text-xs mt-2 opacity-75">
+                          <div className="text-xs text-gray-500">
                             {new Date(item.timestamp).toLocaleTimeString()}
                           </div>
                         </div>
+                        <div className="text-sm mt-1 text-gray-700">{item.message}</div>
                       </div>
                     </div>
-                  ))}
-                  
-                  {feedback.length === 0 && (
-                    <div className="text-center py-8 text-gray-500">
-                      <MessageSquare className="h-8 w-8 text-gray-300 mx-auto mb-2" />
-                      <p className="text-sm">No feedback yet</p>
-                    </div>
-            )}
-          </div>
-        </div>
-
-              {/* Overall Rating */}
-              <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Overall Rating</h3>
+                  </div>
+                ))}
                 
-                <div className="flex justify-center space-x-2 mb-4">
-                  {[1, 2, 3, 4, 5].map((rating) => (
-                    <button
-                      key={rating}
-                      onClick={() => setOverallRating(rating)}
-                      className={`p-2 transition-colors ${
-                        rating <= overallRating ? 'text-yellow-500' : 'text-gray-300'
-                      }`}
-                    >
-                      <Star className="h-6 w-6 fill-current" />
-                    </button>
-                  ))}
-      </div>
-                
-                <div className="text-center text-sm text-gray-600 mb-4">
-                  {overallRating === 0 && 'Rate the training journey'}
-                  {overallRating === 1 && 'Needs significant improvement'}
-                  {overallRating === 2 && 'Below expectations'}
-                  {overallRating === 3 && 'Meets expectations'}
-                  {overallRating === 4 && 'Exceeds expectations'}
-                  {overallRating === 5 && 'Outstanding quality'}
-                </div>
-
-                    <button
-                  onClick={handleFinishRehearsal}
-                  disabled={overallRating === 0}
-                  className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                    >
-                  <Rocket className="h-4 w-4" />
-                  <span>Finish Rehearsal</span>
-                    </button>
+                {feedback.length === 0 && (
+                  <div className="text-center py-8 text-gray-500">
+                    <MessageSquare className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+                    <p className="text-sm">No feedback yet</p>
+                  </div>
+                )}
               </div>
             </div>
-          </div>
-                  </div>
-                </div>
 
+            {/* Overall Rating Section */}
+            <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Overall Rating</h3>
+              
+              <div className="flex justify-center space-x-2 mb-4">
+                {[1, 2, 3, 4, 5].map((rating) => (
+                  <button
+                    key={rating}
+                    onClick={() => setOverallRating(rating)}
+                    className={`p-2 transition-all transform hover:scale-110 ${
+                      rating <= overallRating ? 'text-yellow-500' : 'text-gray-300 hover:text-yellow-300'
+                    }`}
+                  >
+                    <Star className="h-8 w-8 fill-current" />
+                  </button>
+                ))}
+              </div>
+              
+              <div className="text-center text-sm text-gray-600 mb-6">
+                {overallRating === 0 && 'Rate the training journey'}
+                {overallRating === 1 && 'Needs significant improvement'}
+                {overallRating === 2 && 'Below expectations'}
+                {overallRating === 3 && 'Meets expectations'}
+                {overallRating === 4 && 'Exceeds expectations'}
+                {overallRating === 5 && 'Outstanding quality'}
+              </div>
+
+              <button
+                onClick={handleFinishRehearsal}
+                disabled={overallRating === 0}
+                className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-semibold shadow-lg"
+              >
+                <Rocket className="h-5 w-5" />
+                <span>Finish Rehearsal</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
