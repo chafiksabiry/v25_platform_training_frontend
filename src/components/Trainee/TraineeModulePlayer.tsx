@@ -155,7 +155,7 @@ export default function TraineeModulePlayer({
         }
       } else {
         // No quizzes, complete immediately
-        onComplete();
+      onComplete();
       }
     }
   };
@@ -333,155 +333,155 @@ export default function TraineeModulePlayer({
                   </div>
                 ) : (
                   /* Fallback: Show video player if no sections */
-                  <div className="bg-gray-900 aspect-video relative">
-                    <video
-                      ref={videoRef}
-                      className="w-full h-full object-cover"
-                      poster="https://images.pexels.com/photos/3184291/pexels-photo-3184291.jpeg?auto=compress&cs=tinysrgb&w=1920&h=1080&fit=crop"
-                    />
-                    
-                    {/* Video Overlay */}
-                    <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-30 transition-all duration-300 group">
-                      {/* Center Play Button */}
-                      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={() => {
-                            handleInteraction();
-                            setIsPlaying(!isPlaying);
-                          }}
-                          className="w-20 h-20 bg-white bg-opacity-90 rounded-full flex items-center justify-center hover:bg-opacity-100 transition-all shadow-lg"
-                        >
-                          {isPlaying ? (
-                            <Pause className="h-10 w-10 text-gray-900 ml-1" />
-                          ) : (
-                            <Play className="h-10 w-10 text-gray-900 ml-2" />
-                          )}
-                        </button>
-                      </div>
+                <div className="bg-gray-900 aspect-video relative">
+                  <video
+                    ref={videoRef}
+                    className="w-full h-full object-cover"
+                    poster="https://images.pexels.com/photos/3184291/pexels-photo-3184291.jpeg?auto=compress&cs=tinysrgb&w=1920&h=1080&fit=crop"
+                  />
+                  
+                  {/* Video Overlay */}
+                  <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-30 transition-all duration-300 group">
+                    {/* Center Play Button */}
+                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => {
+                          handleInteraction();
+                          setIsPlaying(!isPlaying);
+                        }}
+                        className="w-20 h-20 bg-white bg-opacity-90 rounded-full flex items-center justify-center hover:bg-opacity-100 transition-all shadow-lg"
+                      >
+                        {isPlaying ? (
+                          <Pause className="h-10 w-10 text-gray-900 ml-1" />
+                        ) : (
+                          <Play className="h-10 w-10 text-gray-900 ml-2" />
+                        )}
+                      </button>
+                    </div>
 
-                      {/* Top Overlay */}
-                      <div className="absolute top-4 left-4 right-4 flex justify-between opacity-0 group-hover:opacity-100 transition-opacity">
-                        <div className="bg-black bg-opacity-75 text-white px-4 py-2 rounded-lg">
+                    {/* Top Overlay */}
+                    <div className="absolute top-4 left-4 right-4 flex justify-between opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="bg-black bg-opacity-75 text-white px-4 py-2 rounded-lg">
                           <div className="text-sm">Section {currentSection + 1}: {sectionTitles[currentSection] || 'Untitled Section'}</div>
-                        </div>
-                        <div className="bg-black bg-opacity-75 text-white px-4 py-2 rounded-lg">
-                          <div className="text-sm">{formatTime(currentTime)} / {module.duration}</div>
-                        </div>
                       </div>
+                      <div className="bg-black bg-opacity-75 text-white px-4 py-2 rounded-lg">
+                        <div className="text-sm">{formatTime(currentTime)} / {module.duration}</div>
+                      </div>
+                    </div>
 
-                      {/* Bottom Controls */}
-                      <div className="absolute bottom-4 left-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <div className="bg-black bg-opacity-75 rounded-lg p-4">
-                          {/* Progress Bar */}
-                          <div className="w-full bg-gray-600 rounded-full h-2 mb-4">
-                            <div 
-                              className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-                              style={{ width: `${sectionProgress}%` }}
-                            />
+                    {/* Bottom Controls */}
+                    <div className="absolute bottom-4 left-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="bg-black bg-opacity-75 rounded-lg p-4">
+                        {/* Progress Bar */}
+                        <div className="w-full bg-gray-600 rounded-full h-2 mb-4">
+                          <div 
+                            className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                            style={{ width: `${sectionProgress}%` }}
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-3">
+                            <button
+                              onClick={() => {
+                                handleInteraction();
+                                setIsPlaying(!isPlaying);
+                              }}
+                              className="p-2 bg-white bg-opacity-20 text-white rounded-lg hover:bg-opacity-30 transition-colors"
+                            >
+                              {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
+                            </button>
+
+                            <button
+                              onClick={() => {
+                                handleInteraction();
+                                setCurrentTime(0);
+                                setSectionProgress(0);
+                              }}
+                              className="p-2 bg-white bg-opacity-20 text-white rounded-lg hover:bg-opacity-30 transition-colors"
+                            >
+                              <RotateCcw className="h-5 w-5" />
+                            </button>
+
+                            <div className="flex items-center space-x-2">
+                              <button
+                                onClick={() => setIsMuted(!isMuted)}
+                                className="p-2 bg-white bg-opacity-20 text-white rounded-lg hover:bg-opacity-30 transition-colors"
+                              >
+                                {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                              </button>
+                              <input
+                                type="range"
+                                min="0"
+                                max="100"
+                                value={volume}
+                                onChange={(e) => setVolume(parseInt(e.target.value))}
+                                className="w-20"
+                              />
+                            </div>
+
+                            <select
+                              value={playbackSpeed}
+                              onChange={(e) => setPlaybackSpeed(parseFloat(e.target.value))}
+                              className="bg-white bg-opacity-20 text-white rounded px-2 py-1 text-sm"
+                            >
+                              <option value={0.5}>0.5x</option>
+                              <option value={0.75}>0.75x</option>
+                              <option value={1}>1x</option>
+                              <option value={1.25}>1.25x</option>
+                              <option value={1.5}>1.5x</option>
+                              <option value={2}>2x</option>
+                            </select>
                           </div>
 
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-3">
-                              <button
-                                onClick={() => {
-                                  handleInteraction();
-                                  setIsPlaying(!isPlaying);
-                                }}
-                                className="p-2 bg-white bg-opacity-20 text-white rounded-lg hover:bg-opacity-30 transition-colors"
-                              >
-                                {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
-                              </button>
+                          <div className="flex items-center space-x-3">
+                            <button
+                              onClick={addBookmark}
+                              className="p-2 bg-white bg-opacity-20 text-white rounded-lg hover:bg-opacity-30 transition-colors"
+                            >
+                              <Star className="h-4 w-4" />
+                            </button>
 
-                              <button
-                                onClick={() => {
-                                  handleInteraction();
-                                  setCurrentTime(0);
-                                  setSectionProgress(0);
-                                }}
-                                className="p-2 bg-white bg-opacity-20 text-white rounded-lg hover:bg-opacity-30 transition-colors"
-                              >
-                                <RotateCcw className="h-5 w-5" />
-                              </button>
+                            <button
+                              onClick={() => setShowTranscript(!showTranscript)}
+                              className="p-2 bg-white bg-opacity-20 text-white rounded-lg hover:bg-opacity-30 transition-colors"
+                            >
+                              <MessageSquare className="h-4 w-4" />
+                            </button>
 
-                              <div className="flex items-center space-x-2">
-                                <button
-                                  onClick={() => setIsMuted(!isMuted)}
-                                  className="p-2 bg-white bg-opacity-20 text-white rounded-lg hover:bg-opacity-30 transition-colors"
-                                >
-                                  {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-                                </button>
-                                <input
-                                  type="range"
-                                  min="0"
-                                  max="100"
-                                  value={volume}
-                                  onChange={(e) => setVolume(parseInt(e.target.value))}
-                                  className="w-20"
-                                />
-                              </div>
+                            <button
+                              onClick={() => setShowNotes(!showNotes)}
+                              className="p-2 bg-white bg-opacity-20 text-white rounded-lg hover:bg-opacity-30 transition-colors"
+                            >
+                              <BookOpen className="h-4 w-4" />
+                            </button>
 
-                              <select
-                                value={playbackSpeed}
-                                onChange={(e) => setPlaybackSpeed(parseFloat(e.target.value))}
-                                className="bg-white bg-opacity-20 text-white rounded px-2 py-1 text-sm"
-                              >
-                                <option value={0.5}>0.5x</option>
-                                <option value={0.75}>0.75x</option>
-                                <option value={1}>1x</option>
-                                <option value={1.25}>1.25x</option>
-                                <option value={1.5}>1.5x</option>
-                                <option value={2}>2x</option>
-                              </select>
-                            </div>
-
-                            <div className="flex items-center space-x-3">
-                              <button
-                                onClick={addBookmark}
-                                className="p-2 bg-white bg-opacity-20 text-white rounded-lg hover:bg-opacity-30 transition-colors"
-                              >
-                                <Star className="h-4 w-4" />
-                              </button>
-
-                              <button
-                                onClick={() => setShowTranscript(!showTranscript)}
-                                className="p-2 bg-white bg-opacity-20 text-white rounded-lg hover:bg-opacity-30 transition-colors"
-                              >
-                                <MessageSquare className="h-4 w-4" />
-                              </button>
-
-                              <button
-                                onClick={() => setShowNotes(!showNotes)}
-                                className="p-2 bg-white bg-opacity-20 text-white rounded-lg hover:bg-opacity-30 transition-colors"
-                              >
-                                <BookOpen className="h-4 w-4" />
-                              </button>
-
-                              <button className="p-2 bg-white bg-opacity-20 text-white rounded-lg hover:bg-opacity-30 transition-colors">
-                                <Maximize className="h-4 w-4" />
-                              </button>
-                            </div>
+                            <button className="p-2 bg-white bg-opacity-20 text-white rounded-lg hover:bg-opacity-30 transition-colors">
+                              <Maximize className="h-4 w-4" />
+                            </button>
                           </div>
                         </div>
                       </div>
                     </div>
                   </div>
+                </div>
                 )}
 
                 {/* Module Content Sections - Only show if no sections */}
                 {sections.length === 0 && (
-                  <div className="p-6">
-                    <div className="flex items-center justify-between mb-6">
-                      <h2 className="text-xl font-semibold text-gray-900">
+                <div className="p-6">
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-xl font-semibold text-gray-900">
                         Section {currentSection + 1}: {sectionTitles[currentSection]}
-                      </h2>
-                      <button
-                        onClick={handleSectionComplete}
-                        className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                      >
-                        <CheckCircle className="h-4 w-4" />
-                        <span>Mark Complete</span>
-                      </button>
-                    </div>
+                    </h2>
+                    <button
+                      onClick={handleSectionComplete}
+                      className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                    >
+                      <CheckCircle className="h-4 w-4" />
+                      <span>Mark Complete</span>
+                    </button>
+                  </div>
 
                   {/* Interactive Elements */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -563,7 +563,7 @@ export default function TraineeModulePlayer({
                       </div>
                     )}
                   </div>
-                  </div>
+                </div>
                 )}
               </div>
 

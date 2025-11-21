@@ -64,7 +64,11 @@ function AppContent() {
   const { idjourneytraining } = useParams<{ idjourneytraining?: string }>();
   const journeyIdFromUrl = idjourneytraining;
   
-  console.log('[App] Journey ID from route params:', journeyIdFromUrl);
+  console.log('[App] AppContent rendering:', {
+    journeyIdFromUrl,
+    pathname: window.location.pathname,
+    params: { idjourneytraining }
+  });
   // const { user, signOut } = useAuth();
   const user = { name: 'User', email: 'user@example.com' }; // Mock user - no auth required
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -696,6 +700,7 @@ function AppContent() {
 
   // Show welcome screen for first-time users (but not if showing success page or if user is rep)
   if (!hasCompletedSetup && showWelcome && !showJourneyBuilder && !showManualTraining && !showJourneySuccess && userType !== 'rep' && !checkingUserType) {
+    console.log('[App] Rendering welcome screen');
     return (
       <div className="h-screen bg-gradient-to-br from-blue-50 to-indigo-100 overflow-y-auto">
         <div className="container mx-auto px-4 py-4">
@@ -1974,6 +1979,7 @@ function AppContent() {
     }
   };
 
+  console.log('[App] Rendering main app layout, activeTab:', activeTab, 'userType:', userType);
   return (
     <div className="h-screen bg-gray-50 relative overflow-hidden flex">
       {/* Sidebar - Always rendered first */}
@@ -2083,10 +2089,14 @@ function App() {
   let basename = '/';
   if (!isStandaloneMode) {
     // When running in Qiankun, determine basename from pathname
+    // Use the actual pathname to preserve any typos (like "repashboard")
     if (pathname.startsWith('/training/companydashboard')) {
       basename = '/training/companydashboard';
-    } else if (pathname.startsWith('/training/repashboard') || pathname.startsWith('/training/repdashboard')) {
-      // Handle both "repashboard" (typo) and "repdashboard" (correct)
+    } else if (pathname.startsWith('/training/repashboard')) {
+      // Handle "repashboard" (typo) - use the actual pathname
+      basename = '/training/repashboard';
+    } else if (pathname.startsWith('/training/repdashboard')) {
+      // Handle "repdashboard" (correct)
       basename = '/training/repdashboard';
     } else if (pathname.startsWith('/training')) {
       basename = '/training';
@@ -2104,13 +2114,16 @@ function App() {
   return (
     <Router basename={basename}>
       <Routes>
-        <Route path="/" element={<AppContent />} />
-        <Route path="/companydashboard" element={<AppContent />} />
-        <Route path="/repashboard" element={<AppContent />} />
-        <Route path="/repdashboard" element={<AppContent />} />
+        {/* Routes with parameters should come before routes without */}
         <Route path="/repashboard/:idjourneytraining" element={<AppContent />} />
         <Route path="/repdashboard/:idjourneytraining" element={<AppContent />} />
         <Route path="/:idjourneytraining" element={<AppContent />} />
+        {/* Routes without parameters */}
+        <Route path="/companydashboard" element={<AppContent />} />
+        <Route path="/repashboard" element={<AppContent />} />
+        <Route path="/repdashboard" element={<AppContent />} />
+        <Route path="/" element={<AppContent />} />
+        {/* Catch-all route should be last */}
         <Route path="/*" element={<AppContent />} />
       </Routes>
     </Router>
