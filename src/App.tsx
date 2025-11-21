@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
 import { qiankunWindow } from 'vite-plugin-qiankun/dist/helper';
 import { useParams } from 'react-router-dom';
 import { User, Sparkles, Zap, Upload, Wand2, Rocket, Eye, Target, BookOpen, Play, CheckCircle } from 'lucide-react';
@@ -62,6 +62,7 @@ import { extractObjectId } from './lib/mongoUtils';
 function AppContent() {
   // Get journey ID from route params (inside Router context)
   const { idjourneytraining } = useParams<{ idjourneytraining?: string }>();
+  const navigate = useNavigate();
   const journeyIdFromUrl = idjourneytraining;
   
   // Also try to extract from pathname as fallback
@@ -1087,7 +1088,14 @@ function AppContent() {
                             }`}
                             onClick={(e) => {
                               e.stopPropagation();
-                              setSelectedTraineeJourney(journey);
+                              // For trainees, redirect to URL with journey ID
+                              if (userType === 'rep' && agentId) {
+                                const journeyIdStr = journey.id || journey._id;
+                                console.log('[App] Redirecting trainee to journey URL from Continue button:', journeyIdStr);
+                                navigate(`/repashboard/${journeyIdStr}`);
+                              } else {
+                                setSelectedTraineeJourney(journey);
+                              }
                             }}
                           >
                             <Play className="h-4 w-4" />
@@ -1872,29 +1880,12 @@ function AppContent() {
                 onJourneySelect={async (journeyId) => {
                   const journey = traineeFilteredJourneys.find(j => (j.id || j._id) === journeyId);
                   if (journey) {
-                    // For trainees, redirect to TraineePortal instead of showing module list
+                    // For trainees, redirect to URL with journey ID instead of showing module list
                     if (userType === 'rep' && agentId) {
-                      try {
-                        // Load progress for this journey
-                        const progressData = await TrainingService.getRepProgress(agentId, journeyId);
-                        if (progressData) {
-                          const progressArray = Array.isArray(progressData) ? progressData : [progressData];
-                          const progressMap: Record<string, any> = {};
-                          progressArray.forEach((p: any) => {
-                            if (p.moduleId) {
-                              progressMap[p.moduleId] = p;
-                            }
-                          });
-                          setTraineeProgressData(prev => ({ ...prev, [journeyId]: progressMap }));
-                        }
-                      } catch (error) {
-                        console.error('[App] Error loading progress:', error);
-                      }
-                      
-                      // Set the selected trainee journey to trigger TraineePortal display
-                      setSelectedTraineeJourney(journey);
-                      console.log('[App] Redirecting trainee to TraineePortal for journey:', journey.title || journey.name);
-                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                      // Navigate to the journey URL with ID
+                      const journeyIdStr = journeyId || journey.id || journey._id;
+                      console.log('[App] Redirecting trainee to journey URL:', journeyIdStr);
+                      navigate(`/repashboard/${journeyIdStr}`);
                     } else {
                       // For trainers, show module list as before
                       setSelectedJourney(journey);
