@@ -25,9 +25,11 @@ import {
   BarChart3,
   TrendingUp,
   Eye,
-  Star
+  Star,
+  FileText
 } from 'lucide-react';
 import { TrainingModule, Rep, Exercise, Quiz } from '../../types';
+import DocumentViewer from '../DocumentViewer/DocumentViewer';
 
 interface TraineeModulePlayerProps {
   module: TrainingModule;
@@ -67,6 +69,22 @@ export default function TraineeModulePlayer({
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const progressInterval = useRef<NodeJS.Timeout | null>(null);
+
+  // Get sections from module.content or module.sections
+  const moduleAny = module as any;
+  const sections = (moduleAny.sections && Array.isArray(moduleAny.sections) && moduleAny.sections.length > 0)
+    ? moduleAny.sections
+    : (moduleAny.content && Array.isArray(moduleAny.content) && moduleAny.content.length > 0)
+      ? moduleAny.content
+      : [];
+
+  // Get current section data
+  const currentSectionData = sections[currentSection] || null;
+
+  // Use topics as fallback if no sections
+  const sectionTitles = sections.length > 0 
+    ? sections.map((s: any) => s.title || 'Untitled Section')
+    : (module.topics || []);
 
   useEffect(() => {
     if (isPlaying) {
@@ -112,9 +130,11 @@ export default function TraineeModulePlayer({
 
   const handleSectionComplete = () => {
     handleInteraction();
-    if (currentSection < module.topics.length - 1) {
+    const maxSection = Math.max(sections.length, sectionTitles.length) - 1;
+    if (currentSection < maxSection) {
       setCurrentSection(prev => prev + 1);
       setSectionProgress(0);
+      setCurrentTime(0);
     } else {
       // Module completed - show quizzes if available
       setModuleCompleted(true);
@@ -257,155 +277,211 @@ export default function TraineeModulePlayer({
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
             {/* Main Content Area */}
             <div className="lg:col-span-3">
-              {/* Video/Content Player */}
+              {/* Content Player - Display section content */}
               <div className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden mb-6">
-                <div className="bg-gray-900 aspect-video relative">
-                  <video
-                    ref={videoRef}
-                    className="w-full h-full object-cover"
-                    poster="https://images.pexels.com/photos/3184291/pexels-photo-3184291.jpeg?auto=compress&cs=tinysrgb&w=1920&h=1080&fit=crop"
-                  />
-                  
-                  {/* Video Overlay */}
-                  <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-30 transition-all duration-300 group">
-                    {/* Center Play Button */}
-                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        onClick={() => {
-                          handleInteraction();
-                          setIsPlaying(!isPlaying);
-                        }}
-                        className="w-20 h-20 bg-white bg-opacity-90 rounded-full flex items-center justify-center hover:bg-opacity-100 transition-all shadow-lg"
-                      >
-                        {isPlaying ? (
-                          <Pause className="h-10 w-10 text-gray-900 ml-1" />
-                        ) : (
-                          <Play className="h-10 w-10 text-gray-900 ml-2" />
-                        )}
-                      </button>
-                    </div>
-
-                    {/* Top Overlay */}
-                    <div className="absolute top-4 left-4 right-4 flex justify-between opacity-0 group-hover:opacity-100 transition-opacity">
-                      <div className="bg-black bg-opacity-75 text-white px-4 py-2 rounded-lg">
-                        <div className="text-sm">Section {currentSection + 1}: {module.topics[currentSection]}</div>
-                      </div>
-                      <div className="bg-black bg-opacity-75 text-white px-4 py-2 rounded-lg">
-                        <div className="text-sm">{formatTime(currentTime)} / {module.duration}</div>
-                      </div>
-                    </div>
-
-                    {/* Bottom Controls */}
-                    <div className="absolute bottom-4 left-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <div className="bg-black bg-opacity-75 rounded-lg p-4">
-                        {/* Progress Bar */}
-                        <div className="w-full bg-gray-600 rounded-full h-2 mb-4">
-                          <div 
-                            className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-                            style={{ width: `${sectionProgress}%` }}
-                          />
+                {/* Section Content Display */}
+                {sections.length > 0 && currentSectionData ? (
+                  <div className="flex flex-col" style={{ minHeight: '600px' }}>
+                    {/* Section Header */}
+                    <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h2 className="text-xl font-semibold text-gray-900">
+                            Section {currentSection + 1}: {currentSectionData.title || sectionTitles[currentSection] || 'Untitled Section'}
+                          </h2>
+                          {currentSectionData.description && (
+                            <p className="text-sm text-gray-600 mt-1">{currentSectionData.description}</p>
+                          )}
                         </div>
+                        <button
+                          onClick={handleSectionComplete}
+                          className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                        >
+                          <CheckCircle className="h-4 w-4" />
+                          <span>Mark Complete</span>
+                        </button>
+                      </div>
+                    </div>
 
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-3">
-                            <button
-                              onClick={() => {
-                                handleInteraction();
-                                setIsPlaying(!isPlaying);
-                              }}
-                              className="p-2 bg-white bg-opacity-20 text-white rounded-lg hover:bg-opacity-30 transition-colors"
-                            >
-                              {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
-                            </button>
+                    {/* Section Content */}
+                    <div className="flex-1 min-h-0 overflow-hidden" style={{ flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+                      {currentSectionData.content?.file?.url ? (
+                        <DocumentViewer
+                          fileUrl={currentSectionData.content.file.url}
+                          fileName={currentSectionData.content.file.name || currentSectionData.title}
+                          mimeType={currentSectionData.content.file.mimeType}
+                        />
+                      ) : currentSectionData.content?.text ? (
+                        <div className="p-6 flex-1 overflow-y-auto" style={{ overflowY: 'auto', height: '100%' }}>
+                          <div className="prose max-w-none">
+                            {currentSectionData.content.text.split('\n\n').map((paragraph: string, idx: number) => (
+                              <p key={idx} className="text-gray-700 text-base leading-relaxed mb-4">
+                                {paragraph}
+                              </p>
+                            ))}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex-1 flex items-center justify-center p-12">
+                          <div className="text-center">
+                            <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                            <p className="text-gray-500">No content available for this section</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  /* Fallback: Show video player if no sections */
+                  <div className="bg-gray-900 aspect-video relative">
+                    <video
+                      ref={videoRef}
+                      className="w-full h-full object-cover"
+                      poster="https://images.pexels.com/photos/3184291/pexels-photo-3184291.jpeg?auto=compress&cs=tinysrgb&w=1920&h=1080&fit=crop"
+                    />
+                    
+                    {/* Video Overlay */}
+                    <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-30 transition-all duration-300 group">
+                      {/* Center Play Button */}
+                      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={() => {
+                            handleInteraction();
+                            setIsPlaying(!isPlaying);
+                          }}
+                          className="w-20 h-20 bg-white bg-opacity-90 rounded-full flex items-center justify-center hover:bg-opacity-100 transition-all shadow-lg"
+                        >
+                          {isPlaying ? (
+                            <Pause className="h-10 w-10 text-gray-900 ml-1" />
+                          ) : (
+                            <Play className="h-10 w-10 text-gray-900 ml-2" />
+                          )}
+                        </button>
+                      </div>
 
-                            <button
-                              onClick={() => {
-                                handleInteraction();
-                                setCurrentTime(0);
-                                setSectionProgress(0);
-                              }}
-                              className="p-2 bg-white bg-opacity-20 text-white rounded-lg hover:bg-opacity-30 transition-colors"
-                            >
-                              <RotateCcw className="h-5 w-5" />
-                            </button>
+                      {/* Top Overlay */}
+                      <div className="absolute top-4 left-4 right-4 flex justify-between opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="bg-black bg-opacity-75 text-white px-4 py-2 rounded-lg">
+                          <div className="text-sm">Section {currentSection + 1}: {sectionTitles[currentSection] || 'Untitled Section'}</div>
+                        </div>
+                        <div className="bg-black bg-opacity-75 text-white px-4 py-2 rounded-lg">
+                          <div className="text-sm">{formatTime(currentTime)} / {module.duration}</div>
+                        </div>
+                      </div>
 
-                            <div className="flex items-center space-x-2">
+                      {/* Bottom Controls */}
+                      <div className="absolute bottom-4 left-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="bg-black bg-opacity-75 rounded-lg p-4">
+                          {/* Progress Bar */}
+                          <div className="w-full bg-gray-600 rounded-full h-2 mb-4">
+                            <div 
+                              className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                              style={{ width: `${sectionProgress}%` }}
+                            />
+                          </div>
+
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-3">
                               <button
-                                onClick={() => setIsMuted(!isMuted)}
+                                onClick={() => {
+                                  handleInteraction();
+                                  setIsPlaying(!isPlaying);
+                                }}
                                 className="p-2 bg-white bg-opacity-20 text-white rounded-lg hover:bg-opacity-30 transition-colors"
                               >
-                                {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                                {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
                               </button>
-                              <input
-                                type="range"
-                                min="0"
-                                max="100"
-                                value={volume}
-                                onChange={(e) => setVolume(parseInt(e.target.value))}
-                                className="w-20"
-                              />
+
+                              <button
+                                onClick={() => {
+                                  handleInteraction();
+                                  setCurrentTime(0);
+                                  setSectionProgress(0);
+                                }}
+                                className="p-2 bg-white bg-opacity-20 text-white rounded-lg hover:bg-opacity-30 transition-colors"
+                              >
+                                <RotateCcw className="h-5 w-5" />
+                              </button>
+
+                              <div className="flex items-center space-x-2">
+                                <button
+                                  onClick={() => setIsMuted(!isMuted)}
+                                  className="p-2 bg-white bg-opacity-20 text-white rounded-lg hover:bg-opacity-30 transition-colors"
+                                >
+                                  {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                                </button>
+                                <input
+                                  type="range"
+                                  min="0"
+                                  max="100"
+                                  value={volume}
+                                  onChange={(e) => setVolume(parseInt(e.target.value))}
+                                  className="w-20"
+                                />
+                              </div>
+
+                              <select
+                                value={playbackSpeed}
+                                onChange={(e) => setPlaybackSpeed(parseFloat(e.target.value))}
+                                className="bg-white bg-opacity-20 text-white rounded px-2 py-1 text-sm"
+                              >
+                                <option value={0.5}>0.5x</option>
+                                <option value={0.75}>0.75x</option>
+                                <option value={1}>1x</option>
+                                <option value={1.25}>1.25x</option>
+                                <option value={1.5}>1.5x</option>
+                                <option value={2}>2x</option>
+                              </select>
                             </div>
 
-                            <select
-                              value={playbackSpeed}
-                              onChange={(e) => setPlaybackSpeed(parseFloat(e.target.value))}
-                              className="bg-white bg-opacity-20 text-white rounded px-2 py-1 text-sm"
-                            >
-                              <option value={0.5}>0.5x</option>
-                              <option value={0.75}>0.75x</option>
-                              <option value={1}>1x</option>
-                              <option value={1.25}>1.25x</option>
-                              <option value={1.5}>1.5x</option>
-                              <option value={2}>2x</option>
-                            </select>
-                          </div>
+                            <div className="flex items-center space-x-3">
+                              <button
+                                onClick={addBookmark}
+                                className="p-2 bg-white bg-opacity-20 text-white rounded-lg hover:bg-opacity-30 transition-colors"
+                              >
+                                <Star className="h-4 w-4" />
+                              </button>
 
-                          <div className="flex items-center space-x-3">
-                            <button
-                              onClick={addBookmark}
-                              className="p-2 bg-white bg-opacity-20 text-white rounded-lg hover:bg-opacity-30 transition-colors"
-                            >
-                              <Star className="h-4 w-4" />
-                            </button>
+                              <button
+                                onClick={() => setShowTranscript(!showTranscript)}
+                                className="p-2 bg-white bg-opacity-20 text-white rounded-lg hover:bg-opacity-30 transition-colors"
+                              >
+                                <MessageSquare className="h-4 w-4" />
+                              </button>
 
-                            <button
-                              onClick={() => setShowTranscript(!showTranscript)}
-                              className="p-2 bg-white bg-opacity-20 text-white rounded-lg hover:bg-opacity-30 transition-colors"
-                            >
-                              <MessageSquare className="h-4 w-4" />
-                            </button>
+                              <button
+                                onClick={() => setShowNotes(!showNotes)}
+                                className="p-2 bg-white bg-opacity-20 text-white rounded-lg hover:bg-opacity-30 transition-colors"
+                              >
+                                <BookOpen className="h-4 w-4" />
+                              </button>
 
-                            <button
-                              onClick={() => setShowNotes(!showNotes)}
-                              className="p-2 bg-white bg-opacity-20 text-white rounded-lg hover:bg-opacity-30 transition-colors"
-                            >
-                              <BookOpen className="h-4 w-4" />
-                            </button>
-
-                            <button className="p-2 bg-white bg-opacity-20 text-white rounded-lg hover:bg-opacity-30 transition-colors">
-                              <Maximize className="h-4 w-4" />
-                            </button>
+                              <button className="p-2 bg-white bg-opacity-20 text-white rounded-lg hover:bg-opacity-30 transition-colors">
+                                <Maximize className="h-4 w-4" />
+                              </button>
+                            </div>
                           </div>
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
+                )}
 
                 {/* Module Content Sections */}
-                <div className="p-6">
-                  <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-xl font-semibold text-gray-900">
-                      Section {currentSection + 1}: {module.topics[currentSection]}
-                    </h2>
-                    <button
-                      onClick={handleSectionComplete}
-                      className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                    >
-                      <CheckCircle className="h-4 w-4" />
-                      <span>Mark Complete</span>
-                    </button>
-                  </div>
+                {sections.length === 0 && (
+                  <div className="p-6">
+                    <div className="flex items-center justify-between mb-6">
+                      <h2 className="text-xl font-semibold text-gray-900">
+                        Section {currentSection + 1}: {sectionTitles[currentSection]}
+                      </h2>
+                      <button
+                        onClick={handleSectionComplete}
+                        className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                      >
+                        <CheckCircle className="h-4 w-4" />
+                        <span>Mark Complete</span>
+                      </button>
+                    </div>
 
                   {/* Interactive Elements */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -625,12 +701,14 @@ export default function TraineeModulePlayer({
               <div className="bg-white rounded-xl border border-gray-200 p-6">
                 <h3 className="font-semibold text-gray-900 mb-4">Module Sections</h3>
                 <div className="space-y-2">
-                  {module.topics.map((topic, index) => (
+                  {sectionTitles.map((title: string, index: number) => (
                     <button
                       key={index}
                       onClick={() => {
                         handleInteraction();
                         setCurrentSection(index);
+                        setSectionProgress(0);
+                        setCurrentTime(0);
                       }}
                       className={`w-full text-left p-3 rounded-lg transition-colors ${
                         index === currentSection 
@@ -652,7 +730,7 @@ export default function TraineeModulePlayer({
                             index + 1
                           )}
                         </div>
-                        <span className="font-medium">{topic}</span>
+                        <span className="font-medium">{title}</span>
                       </div>
                     </button>
                   ))}
