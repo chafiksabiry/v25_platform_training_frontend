@@ -321,18 +321,20 @@ function App() {
     checkUserTypeAndSetRole();
   }, []); // Run once on mount
 
-  // Use real modules if available, otherwise fallback to mock
-  const modulesToUse = realModules.length > 0 ? realModules : mockTrainingModules;
+  // Use real modules if available, otherwise use empty array (no mock fallback for training display)
+  // Mock modules are only used for progress tracking hooks, not for display
+  const modulesToUse = realModules.length > 0 ? realModules : [];
   
   console.log('[App] Using', modulesToUse.length, 'modules (real:', realModules.length, ', mock:', mockTrainingModules.length, ')');
 
   const { progress, updateModuleProgress, updateStepProgress, updateAssessmentResult } = useTrainingProgress({
-    modules: modulesToUse,
+    modules: modulesToUse.length > 0 ? modulesToUse : mockTrainingModules, // Use mock only for hook initialization
     steps: mockOnboardingSteps,
     assessments: mockAssessments,
   });
   
   console.log('[App] Progress modules count:', progress.modules.length);
+  console.log('[App] Real journeys count:', realJourneys.length);
 
   const progressStats = {
     completed: progress.steps.filter(step => step.status === 'completed').length,
@@ -1373,7 +1375,11 @@ function App() {
                 }} 
               />
             ) : (
-              <TrainingModules modules={progress.modules} onModuleSelect={setSelectedModule} />
+              <div className="text-center py-12 bg-white rounded-xl border border-gray-200">
+                <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-600 text-lg mb-2">Aucune formation disponible</p>
+                <p className="text-gray-500 text-sm">Les formations seront affichées ici une fois créées.</p>
+              </div>
             )
           );
         case 'assessments':
@@ -1510,7 +1516,11 @@ function App() {
                   }} 
                 />
               ) : (
-                <TrainingModules modules={progress.modules} onModuleSelect={setSelectedModule} />
+                <div className="text-center py-12 bg-white rounded-xl border border-gray-200">
+                  <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-600 text-lg mb-2">Aucune formation disponible</p>
+                  <p className="text-gray-500 text-sm">Les formations seront affichées ici une fois créées.</p>
+                </div>
               )
             )
           );
@@ -1768,7 +1778,11 @@ function App() {
                 }} 
               />
             ) : (
-            <TrainingModules modules={progress.modules} onModuleSelect={setSelectedModule} />
+              <div className="text-center py-12 bg-white rounded-xl border border-gray-200">
+                <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-600 text-lg mb-2">Aucune formation disponible</p>
+                <p className="text-gray-500 text-sm">Les formations seront affichées ici une fois créées.</p>
+              </div>
             )}
           </div>
         );
