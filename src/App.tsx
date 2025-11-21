@@ -2,10 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
 import { qiankunWindow } from 'vite-plugin-qiankun/dist/helper';
 import { useParams } from 'react-router-dom';
-import { User, Sparkles, Zap, Upload, Wand2, Rocket, Eye, Target, BookOpen, Play, CheckCircle } from 'lucide-react';
+import { User, Sparkles, Zap, Upload, Wand2, Rocket, Eye, BookOpen, Play, CheckCircle } from 'lucide-react';
 // import { useAuth } from './hooks/useAuth';
 import JourneyBuilder from './components/JourneyBuilder/JourneyBuilder';
-import { TrainingHub } from './components/Training';
 import { ManualTrainingSetup, ManualTrainingBuilder } from './components/ManualTraining';
 import MethodologyBuilder from './components/Methodology/MethodologyBuilder';
 import Header from './components/Layout/Header';
@@ -34,25 +33,20 @@ import LaunchedJourneyDashboard from './components/Dashboard/LaunchedJourneyDash
 import JourneySuccess from './components/JourneyBuilder/JourneySuccess';
 import TraineePortal from './components/Trainee/TraineePortal';
 import { TrainingMethodology } from './types/methodology';
-import { healthInsuranceMethodology } from './data/healthInsuranceMethodology';
 import { 
-  mockRep, 
   mockGig, 
-  mockOnboardingSteps, 
   mockTrainingModules,
-  mockAssessments,
   mockKnowledgeBase,
   mockLiveSessions,
   mockAIInsights,
   mockAITutor,
-  mockTrainerDashboard,
   mockCompanyAnalytics,
   mockCurriculumBuilder,
   mockLiveStreamSessions
 } from './data/mockData';
 import { useTrainingProgress } from './hooks/useTrainingProgress';
-import { Company, TrainingJourney, TrainingModule, Rep } from './types';
-import { getCurrentUserName, getAgentId, getCurrentUserEmail, getUserType, getUserId } from './utils/userUtils';
+import { TrainingJourney, TrainingModule, Rep, LiveStreamSession, ChatMessage } from './types';
+import { getCurrentUserName, getAgentId, getCurrentUserEmail, getUserType } from './utils/userUtils';
 import { JourneyService } from './infrastructure/services/JourneyService';
 import { TrainingService } from './infrastructure/services/TrainingService';
 // TrainingModuleService no longer needed - using embedded structure
@@ -256,7 +250,7 @@ function AppContent() {
             console.error('[App] Error loading available journeys for trainee:', error);
             // Fallback: try to get all journeys
             try {
-              const allJourneys = await JourneyService.getAllJourneys();
+              const allJourneys: any = await JourneyService.getAllJourneys();
               journeys = Array.isArray(allJourneys) ? allJourneys : (allJourneys?.data || []);
               console.log('[App] Fallback: Loaded all journeys:', journeys.length);
             } catch (fallbackError) {
@@ -281,7 +275,7 @@ function AppContent() {
         } else {
           // Try to get all journeys as fallback
           try {
-            const allJourneys = await JourneyService.getAllJourneys();
+            const allJourneys: any = await JourneyService.getAllJourneys();
             journeys = Array.isArray(allJourneys) ? allJourneys : (allJourneys?.data || []);
             console.log('[App] Fallback: Loaded all journeys:', journeys.length);
           } catch (error) {
@@ -652,7 +646,7 @@ function AppContent() {
       summary: {
         totalModules: launchedJourney.modules.length,
         totalParticipants: launchedJourney.enrolledReps.length,
-        totalDuration: launchedJourney.modules.reduce((sum, m) => sum + (m.duration || 0), 0),
+        totalDuration: launchedJourney.modules.reduce((sum, m) => sum + (typeof m.duration === 'number' ? m.duration : Number(m.duration) || 0), 0),
         totalAssessments: launchedJourney.modules.reduce((sum, m) => sum + (m.assessments?.length || 0), 0)
       },
       exportedAt: new Date().toISOString()
@@ -785,14 +779,14 @@ function AppContent() {
               {/* AI Creation */}
               <button
                 onClick={() => {
-                  if (userType === 'rep') {
+                  if (userType !== 'company') {
                     alert('You do not have permission to create training journeys. Please contact your administrator.');
                     return;
                   }
                   setShowJourneyBuilder(true);
                 }}
-                disabled={userType === 'rep'}
-                className={`group p-6 bg-gradient-to-br from-blue-500 to-purple-600 text-white rounded-xl shadow-lg hover:shadow-2xl transition-all transform hover:scale-105 text-left ${userType === 'rep' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                disabled={userType !== 'company'}
+                className={`group p-6 bg-gradient-to-br from-blue-500 to-purple-600 text-white rounded-xl shadow-lg hover:shadow-2xl transition-all transform hover:scale-105 text-left ${userType !== 'company' ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 <Sparkles className="h-8 w-8 mb-3 group-hover:rotate-12 transition-transform" />
                 <h3 className="text-xl font-bold mb-2">🤖 AI-Powered Creation</h3>
@@ -808,15 +802,15 @@ function AppContent() {
               {/* Manual Creation */}
               <button
                 onClick={() => {
-                  if (userType === 'rep') {
+                  if (userType !== 'company') {
                     alert('You do not have permission to create training journeys. Please contact your administrator.');
                     return;
                   }
                   console.log('Manual Training clicked!');
                   setShowManualTraining(true);
                 }}
-                disabled={userType === 'rep'}
-                className={`group p-6 bg-gradient-to-br from-green-500 to-teal-600 text-white rounded-xl shadow-lg hover:shadow-2xl transition-all transform hover:scale-105 text-left ${userType === 'rep' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                disabled={userType !== 'company'}
+                className={`group p-6 bg-gradient-to-br from-green-500 to-teal-600 text-white rounded-xl shadow-lg hover:shadow-2xl transition-all transform hover:scale-105 text-left ${userType !== 'company' ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 <Upload className="h-8 w-8 mb-3 group-hover:-translate-y-1 transition-transform" />
                 <h3 className="text-xl font-bold mb-2">✍️ Manual Creation</h3>
@@ -1140,7 +1134,7 @@ function AppContent() {
   // Auto-show TraineePortal if userType is 'rep' and a journey is selected
   if (userType === 'rep' && agentId && selectedTraineeJourney && !showTraineePortal && !showLaunchedDashboard && !showJourneyBuilder && !showJourneySuccess && !showManualTraining && !checkingUserType) {
     // Create a mock trainee object from agentId
-    const autoTrainee: Rep = {
+    const autoTrainee: Rep & { enrolledJourneys?: string[] } = {
       id: agentId,
       name: getCurrentUserName(),
       email: getCurrentUserEmail() || '',
@@ -1386,6 +1380,22 @@ function AppContent() {
     );
   }
 
+  // Helper function to convert mock session to properly typed LiveStreamSession
+  const convertSessionToTyped = (session: any): LiveStreamSession => {
+    return {
+      ...session,
+      chatMessages: (session.chatMessages || []).map((msg: any): ChatMessage => ({
+        ...msg,
+        sender: (msg.sender === 'user' || msg.sender === 'ai' || msg.sender === 'trainer') 
+          ? msg.sender as 'user' | 'ai' | 'trainer'
+          : 'user' as 'user' | 'ai' | 'trainer',
+        type: (msg.type === 'text' || msg.type === 'suggestion' || msg.type === 'resource' || msg.type === 'assessment')
+          ? msg.type as 'text' | 'suggestion' | 'resource' | 'assessment'
+          : 'text' as 'text' | 'suggestion' | 'resource' | 'assessment'
+      }))
+    } as LiveStreamSession;
+  };
+
   const renderContent = () => {
     if (selectedModule) {
       // Search in selectedJourneyModules first, then fallback to progress.modules
@@ -1471,7 +1481,7 @@ function AppContent() {
                       
                       if (embeddedModules && Array.isArray(embeddedModules) && embeddedModules.length > 0) {
                         // New embedded structure: modules are directly in journey.modules
-                        modules = embeddedModules.map((module: any, index: number) => {
+                        modules = embeddedModules.map((module: any, index: number): TrainingModule => {
                           // Extract module ID (may be _id or id)
                           const moduleId = extractObjectId(module._id || module.id) || `module-${journeyIdStr}-${index}`;
                           
@@ -1518,7 +1528,7 @@ function AppContent() {
                             id: moduleId,
                             title: module.title || 'Untitled Module',
                             description: module.description || '',
-                            duration: durationHours,
+                            duration: String(durationHours),
                             difficulty: (module.difficulty || 'beginner') as 'beginner' | 'intermediate' | 'advanced',
                             prerequisites: Array.isArray(module.prerequisites) ? module.prerequisites : [],
                             learningObjectives: Array.isArray(module.learningObjectives) 
@@ -1530,9 +1540,15 @@ function AppContent() {
                             topics: topics,
                             progress: 0,
                             completed: false,
+                            type: (module.type || 'reading') as 'video' | 'interactive' | 'simulation' | 'reading' | 'ai-tutor',
+                            aiAdaptiveContent: module.aiAdaptiveContent || false,
+                            engagementScore: module.engagementScore || 0,
+                            comprehensionScore: module.comprehensionScore || 0,
+                            practicalExercises: module.practicalExercises || [],
+                            aiGeneratedQuizzes: assessments || [],
                             order: module.order !== undefined ? module.order : index,
                             quizIds: assessments.map((a: any) => a.id).filter((id: string) => !!id)
-                          };
+                          } as TrainingModule;
                         });
                       } else {
                         console.warn('[App] Journey has no embedded modules');
@@ -1595,6 +1611,7 @@ function AppContent() {
           if (selectedStreamSession) {
             const session = mockLiveStreamSessions.find(s => s.id === selectedStreamSession);
             if (session) {
+              const typedSession = convertSessionToTyped(session);
               return (
                 <div className="space-y-4">
                   <button
@@ -1604,7 +1621,7 @@ function AppContent() {
                     ← Back to Streaming Dashboard
                   </button>
                   <LiveStreamStudio
-                    session={session}
+                    session={typedSession}
                     isInstructor={true}
                     onSessionUpdate={(updatedSession) => console.log('Session updated:', updatedSession)}
                   />
@@ -1614,7 +1631,7 @@ function AppContent() {
           }
           return (
             <StreamingDashboard
-              sessions={mockLiveStreamSessions}
+              sessions={mockLiveStreamSessions.map(convertSessionToTyped)}
               onCreateSession={() => console.log('Create new session')}
               onEditSession={(session) => console.log('Edit session:', session)}
               onDeleteSession={(sessionId) => console.log('Delete session:', sessionId)}
@@ -1626,6 +1643,7 @@ function AppContent() {
             const session = mockLiveStreamSessions.find(s => s.id === selectedCourseStream);
             const course = progress.modules[0]; // Use first module as example course
             if (session && course) {
+              const typedSession = convertSessionToTyped(session);
               return (
                 <div className="space-y-4">
                   <button
@@ -1636,7 +1654,7 @@ function AppContent() {
                   </button>
                   {showParticipantView ? (
                     <CourseParticipantView
-                      session={session}
+                      session={typedSession}
                       course={course}
                       participantId="participant-1"
                       onProgress={(progress) => console.log('Participant progress:', progress)}
@@ -1644,7 +1662,7 @@ function AppContent() {
                     />
                   ) : (
                     <CourseStreamingStudio
-                      session={session}
+                      session={typedSession}
                       course={course}
                       isInstructor={true}
                       onSessionUpdate={(updatedSession) => console.log('Session updated:', updatedSession)}
@@ -1665,12 +1683,12 @@ function AppContent() {
           }
           return (
             <CourseStreamingDashboard
-              sessions={mockLiveStreamSessions}
+              sessions={mockLiveStreamSessions.map(convertSessionToTyped)}
               courses={progress.modules}
-              onCreateSession={() => console.log('Create new course session')}
+              onCreateCourseStream={(courseId) => console.log('Create course stream:', courseId)}
               onEditSession={(session) => console.log('Edit course session:', session)}
               onDeleteSession={(sessionId) => console.log('Delete course session:', sessionId)}
-              onStartStream={(sessionId) => setSelectedCourseStream(sessionId)}
+              onStartCourseStream={(sessionId, courseId) => setSelectedCourseStream(sessionId)}
             />
           );
         case 'document-transformer':
@@ -1737,6 +1755,7 @@ function AppContent() {
           if (selectedStreamSession) {
             const session = mockLiveStreamSessions.find(s => s.id === selectedStreamSession);
             if (session) {
+              const typedSession = convertSessionToTyped(session);
               return (
                 <div className="space-y-4">
                   <button
@@ -1746,7 +1765,7 @@ function AppContent() {
                     ← Back to Streaming Dashboard
                   </button>
                   <LiveStreamStudio
-                    session={session}
+                    session={typedSession}
                     isInstructor={true}
                     onSessionUpdate={(updatedSession) => console.log('Session updated:', updatedSession)}
                   />
@@ -1756,7 +1775,7 @@ function AppContent() {
           }
           return (
             <StreamingDashboard
-              sessions={mockLiveStreamSessions}
+              sessions={mockLiveStreamSessions.map(convertSessionToTyped)}
               onCreateSession={() => console.log('Create new session')}
               onEditSession={(session) => console.log('Edit session:', session)}
               onDeleteSession={(sessionId) => console.log('Delete session:', sessionId)}
@@ -1768,6 +1787,7 @@ function AppContent() {
             const session = mockLiveStreamSessions.find(s => s.id === selectedCourseStream);
             const course = progress.modules[0]; // Use first module as example course
             if (session && course) {
+              const typedSession = convertSessionToTyped(session);
               return (
                 <div className="space-y-4">
                   <button
@@ -1778,7 +1798,7 @@ function AppContent() {
                   </button>
                   {showParticipantView ? (
                     <CourseParticipantView
-                      session={session}
+                      session={typedSession}
                       course={course}
                       participantId="participant-1"
                       onProgress={(progress) => console.log('Participant progress:', progress)}
@@ -1786,7 +1806,7 @@ function AppContent() {
                     />
                   ) : (
                     <CourseStreamingStudio
-                      session={session}
+                      session={typedSession}
                       course={course}
                       isInstructor={true}
                       onSessionUpdate={(updatedSession) => console.log('Session updated:', updatedSession)}
@@ -1807,12 +1827,12 @@ function AppContent() {
           }
           return (
             <CourseStreamingDashboard
-              sessions={mockLiveStreamSessions}
+              sessions={mockLiveStreamSessions.map(convertSessionToTyped)}
               courses={progress.modules}
-              onCreateSession={() => console.log('Create new course session')}
+              onCreateCourseStream={(courseId) => console.log('Create course stream:', courseId)}
               onEditSession={(session) => console.log('Edit course session:', session)}
               onDeleteSession={(sessionId) => console.log('Delete course session:', sessionId)}
-              onStartStream={(sessionId) => setSelectedCourseStream(sessionId)}
+              onStartCourseStream={(sessionId, courseId) => setSelectedCourseStream(sessionId)}
             />
           );
         case 'document-transformer':
@@ -1877,10 +1897,11 @@ function AppContent() {
             {loadingModules ? (
               <div className="flex items-center justify-center py-12">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                <span className="ml-3 text-gray-600">Loading journey training...</span>
+                <span className="ml-3 text-gray-600 ml-3">Loading journey training...</span>
               </div>
             ) : selectedJourney && selectedJourneyModules.length > 0 ? (
-              <div className="space-y-4">
+              <>
+                {/* Retour aux Formations */}
                 <div className="flex items-center space-x-4 mb-6">
                   <button
                     onClick={() => {
@@ -1904,7 +1925,7 @@ function AppContent() {
                   </h2>
                 </div>
                 <TrainingModules modules={selectedJourneyModules} onModuleSelect={setSelectedModule} />
-              </div>
+              </>
             ) : traineeFilteredJourneys.length > 0 ? (
               <JourneyTraining 
                 journeys={traineeFilteredJourneys} 

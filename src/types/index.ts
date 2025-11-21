@@ -121,6 +121,12 @@ export interface OnboardingStep {
 }
 
 export interface TrainingModule {
+  content: any;
+  sections: any;
+  assessments: any;
+  learningObjectives: any;
+  difficulty: ReactNode;
+  difficulty: ReactNode;
   id: string;
   title: string;
   description: string;
