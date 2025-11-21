@@ -1,26 +1,50 @@
 // src/infrastructure/services/ProgressService.ts
 import { ApiClient } from '../../lib/api';
 
-export interface RepProgress {
-  repId: string;
-  journeyId: string;
-  moduleId: string;
+export interface ModuleProgress {
+  status: 'not-started' | 'in-progress' | 'completed' | 'finished';
   progress: number; // 0-100
-  status: 'not-started' | 'in-progress' | 'completed';
   score?: number; // 0-100
   timeSpent: number; // in minutes
-  engagementScore?: number; // 0-100
+  sections?: Record<string, SectionProgress>;
+  lastAccessed?: string;
+}
+
+export interface SectionProgress {
+  completed: boolean;
+  progress: number; // 0-100
+  timeSpent: number; // in minutes
+  lastAccessed?: string;
+}
+
+export interface RepProgress {
+  id?: string;
+  repId: string;
+  journeyId: string;
+  moduleTotal: number;
+  modules: Record<string, ModuleProgress>; // moduleId -> ModuleProgress
+  moduleFinished: number;
+  moduleNotStarted: number;
+  moduleInProgress: number;
+  timeSpent: number; // Total time spent in minutes
+  engagementScore: number; // 0-100
+  lastAccessed?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface UpdateProgressRequest {
   repId: string;
   journeyId: string;
   moduleId: string;
+  sectionId?: string; // Optional - for section-level updates
   progress?: number;
-  status?: 'not-started' | 'in-progress' | 'completed';
+  status?: 'not-started' | 'in-progress' | 'completed' | 'finished';
   score?: number;
   timeSpent?: number;
+  totalTimeSpent?: number; // Total time spent across all modules
   engagementScore?: number;
+  completed?: boolean; // For section-level updates
 }
 
 export interface RepProgressOverview {
@@ -72,18 +96,29 @@ export class ProgressService {
 
   /**
    * Get progress for a specific rep and journey
+   * Returns a single RepProgress object (new structure) or null
    */
-  static async getRepProgress(repId: string, journeyId?: string): Promise<RepProgress[]> {
-    const params = journeyId 
-      ? `?repId=${repId}&journeyId=${journeyId}`
-      : `?repId=${repId}`;
-    
-    const response = await ApiClient.get(`${this.BASE_URL}/rep-progress${params}`);
-    
-    if (response.data.success && response.data.data) {
-      return response.data.data;
+  static async getRepProgress(repId: string, journeyId?: string): Promise<RepProgress | null> {
+    try {
+      const params = journeyId 
+        ? `?repId=${repId}&journeyId=${journeyId}`
+        : `?repId=${repId}`;
+      
+      const response = await ApiClient.get(`${this.BASE_URL}/rep-progress${params}`);
+      
+      if (response.data.success) {
+        // New structure returns a single object or array with one element
+        const data = response.data.data;
+        if (Array.isArray(data)) {
+          return data.length > 0 ? data[0] : null;
+        }
+        return data || null;
+      }
+      return null;
+    } catch (error) {
+      console.error('Error fetching rep progress:', error);
+      return null;
     }
-    return [];
   }
 
   /**
@@ -133,6 +168,26 @@ export class ProgressService {
       return null;
     } catch (error) {
       console.error('Error updating progress:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Initialize progress when a rep starts a training journey
+   */
+  static async initializeRepProgress(repId: string, journeyId: string): Promise<RepProgress | null> {
+    try {
+      const response = await ApiClient.post(`${this.BASE_URL}/rep-progress/start`, {
+        repId,
+        journeyId
+      });
+      
+      if (response.data.success && response.data.data) {
+        return response.data.data;
+      }
+      return null;
+    } catch (error) {
+      console.error('Error initializing rep progress:', error);
       return null;
     }
   }

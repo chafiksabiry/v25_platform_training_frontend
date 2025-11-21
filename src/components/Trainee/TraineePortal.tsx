@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   BookOpen, 
   Play, 
@@ -30,6 +30,8 @@ import TraineeModulePlayer from './TraineeModulePlayer';
 import TraineeAssessmentView from './TraineeAssessmentView';
 import TraineeProgressDashboard from './TraineeProgressDashboard';
 import TraineeLiveSession from './TraineeLiveSession';
+import { ProgressService, RepProgress } from '../../infrastructure/services/ProgressService';
+import { getAgentId } from '../../utils/userUtils';
 
 interface TraineePortalProps {
   trainee: Rep;
@@ -59,42 +61,138 @@ export default function TraineePortal({
   const [activeView, setActiveView] = useState('dashboard');
   const [selectedModule, setSelectedModule] = useState<TrainingModule | null>(null);
   const [selectedAssessment, setSelectedAssessment] = useState<Assessment | null>(null);
-  // Calculate progress from modules
-  const completedModules = modules.filter(m => m.completed).length;
-  const overallProgress = modules.length > 0 
-    ? Math.round((modules.reduce((sum, m) => sum + m.progress, 0) / modules.length))
-    : 0;
+  const [repProgressData, setRepProgressData] = useState<RepProgress | null>(null);
+  const [loadingProgress, setLoadingProgress] = useState(true);
   
+  // Get agentId (repId)
+  const agentId = getAgentId();
+  const journeyId = journey.id || journey._id;
+
+  // Load progress from backend
+  useEffect(() => {
+    const loadProgress = async () => {
+      if (!agentId || !journeyId) {
+        setLoadingProgress(false);
+        return;
+      }
+
+      try {
+        setLoadingProgress(true);
+        let progress = await ProgressService.getRepProgress(agentId, journeyId);
+        
+        // If no progress exists, initialize it
+        if (!progress) {
+          console.log('[TraineePortal] No progress found, initializing...');
+          progress = await ProgressService.initializeRepProgress(agentId, journeyId);
+        }
+        
+        setRepProgressData(progress);
+      } catch (error) {
+        console.error('Error loading progress:', error);
+      } finally {
+        setLoadingProgress(false);
+      }
+    };
+
+    loadProgress();
+  }, [agentId, journeyId]);
+
+  // Calculate progress from backend data or fallback to modules
+  const completedModules = repProgressData 
+    ? repProgressData.moduleFinished 
+    : modules.filter(m => m.completed).length;
+  
+  const overallProgress = repProgressData && repProgressData.modules
+    ? Math.round(
+        Object.values(repProgressData.modules).reduce((sum, mp) => sum + mp.progress, 0) / 
+        Object.keys(repProgressData.modules).length
+      )
+    : modules.length > 0 
+      ? Math.round((modules.reduce((sum, m) => sum + m.progress, 0) / modules.length))
+      : 0;
+
+  // Calculate average score from modules
+  const averageScore = repProgressData && repProgressData.modules
+    ? Math.round(
+        Object.values(repProgressData.modules)
+          .filter(mp => mp.score !== undefined && mp.score !== null)
+          .reduce((sum, mp) => sum + (mp.score || 0), 0) /
+        Object.values(repProgressData.modules).filter(mp => mp.score !== undefined && mp.score !== null).length
+      ) || 0
+    : 87; // Default fallback
+
   const [traineeProgress, setTraineeProgress] = useState({
     overallProgress: overallProgress,
     completedModules: completedModules,
     currentStreak: 5,
-    totalTimeSpent: 180, // minutes
-    averageScore: 87,
-    engagementLevel: 92,
+    totalTimeSpent: repProgressData?.timeSpent || 0,
+    averageScore: averageScore,
+    engagementLevel: repProgressData?.engagementScore || 0,
     nextDeadline: '2024-01-28',
     certificationsEarned: completedModules > 0 ? 1 : 0,
     skillsAcquired: ['Customer Service', 'Product Knowledge']
   });
 
-  // Update progress when modules change
+  // Update progress when backend data changes
   useEffect(() => {
-    const completed = modules.filter(m => m.completed).length;
-    const overall = modules.length > 0 
-      ? Math.round((modules.reduce((sum, m) => sum + m.progress, 0) / modules.length))
-      : 0;
-    
-    setTraineeProgress(prev => ({
-      ...prev,
-      overallProgress: overall,
-      completedModules: completed,
-      certificationsEarned: completed > 0 ? 1 : 0
-    }));
-  }, [modules]);
+    if (repProgressData) {
+      const completed = repProgressData.moduleFinished;
+      const overall = repProgressData.modules && Object.keys(repProgressData.modules).length > 0
+        ? Math.round(
+            Object.values(repProgressData.modules).reduce((sum, mp) => sum + mp.progress, 0) / 
+            Object.keys(repProgressData.modules).length
+          )
+        : 0;
+      
+      const avgScore = repProgressData.modules && Object.keys(repProgressData.modules).length > 0
+        ? Math.round(
+            Object.values(repProgressData.modules)
+              .filter(mp => mp.score !== undefined && mp.score !== null)
+              .reduce((sum, mp) => sum + (mp.score || 0), 0) /
+            Object.values(repProgressData.modules).filter(mp => mp.score !== undefined && mp.score !== null).length
+          ) || 0
+        : 0;
 
-  const [currentModule, setCurrentModule] = useState<TrainingModule | null>(
-    modules.find(m => !m.completed && m.progress > 0) || modules.find(m => !m.completed) || null
-  );
+      setTraineeProgress(prev => ({
+        ...prev,
+        overallProgress: overall,
+        completedModules: completed,
+        totalTimeSpent: repProgressData.timeSpent || 0,
+        averageScore: avgScore,
+        engagementLevel: repProgressData.engagementScore || 0,
+        certificationsEarned: completed > 0 ? 1 : 0
+      }));
+    }
+  }, [repProgressData]);
+
+  // Find current module (in progress or first not started)
+  const currentModule = useMemo(() => {
+    if (!repProgressData || !repProgressData.modules || Object.keys(repProgressData.modules).length === 0) {
+      return modules.find(m => !m.completed && m.progress > 0) || modules.find(m => !m.completed) || null;
+    }
+
+    // Find first module that's in progress
+    for (const module of modules) {
+      const moduleId = module.id || module._id;
+      const moduleProgress = repProgressData.modules[moduleId];
+      
+      if (moduleProgress && moduleProgress.status === 'in-progress') {
+        return { ...module, progress: moduleProgress.progress, completed: false };
+      }
+    }
+
+    // If no in-progress, find first not-started
+    for (const module of modules) {
+      const moduleId = module.id || module._id;
+      const moduleProgress = repProgressData.modules[moduleId];
+      
+      if (!moduleProgress || moduleProgress.status === 'not-started') {
+        return { ...module, progress: 0, completed: false };
+      }
+    }
+
+    return null;
+  }, [modules, repProgressData]);
 
   const handleModuleSelect = (module: TrainingModule) => {
     setSelectedModule(module);
@@ -265,63 +363,84 @@ export default function TraineePortal({
             <h2 className="text-xl font-semibold text-gray-900 mb-6">Your Training Journey</h2>
             
             <div className="space-y-4">
-              {modules.map((module, index) => (
-                <div
-                  key={module.id}
-                  className={`border-2 rounded-xl p-6 transition-all hover:shadow-md cursor-pointer ${getModuleStatusColor(module)}`}
-                  onClick={() => handleModuleSelect(module)}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4">
-                      <div className="flex items-center space-x-3">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                          module.completed ? 'bg-green-500 text-white' :
-                          module.progress > 0 ? 'bg-blue-500 text-white' :
-                          'bg-gray-200 text-gray-600'
-                        }`}>
-                          {module.completed ? (
-                            <CheckCircle className="h-5 w-5" />
-                          ) : (
-                            <span className="font-bold">{index + 1}</span>
-                          )}
+              {modules.map((module, index) => {
+                const moduleId = module.id || module._id;
+                const moduleProgress = repProgressData?.modules?.[moduleId];
+                const moduleProgressValue = moduleProgress?.progress ?? module.progress ?? 0;
+                const moduleCompleted = moduleProgress 
+                  ? (moduleProgress.status === 'completed' || moduleProgress.status === 'finished' || moduleProgress.progress >= 100)
+                  : module.completed;
+                const moduleInProgress = moduleProgress?.status === 'in-progress';
+                
+                return (
+                  <div
+                    key={module.id}
+                    className={`border-2 rounded-xl p-6 transition-all hover:shadow-md cursor-pointer ${getModuleStatusColor({ ...module, completed: moduleCompleted, progress: moduleProgressValue })}`}
+                    onClick={() => handleModuleSelect({ ...module, progress: moduleProgressValue, completed: moduleCompleted })}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-4">
+                        <div className="flex items-center space-x-3">
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                            moduleCompleted ? 'bg-green-500 text-white' :
+                            moduleProgressValue > 0 ? 'bg-blue-500 text-white' :
+                            'bg-gray-200 text-gray-600'
+                          }`}>
+                            {moduleCompleted ? (
+                              <CheckCircle className="h-5 w-5" />
+                            ) : (
+                              <span className="font-bold">{index + 1}</span>
+                            )}
+                          </div>
+                          {getModuleStatusIcon({ ...module, completed: moduleCompleted, progress: moduleProgressValue })}
                         </div>
-                        {getModuleStatusIcon(module)}
+                        
+                        <div className="flex-1">
+                          <h3 className="text-lg font-semibold text-gray-900">{module.title}</h3>
+                          <p className="text-gray-600 text-sm">{module.description}</p>
+                          <div className="flex items-center space-x-4 mt-2 text-sm text-gray-500">
+                            <span className="flex items-center space-x-1">
+                              <Clock className="h-3 w-3" />
+                              <span>{module.duration}</span>
+                            </span>
+                            <span className="flex items-center space-x-1">
+                              <Target className="h-3 w-3" />
+                              <span className="capitalize">{module.difficulty}</span>
+                            </span>
+                            <span className="flex items-center space-x-1">
+                              {module.type === 'video' && <Video className="h-3 w-3" />}
+                              {module.type === 'interactive' && <Zap className="h-3 w-3" />}
+                              {module.type === 'ai-tutor' && <Brain className="h-3 w-3" />}
+                              <span className="capitalize">{module.type}</span>
+                            </span>
+                            {moduleProgress && (
+                              <span className="flex items-center space-x-1">
+                                <span className={`px-2 py-1 rounded text-xs font-medium ${
+                                  moduleCompleted ? 'bg-green-100 text-green-700' :
+                                  moduleInProgress ? 'bg-blue-100 text-blue-700' :
+                                  'bg-gray-100 text-gray-700'
+                                }`}>
+                                  {moduleProgress.status === 'completed' || moduleProgress.status === 'finished' ? 'Completed' :
+                                   moduleProgress.status === 'in-progress' ? 'In Progress' : 'Not Started'}
+                                </span>
+                              </span>
+                            )}
+                          </div>
+                        </div>
                       </div>
                       
-                      <div className="flex-1">
-                        <h3 className="text-lg font-semibold text-gray-900">{module.title}</h3>
-                        <p className="text-gray-600 text-sm">{module.description}</p>
-                        <div className="flex items-center space-x-4 mt-2 text-sm text-gray-500">
-                          <span className="flex items-center space-x-1">
-                            <Clock className="h-3 w-3" />
-                            <span>{module.duration}</span>
-                          </span>
-                          <span className="flex items-center space-x-1">
-                            <Target className="h-3 w-3" />
-                            <span className="capitalize">{module.difficulty}</span>
-                          </span>
-                          <span className="flex items-center space-x-1">
-                            {module.type === 'video' && <Video className="h-3 w-3" />}
-                            {module.type === 'interactive' && <Zap className="h-3 w-3" />}
-                            {module.type === 'ai-tutor' && <Brain className="h-3 w-3" />}
-                            <span className="capitalize">{module.type}</span>
-                          </span>
+                      <div className="text-right">
+                        <div className="text-2xl font-bold text-gray-900 mb-1">{moduleProgressValue}%</div>
+                        <div className="w-20 bg-gray-200 rounded-full h-2">
+                          <div 
+                            className={`h-2 rounded-full transition-all duration-300 ${
+                              moduleCompleted ? 'bg-green-500' : 'bg-blue-500'
+                            }`}
+                            style={{ width: `${moduleProgressValue}%` }}
+                          />
                         </div>
                       </div>
                     </div>
-                    
-                    <div className="text-right">
-                      <div className="text-2xl font-bold text-gray-900 mb-1">{module.progress}%</div>
-                      <div className="w-20 bg-gray-200 rounded-full h-2">
-                        <div 
-                          className={`h-2 rounded-full transition-all duration-300 ${
-                            module.completed ? 'bg-green-500' : 'bg-blue-500'
-                          }`}
-                          style={{ width: `${module.progress}%` }}
-                        />
-                      </div>
-                    </div>
-                  </div>
 
                   {/* Module Topics Preview */}
                   {Array.isArray(module.topics) && module.topics.length > 0 && (
@@ -460,17 +579,20 @@ export default function TraineePortal({
       <TraineeModulePlayer
         module={selectedModule}
         trainee={trainee}
+        journeyId={journeyId}
         onProgress={(progress) => {
           onProgressUpdate(selectedModule.id, progress);
-          setTraineeProgress(prev => ({ ...prev, overallProgress: prev.overallProgress + 1 }));
+          // Reload progress from backend after update
+          if (agentId && journeyId) {
+            ProgressService.getRepProgress(agentId, journeyId).then(setRepProgressData).catch(console.error);
+          }
         }}
         onComplete={() => {
           onModuleComplete(selectedModule.id);
-          setTraineeProgress(prev => ({ 
-            ...prev, 
-            completedModules: prev.completedModules + 1,
-            overallProgress: Math.min(prev.overallProgress + 15, 100)
-          }));
+          // Reload progress from backend after completion
+          if (agentId && journeyId) {
+            ProgressService.getRepProgress(agentId, journeyId).then(setRepProgressData).catch(console.error);
+          }
           handleBackToDashboard();
         }}
         onBack={handleBackToDashboard}
