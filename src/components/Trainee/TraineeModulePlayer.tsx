@@ -30,10 +30,12 @@ import {
 } from 'lucide-react';
 import { TrainingModule, Rep, Exercise, Quiz } from '../../types';
 import DocumentViewer from '../DocumentViewer/DocumentViewer';
+import { ProgressService } from '../../infrastructure/services/ProgressService';
 
 interface TraineeModulePlayerProps {
   module: TrainingModule;
   trainee: Rep;
+  journeyId?: string; // ID of the training journey
   onProgress: (progress: number) => void;
   onComplete: () => void;
   onBack: () => void;
@@ -42,6 +44,7 @@ interface TraineeModulePlayerProps {
 export default function TraineeModulePlayer({ 
   module, 
   trainee, 
+  journeyId,
   onProgress, 
   onComplete, 
   onBack 
@@ -69,6 +72,37 @@ export default function TraineeModulePlayer({
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const progressInterval = useRef<NodeJS.Timeout | null>(null);
+  const lastSavedProgress = useRef<number>(0);
+
+  // Save progress to backend periodically
+  const saveProgressToBackend = async (progressPercent: number, timeSpentSeconds: number) => {
+    if (!journeyId || !trainee.id) return;
+    
+    const moduleId = module.id || (module as any)._id;
+    if (!moduleId) return;
+    
+    // Only save if progress changed significantly (more than 5%) or every 2 minutes
+    const progressDiff = Math.abs(progressPercent - lastSavedProgress.current);
+    if (progressDiff < 5 && timeSpentSeconds % 120 !== 0) return;
+    
+    const timeSpentMinutes = Math.floor(timeSpentSeconds / 60);
+    const status = ProgressService.getStatusFromProgress(progressPercent);
+    
+    try {
+      await ProgressService.updateProgress({
+        repId: trainee.id,
+        journeyId: journeyId,
+        moduleId: moduleId,
+        progress: Math.round(progressPercent),
+        status: status,
+        timeSpent: timeSpentMinutes,
+        engagementScore: engagementScore
+      });
+      lastSavedProgress.current = progressPercent;
+    } catch (error) {
+      console.error('Error saving progress to backend:', error);
+    }
+  };
 
   // Get sections from module.content or module.sections
   const moduleAny = module as any;
@@ -97,6 +131,11 @@ export default function TraineeModulePlayer({
           onProgress(progress);
           setSectionProgress(progress);
           
+          // Save progress to backend every 30 seconds or when progress changes significantly
+          if (newTime % 30 === 0 || Math.abs(progress - lastSavedProgress.current) >= 5) {
+            saveProgressToBackend(progress, newTime);
+          }
+          
           // Update engagement based on interaction
           if (newTime % 30 === 0) { // Every 30 seconds
             setEngagementScore(prev => Math.max(prev - 1, 0));
@@ -115,8 +154,25 @@ export default function TraineeModulePlayer({
       if (progressInterval.current) {
         clearInterval(progressInterval.current);
       }
+      // Save progress when component unmounts or stops playing
+      if (currentTime > 0 && journeyId && trainee.id) {
+        const moduleId = module.id || (module as any)._id;
+        if (moduleId) {
+          const timeSpentMinutes = Math.floor(currentTime / 60);
+          const progress = Math.min((currentTime / (parseInt(module.duration) * 60)) * 100, 100);
+          ProgressService.updateProgress({
+            repId: trainee.id,
+            journeyId: journeyId,
+            moduleId: moduleId,
+            progress: Math.round(progress),
+            status: ProgressService.getStatusFromProgress(progress),
+            timeSpent: timeSpentMinutes,
+            engagementScore: engagementScore
+          }).catch(err => console.error('Error saving progress on unmount:', err));
+        }
+      }
     };
-  }, [isPlaying, module.duration, onProgress, playbackSpeed]);
+  }, [isPlaying, module.duration, onProgress, playbackSpeed, currentTime, journeyId, trainee.id, engagementScore]);
 
   const handleInteraction = () => {
     setEngagementScore(prev => Math.min(prev + 2, 100));
@@ -138,6 +194,22 @@ export default function TraineeModulePlayer({
     } else {
       // Module completed - show quizzes if available
       setModuleCompleted(true);
+      // Save completed progress
+      if (journeyId && trainee.id) {
+        const moduleId = module.id || (module as any)._id;
+        if (moduleId) {
+          const timeSpentMinutes = Math.floor(currentTime / 60);
+          ProgressService.updateProgress({
+            repId: trainee.id,
+            journeyId: journeyId,
+            moduleId: moduleId,
+            progress: 100,
+            status: 'completed',
+            timeSpent: timeSpentMinutes,
+            engagementScore: engagementScore
+          }).catch(err => console.error('Error saving completed progress:', err));
+        }
+      }
       if (module.assessments && module.assessments.length > 0 && module.assessments[0].questions && module.assessments[0].questions.length > 0) {
         setShowModuleQuiz(true);
         setCurrentQuizIndex(0);
@@ -155,7 +227,23 @@ export default function TraineeModulePlayer({
         }
       } else {
         // No quizzes, complete immediately
-      onComplete();
+        // Save completed progress
+        if (journeyId && trainee.id) {
+          const moduleId = module.id || (module as any)._id;
+          if (moduleId) {
+            const timeSpentMinutes = Math.floor(currentTime / 60);
+            ProgressService.updateProgress({
+              repId: trainee.id,
+              journeyId: journeyId,
+              moduleId: moduleId,
+              progress: 100,
+              status: 'completed',
+              timeSpent: timeSpentMinutes,
+              engagementScore: engagementScore
+            }).catch(err => console.error('Error saving completed progress:', err));
+          }
+        }
+        onComplete();
       }
     }
   };
@@ -185,6 +273,22 @@ export default function TraineeModulePlayer({
   const handleNextQuiz = () => {
     if (!module.assessments || !module.assessments[0] || !module.assessments[0].questions) {
       // No more quizzes, complete module
+      // Save completed progress
+      if (journeyId && trainee.id) {
+        const moduleId = module.id || (module as any)._id;
+        if (moduleId) {
+          const timeSpentMinutes = Math.floor(currentTime / 60);
+          ProgressService.updateProgress({
+            repId: trainee.id,
+            journeyId: journeyId,
+            moduleId: moduleId,
+            progress: 100,
+            status: 'completed',
+            timeSpent: timeSpentMinutes,
+            engagementScore: engagementScore
+          }).catch(err => console.error('Error saving completed progress:', err));
+        }
+      }
       onComplete();
       return;
     }
@@ -209,6 +313,22 @@ export default function TraineeModulePlayer({
       }
     } else {
       // All quizzes completed, complete module
+      // Save final progress before completing
+      if (journeyId && trainee.id) {
+        const moduleId = module.id || (module as any)._id;
+        if (moduleId) {
+          const timeSpentMinutes = Math.floor(currentTime / 60);
+          ProgressService.updateProgress({
+            repId: trainee.id,
+            journeyId: journeyId,
+            moduleId: moduleId,
+            progress: 100,
+            status: 'completed',
+            timeSpent: timeSpentMinutes,
+            engagementScore: engagementScore
+          }).catch(err => console.error('Error saving final progress:', err));
+        }
+      }
       onComplete();
     }
   };
