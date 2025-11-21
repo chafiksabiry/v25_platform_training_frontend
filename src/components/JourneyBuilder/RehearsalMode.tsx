@@ -277,35 +277,21 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
           quizSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
       }, 100);
-      // Don't move to next module yet - user needs to complete quizzes
+      // Don't move to next module yet - user needs to review quizzes
       return;
     }
     
-    // If no quizzes/assessments exist, try to generate them automatically
-    if (currentModule && !hasAssessments) {
-      console.log('📝 No quizzes found for module, generating automatically...');
-      // Auto-generate quiz for this module with default config
-      generateModuleQuiz(currentModule, false, {
-        totalQuestions: 10,
-        multipleChoice: 4,
-        trueFalse: 3,
-        multipleCorrect: 3
-      });
-      // Scroll to quizzes section after a delay to allow generation
-      setTimeout(() => {
-        const quizSection = document.getElementById('module-quizzes-section');
-        if (quizSection) {
-          quizSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-      }, 2000);
-      return;
-    }
+    // If no quizzes/assessments exist, scroll to quizzes section to show "Generate Quiz" button
+    // User can manually generate quiz for this module only
+    setTimeout(() => {
+      const quizSection = document.getElementById('module-quizzes-section');
+      if (quizSection) {
+        quizSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 100);
     
-    // If no quizzes and generation failed, move to next module
-    if (currentModuleIndex < updatedModules.length - 1) {
-      setCurrentModuleIndex(prev => prev + 1);
-      setCurrentSectionIndex(0);
-    }
+    // Don't move to next module automatically - let user decide when to proceed
+    // User can generate quiz manually using the "Generate Quiz" button
   };
 
   const handleSectionComplete = () => {
