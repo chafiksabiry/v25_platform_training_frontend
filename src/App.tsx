@@ -329,6 +329,23 @@ function AppContent() {
     }
   }, [userType, checkingUserType]);
 
+  // Auto-redirect based on user type when accessing /training
+  useEffect(() => {
+    if (!userType || checkingUserType) return;
+    
+    const currentPath = window.location.pathname;
+    // Only redirect if we're at /training (not already at /training/repashboard or /training/companydashboard)
+    if (currentPath === '/training' || currentPath === '/training/') {
+      if (userType === 'rep') {
+        console.log('[App] Auto-redirecting rep user to /training/repashboard');
+        window.location.href = '/training/repashboard';
+      } else if (userType === 'company') {
+        console.log('[App] Auto-redirecting company user to /training/companydashboard');
+        window.location.href = '/training/companydashboard';
+      }
+    }
+  }, [userType, checkingUserType]);
+
   // Check user type and set appropriate role
   useEffect(() => {
     const checkUserTypeAndSetRole = async () => {
@@ -1282,10 +1299,12 @@ function AppContent() {
         }}
         onAssessmentComplete={(assessmentId, score) => updateAssessmentResult(assessmentId, score, score >= 80 ? 'passed' : 'failed')}
         onBack={() => {
-          // Return to journey list
+          // Return to journey list and update URL
           setSelectedTraineeJourney(null);
           // Ensure we're on the training tab to show the journey list
           setActiveTab('training');
+          // Navigate to /training/repashboard to update URL
+          navigate('/repashboard');
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }}
       />
@@ -1409,6 +1428,12 @@ function AppContent() {
                     onClick={() => {
                       setSelectedJourney(null);
                       setSelectedJourneyModules([]);
+                      // Update URL when going back
+                      if (userType === 'rep') {
+                        navigate('/repashboard');
+                      } else if (userType === 'company') {
+                        navigate('/companydashboard');
+                      }
                       window.scrollTo({ top: 0, behavior: 'smooth' });
                     }}
                     className="flex items-center space-x-2 px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
@@ -1861,6 +1886,12 @@ function AppContent() {
                     onClick={() => {
                       setSelectedJourney(null);
                       setSelectedJourneyModules([]);
+                      // Update URL when going back
+                      if (userType === 'rep') {
+                        navigate('/repashboard');
+                      } else if (userType === 'company') {
+                        navigate('/companydashboard');
+                      }
                       window.scrollTo({ top: 0, behavior: 'smooth' });
                     }}
                     className="flex items-center space-x-2 px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
