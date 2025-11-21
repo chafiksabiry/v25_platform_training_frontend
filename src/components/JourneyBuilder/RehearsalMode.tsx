@@ -264,7 +264,44 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
       });
     }
     
-    // Move to next module without scroll - switch immediately
+    // Check if current module has quizzes/assessments
+    const hasQuizzes = currentModule?.quizzes && currentModule.quizzes.length > 0;
+    const hasAssessments = currentModule?.assessments && currentModule.assessments.length > 0;
+    
+    // If module has quizzes/assessments, scroll to them
+    if (hasQuizzes || hasAssessments) {
+      // Scroll to quizzes section
+      setTimeout(() => {
+        const quizSection = document.getElementById('module-quizzes-section');
+        if (quizSection) {
+          quizSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 100);
+      // Don't move to next module yet - user needs to complete quizzes
+      return;
+    }
+    
+    // If no quizzes/assessments exist, try to generate them automatically
+    if (currentModule && !hasAssessments) {
+      console.log('📝 No quizzes found for module, generating automatically...');
+      // Auto-generate quiz for this module with default config
+      generateModuleQuiz(currentModule, false, {
+        totalQuestions: 10,
+        multipleChoice: 4,
+        trueFalse: 3,
+        multipleCorrect: 3
+      });
+      // Scroll to quizzes section after a delay to allow generation
+      setTimeout(() => {
+        const quizSection = document.getElementById('module-quizzes-section');
+        if (quizSection) {
+          quizSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 2000);
+      return;
+    }
+    
+    // If no quizzes and generation failed, move to next module
     if (currentModuleIndex < updatedModules.length - 1) {
       setCurrentModuleIndex(prev => prev + 1);
       setCurrentSectionIndex(0);
@@ -863,7 +900,7 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
       case 'document':
         if (content?.file && content.file.url) {
           return (
-            <div className="w-full" style={{ height: 'calc(100vh - 350px)', minHeight: '600px' }}>
+            <div className="w-full" style={{ height: 'calc(100vh - 500px)', minHeight: '400px' }}>
               <DocumentViewer
                 fileUrl={content.file.url}
                 fileName={content.file.name}
@@ -928,7 +965,7 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
         const videoUrl = content?.file?.url || content?.url;
         if (videoUrl) {
           return (
-            <div className="w-full" style={{ height: 'calc(100vh - 350px)', minHeight: '600px' }}>
+            <div className="w-full" style={{ height: 'calc(100vh - 500px)', minHeight: '400px' }}>
               <DocumentViewer
                 fileUrl={videoUrl}
                 fileName={content?.file?.name}
@@ -948,7 +985,7 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
         const youtubeUrl = content?.youtubeUrl || content?.url || content?.file?.url;
         if (youtubeUrl) {
           return (
-            <div className="w-full" style={{ height: 'calc(100vh - 350px)', minHeight: '600px' }}>
+            <div className="w-full" style={{ height: 'calc(100vh - 500px)', minHeight: '400px' }}>
               <DocumentViewer
                 fileUrl={youtubeUrl}
                 fileName={content?.file?.name}
@@ -1170,7 +1207,7 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
             {/* Main Content Area - Document Viewer */}
             <div className="lg:col-span-10">
               {currentModule && (
-                <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-6 flex flex-col min-h-[600px]">
+                <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-6 flex flex-col">
                   {/* Module Header - Compact */}
                   <div className="mb-4 pb-4 border-b border-gray-200">
                     <div className="flex items-center justify-between mb-2">
@@ -1201,9 +1238,9 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
                   </div>
 
                   {/* Content - Takes full available space */}
-                  <div className="flex-1 min-h-[500px] mb-6">
+                  <div className="flex-1 mb-6">
                     {hasSections && currentSection ? (
-                      <div className="w-full h-full min-h-[500px]">
+                      <div className="w-full">
                         {renderSectionContent(currentSection)}
                       </div>
                     ) : (
@@ -1271,7 +1308,7 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
                     </div>
 
                     {/* AI-Generated Assessments */}
-                    <div className="bg-purple-50 rounded-xl p-6 border border-purple-200">
+                    <div id="module-quizzes-section" className="bg-purple-50 rounded-xl p-6 border border-purple-200">
                       <div className="flex items-center justify-between mb-4">
                         <h3 className="text-lg font-semibold text-gray-900 flex items-center">
                           <BarChart3 className="h-5 w-5 mr-2 text-purple-600" />
