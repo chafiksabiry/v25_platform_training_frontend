@@ -2,13 +2,10 @@ import React from 'react';
 import './public-path';  // For proper Qiankun integration
 import { qiankunWindow } from 'vite-plugin-qiankun/dist/helper';
 import { logger } from './utils/logger';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
-import CompanyDashboard from './pages/CompanyDashboard';
-import RepDashboard from './pages/RepDashboard';
 import ErrorBoundary from './components/ErrorBoundary/ErrorBoundary';
 import './index.css';
 import Cookies from 'js-cookie';
@@ -88,43 +85,10 @@ function render(props: { container?: HTMLElement }) {
     if (!root) {
       root = createRoot(rootElement);
     }
-    // Determine basename based on context
-    const isStandaloneMode = !qiankunWindow.__POWERED_BY_QIANKUN__;
-    const pathname = window.location.pathname;
-    
-    let basename = '/';
-    if (!isStandaloneMode) {
-      if (pathname.startsWith('/training/companydashboard')) {
-        basename = '/training/companydashboard';
-      } else if (pathname.startsWith('/training/repdashboard')) {
-        // Extract basename up to /repdashboard (before the journey ID)
-        // This handles both /training/repdashboard and /training/repdashboard/:id
-        basename = '/training/repdashboard';
-      } else if (pathname.startsWith('/training')) {
-        basename = '/training';
-      }
-    }
-    
-    logger.debug('[Training] Routing configuration:', {
-      pathname,
-      basename,
-      isStandaloneMode,
-      isQiankun: qiankunWindow.__POWERED_BY_QIANKUN__
-    });
-
     root.render(
       <StrictMode>
         <ErrorBoundary>
-          <Router basename={basename}>
-            <Routes>
-              <Route path="/" element={<App />} />
-              <Route path="/companydashboard" element={<CompanyDashboard />} />
-              <Route path="/repdashboard" element={<RepDashboard />} />
-              <Route path="/repdashboard/:idjourneytraining" element={<RepDashboard />} />
-              <Route path="/:idjourneytraining" element={<RepDashboard />} />
-              <Route path="/*" element={<App />} />
-            </Routes>
-          </Router>
+          <App />
         </ErrorBoundary>
       </StrictMode>
     );

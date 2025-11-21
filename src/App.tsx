@@ -1,4 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { qiankunWindow } from 'vite-plugin-qiankun/dist/helper';
+import { useParams } from 'react-router-dom';
 import { User, Sparkles, Zap, Upload, Wand2, Rocket, Eye, Target, BookOpen, Play, CheckCircle } from 'lucide-react';
 // import { useAuth } from './hooks/useAuth';
 import JourneyBuilder from './components/JourneyBuilder/JourneyBuilder';
@@ -56,38 +59,12 @@ import { TrainingService } from './infrastructure/services/TrainingService';
 import Cookies from 'js-cookie';
 import { extractObjectId } from './lib/mongoUtils';
 
-interface AppProps {
-  journeyIdFromRoute?: string;
-}
-
-function App({ journeyIdFromRoute }: AppProps = {}) {
-  // Get journey ID from URL pathname (works in both Router and non-Router contexts)
-  const pathname = window.location.pathname;
-  // Try multiple patterns to extract journey ID
-  let journeyIdFromPathname: string | null = null;
+function AppContent() {
+  // Get journey ID from route params (inside Router context)
+  const { idjourneytraining } = useParams<{ idjourneytraining?: string }>();
+  const journeyIdFromUrl = idjourneytraining;
   
-  // Pattern 1: /training/repdashboard/:idjourneytraining
-  if (pathname.includes('/repdashboard/')) {
-    journeyIdFromPathname = pathname.split('/repdashboard/')[1]?.split('/')[0]?.split('?')[0] || null;
-  }
-  // Pattern 2: /repdashboard/:idjourneytraining (when basename is /training/repdashboard)
-  else if (pathname.match(/^\/[^\/]+$/)) {
-    // If pathname is just one segment (like /691ea45b04327b08456397ba), it's likely the journey ID
-    const segments = pathname.split('/').filter(s => s);
-    if (segments.length === 1 && segments[0].length > 10) {
-      journeyIdFromPathname = segments[0].split('?')[0];
-    }
-  }
-  
-  // Get journey ID from prop or URL pathname
-  const journeyIdFromUrl = journeyIdFromRoute || journeyIdFromPathname;
-  
-  console.log('[App] Journey ID detection:', {
-    pathname,
-    journeyIdFromRoute,
-    journeyIdFromPathname,
-    journeyIdFromUrl
-  });
+  console.log('[App] Journey ID from route params:', journeyIdFromUrl);
   // const { user, signOut } = useAuth();
   const user = { name: 'User', email: 'user@example.com' }; // Mock user - no auth required
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -2094,6 +2071,43 @@ function App({ journeyIdFromRoute }: AppProps = {}) {
         </main>
       </div>
     </div>
+  );
+}
+
+function App() {
+  // Determine basename based on context (same logic as dash_rep)
+  const isStandaloneMode = !qiankunWindow.__POWERED_BY_QIANKUN__;
+  const pathname = window.location.pathname;
+  
+  let basename = '/';
+  if (!isStandaloneMode) {
+    if (pathname.startsWith('/training/companydashboard')) {
+      basename = '/training/companydashboard';
+    } else if (pathname.startsWith('/training/repdashboard')) {
+      basename = '/training/repdashboard';
+    } else if (pathname.startsWith('/training')) {
+      basename = '/training';
+    }
+  }
+  
+  console.log('[App] Routing configuration:', {
+    pathname,
+    basename,
+    isStandaloneMode,
+    isQiankun: qiankunWindow.__POWERED_BY_QIANKUN__
+  });
+  
+  return (
+    <Router basename={basename}>
+      <Routes>
+        <Route path="/" element={<AppContent />} />
+        <Route path="/companydashboard" element={<AppContent />} />
+        <Route path="/repdashboard" element={<AppContent />} />
+        <Route path="/repdashboard/:idjourneytraining" element={<AppContent />} />
+        <Route path="/:idjourneytraining" element={<AppContent />} />
+        <Route path="/*" element={<AppContent />} />
+      </Routes>
+    </Router>
   );
 }
 
