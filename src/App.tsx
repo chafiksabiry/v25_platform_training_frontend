@@ -677,8 +677,8 @@ function App() {
     return <JourneyBuilder onComplete={handleJourneyComplete} />;
   }
 
-  // Show journey list first for trainees, then allow selection
-  if (userType === 'rep' && agentId && traineeJourneys.length > 0 && !selectedTraineeJourney && !showTraineePortal && !showLaunchedDashboard && !showJourneyBuilder && !showJourneySuccess && !showManualTraining && !checkingUserType) {
+  // Show journey list first for trainees, then allow selection (even if empty)
+  if (userType === 'rep' && agentId && !selectedTraineeJourney && !showTraineePortal && !showLaunchedDashboard && !showJourneyBuilder && !showJourneySuccess && !showManualTraining && !checkingUserType) {
     return (
       <div className="min-h-screen bg-gray-50">
         <Sidebar 
@@ -746,36 +746,24 @@ function App() {
                     const modulesCount = Array.isArray(journey.modules) ? journey.modules.length : 0;
                     const journeyProgress = traineeProgressData[journeyId] || {};
                     
-                    // Check if trainee is enrolled in this journey
-                    const isEnrolled = agentId && Array.isArray(journey.enrolledRepIds) 
-                      ? journey.enrolledRepIds.includes(agentId)
-                      : false;
-                    
-                    // Calculate overall progress for this journey (only if enrolled)
-                    const completedModules = isEnrolled 
-                      ? Object.values(journeyProgress).filter((p: any) => 
-                          p.status === 'completed' || p.progress >= 100
-                        ).length
-                      : 0;
-                    const overallProgress = modulesCount > 0 && isEnrolled
+                    // Calculate overall progress for this journey
+                    const completedModules = Object.values(journeyProgress).filter((p: any) => 
+                      p.status === 'completed' || p.progress >= 100
+                    ).length;
+                    const overallProgress = modulesCount > 0 
                       ? Math.round((completedModules / modulesCount) * 100)
                       : 0;
                     
-                    const isCompleted = isEnrolled && (journey.status === 'completed' || overallProgress >= 100);
-                    const isActive = journey.status === 'active';
-                    const isNotEnrolled = !isEnrolled && journey.status === 'active';
+                    const isCompleted = journey.status === 'completed' || overallProgress >= 100;
+                    const isActive = journey.status === 'active' && overallProgress < 100;
                     
                     return (
                       <div
                         key={journeyId}
                         className="bg-white rounded-xl shadow-sm border-2 border-gray-200 overflow-hidden hover:shadow-lg hover:border-blue-300 transition-all duration-200 cursor-pointer"
                         onClick={async () => {
-                          // Load progress if not already loaded (only if enrolled and agentId exists)
-                          const isEnrolledInThisJourney = agentId && Array.isArray(journey.enrolledRepIds) 
-                            ? journey.enrolledRepIds.includes(agentId)
-                            : false;
-                          
-                          if (agentId && isEnrolledInThisJourney && !traineeProgressData[journeyId]) {
+                          // Load progress if not already loaded
+                          if (agentId && !traineeProgressData[journeyId]) {
                             try {
                               const progressData = await TrainingService.getRepProgress(agentId, journeyId);
                               if (progressData) {
@@ -789,11 +777,10 @@ function App() {
                                 setTraineeProgressData(prev => ({ ...prev, [journeyId]: progressMap }));
                               }
                             } catch (error) {
-                              console.warn('[App] Could not load progress (may not be enrolled yet):', error);
-                              // Continue anyway - allow access even without progress
+                              console.error('[App] Error loading progress:', error);
                             }
                           }
-                          // Select the journey (allow access even if not enrolled)
+                          // Select the journey
                           setSelectedTraineeJourney(journey);
                         }}
                       >
@@ -820,19 +807,11 @@ function App() {
                                 <div className={`text-xs font-semibold px-2 py-1 rounded-full ${
                                   isCompleted 
                                     ? 'bg-green-100 text-green-700' 
-                                    : isEnrolled && isActive
+                                    : isActive 
                                     ? 'bg-blue-100 text-blue-700' 
-                                    : isNotEnrolled
-                                    ? 'bg-purple-100 text-purple-700'
                                     : 'bg-gray-100 text-gray-700'
                                 }`}>
-                                  {isCompleted 
-                                    ? 'Terminé' 
-                                    : isEnrolled && isActive
-                                    ? 'En cours' 
-                                    : isNotEnrolled
-                                    ? 'Disponible'
-                                    : 'Disponible'}
+                                  {isCompleted ? 'Terminé' : isActive ? 'En cours' : 'Disponible'}
                                 </div>
                               </div>
                             </div>
@@ -859,21 +838,16 @@ function App() {
                               <BookOpen className="h-4 w-4" />
                               <span>{modulesCount} modules</span>
                             </div>
-                            {isEnrolled && overallProgress > 0 && (
+                            {overallProgress > 0 && (
                               <div className="flex items-center space-x-1">
                                 <CheckCircle className="h-4 w-4 text-green-500" />
                                 <span>{completedModules}/{modulesCount} complétés</span>
                               </div>
                             )}
-                            {isNotEnrolled && (
-                              <div className="flex items-center space-x-1 text-purple-600">
-                                <span className="text-xs">Nouvelle formation</span>
-                              </div>
-                            )}
                           </div>
 
-                          {/* Progress Bar - Only show if enrolled */}
-                          {isEnrolled && overallProgress > 0 && (
+                          {/* Progress Bar */}
+                          {overallProgress > 0 && (
                             <div className="mb-4">
                               <div className="flex items-center justify-between mb-1">
                                 <span className="text-xs font-medium text-gray-700">Progression</span>
@@ -889,25 +863,14 @@ function App() {
                               </div>
                             </div>
                           )}
-                          
-                          {/* Not Enrolled Message */}
-                          {isNotEnrolled && (
-                            <div className="mb-4 p-3 bg-purple-50 border border-purple-200 rounded-lg">
-                              <p className="text-xs text-purple-700 text-center">
-                                Formation disponible - Cliquez pour commencer
-                              </p>
-                            </div>
-                          )}
 
                           {/* Action Button */}
                           <button
                             className={`w-full flex items-center justify-center space-x-2 py-3 px-4 rounded-lg font-semibold transition-all ${
                               isCompleted
                                 ? 'bg-green-50 text-green-700 hover:bg-green-100 border border-green-200'
-                                : isEnrolled && overallProgress > 0
+                                : overallProgress > 0
                                 ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800'
-                                : isNotEnrolled
-                                ? 'bg-gradient-to-r from-purple-600 to-purple-700 text-white hover:from-purple-700 hover:to-purple-800'
                                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
                             }`}
                             onClick={(e) => {
@@ -919,10 +882,8 @@ function App() {
                             <span>
                               {isCompleted
                                 ? 'Réviser'
-                                : isEnrolled && overallProgress > 0
+                                : overallProgress > 0
                                 ? 'Continuer'
-                                : isNotEnrolled
-                                ? 'Commencer la formation'
                                 : 'Commencer'}
                             </span>
                           </button>
@@ -1067,34 +1028,18 @@ function App() {
         }}
         onProgressUpdate={async (moduleId, progress) => {
           updateModuleProgress(moduleId, progress);
-          // Save progress to backend (only if agentId is available)
+          // Save progress to backend
           if (agentId && journeyId) {
             try {
               await TrainingService.updateProgress(agentId, journeyId, moduleId, progress, 85);
-              // Update local progress data
-              setTraineeProgressData(prev => {
-                const journeyProgress = prev[journeyId] || {};
-                return {
-                  ...prev,
-                  [journeyId]: {
-                    ...journeyProgress,
-                    [moduleId]: {
-                      ...journeyProgress[moduleId],
-                      progress: progress,
-                      status: progress >= 100 ? 'completed' : 'in-progress'
-                    }
-                  }
-                };
-              });
             } catch (error) {
               console.error('[App] Error saving progress:', error);
-              // Continue even if save fails - allow offline progress
             }
           }
         }}
         onModuleComplete={async (moduleId) => {
           updateModuleProgress(moduleId, 100);
-          // Save completion to backend (only if agentId is available)
+          // Save completion to backend
           if (agentId && journeyId) {
             try {
               await TrainingService.updateProgress(agentId, journeyId, moduleId, 100, 100);
@@ -1112,21 +1057,6 @@ function App() {
               }
             } catch (error) {
               console.error('[App] Error saving completion:', error);
-              // Update local progress even if save fails
-              setTraineeProgressData(prev => {
-                const journeyProgress = prev[journeyId] || {};
-                return {
-                  ...prev,
-                  [journeyId]: {
-                    ...journeyProgress,
-                    [moduleId]: {
-                      ...journeyProgress[moduleId],
-                      progress: 100,
-                      status: 'completed'
-                    }
-                  }
-                };
-              });
             }
           }
         }}

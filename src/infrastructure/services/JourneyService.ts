@@ -545,68 +545,26 @@ export class JourneyService {
 
   /**
    * Get journeys for a specific rep (trainee)
-   * First tries to get enrolled journeys, then falls back to all active journeys
    */
   static async getJourneysForRep(repId: string): Promise<any[]> {
+    const endpoint = `/training_journeys/rep/${repId}`;
+    console.log('[JourneyService] Fetching journeys for rep from:', endpoint);
     try {
-      // First, try to get enrolled journeys
-      const enrolledEndpoint = `/training_journeys/rep/${repId}`;
-      console.log('[JourneyService] Fetching enrolled journeys for rep from:', enrolledEndpoint);
-      const enrolledResponse = await ApiClient.get(enrolledEndpoint);
-      
-      let enrolledJourneys: any[] = [];
-      if (Array.isArray(enrolledResponse.data)) {
-        enrolledJourneys = enrolledResponse.data;
-      } else if (enrolledResponse.data?.data && Array.isArray(enrolledResponse.data.data)) {
-        enrolledJourneys = enrolledResponse.data.data;
+      const response = await ApiClient.get(endpoint);
+      console.log('[JourneyService] Response:', response);
+      // The backend returns a List<TrainingJourneyEntity> directly
+      // ApiClient wraps it in response.data, so we have response.data = [...]
+      if (Array.isArray(response.data)) {
+        return response.data;
       }
-      
-      console.log('[JourneyService] Found', enrolledJourneys.length, 'enrolled journeys');
-      
-      // Also get all active journeys
-      const activeEndpoint = `/training_journeys/status/active`;
-      console.log('[JourneyService] Fetching all active journeys from:', activeEndpoint);
-      const activeResponse = await ApiClient.get(activeEndpoint);
-      
-      let allActiveJourneys: any[] = [];
-      if (Array.isArray(activeResponse.data)) {
-        allActiveJourneys = activeResponse.data;
-      } else if (activeResponse.data?.data && Array.isArray(activeResponse.data.data)) {
-        allActiveJourneys = activeResponse.data.data;
-      }
-      
-      console.log('[JourneyService] Found', allActiveJourneys.length, 'active journeys');
-      
-      // Combine enrolled and active journeys, removing duplicates
-      const enrolledIds = new Set(enrolledJourneys.map(j => j.id || j._id));
-      const combinedJourneys = [...enrolledJourneys];
-      
-      // Add active journeys that are not already in enrolled list
-      allActiveJourneys.forEach((journey: any) => {
-        const journeyId = journey.id || journey._id;
-        if (!enrolledIds.has(journeyId)) {
-          combinedJourneys.push(journey);
-        }
-      });
-      
-      console.log('[JourneyService] Returning', combinedJourneys.length, 'total journeys (enrolled + available)');
-      return combinedJourneys;
-    } catch (error: any) {
-      console.error('[JourneyService] Error fetching journeys for rep:', error);
-      // Fallback: try to get all active journeys
-      try {
-        const activeEndpoint = `/training_journeys/status/active`;
-        const activeResponse = await ApiClient.get(activeEndpoint);
-        if (Array.isArray(activeResponse.data)) {
-          return activeResponse.data;
-        }
-        if (activeResponse.data?.data && Array.isArray(activeResponse.data.data)) {
-          return activeResponse.data.data;
-        }
-      } catch (fallbackError) {
-        console.error('[JourneyService] Fallback also failed:', fallbackError);
+      // Handle nested data structure if needed
+      if (response.data?.data && Array.isArray(response.data.data)) {
+        return response.data.data;
       }
       return [];
+    } catch (error: any) {
+      console.error('[JourneyService] Error fetching journeys for rep:', error);
+      throw error;
     }
   }
 
