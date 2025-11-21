@@ -268,30 +268,40 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
     const hasQuizzes = currentModule?.quizzes && currentModule.quizzes.length > 0;
     const hasAssessments = currentModule?.assessments && currentModule.assessments.length > 0;
     
-    // If module has quizzes/assessments, scroll to them
+    // If module has quizzes/assessments, scroll to them first, then move to next module
     if (hasQuizzes || hasAssessments) {
-      // Scroll to quizzes section
+      // Scroll to quizzes section briefly to show them
       setTimeout(() => {
         const quizSection = document.getElementById('module-quizzes-section');
         if (quizSection) {
           quizSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
+        // After showing quizzes, move to next module
+        setTimeout(() => {
+          if (currentModuleIndex < updatedModules.length - 1) {
+            setCurrentModuleIndex(prev => prev + 1);
+            setCurrentSectionIndex(0);
+          }
+        }, 500);
       }, 100);
-      // Don't move to next module yet - user needs to review quizzes
       return;
     }
     
     // If no quizzes/assessments exist, scroll to quizzes section to show "Generate Quiz" button
-    // User can manually generate quiz for this module only
+    // Then move to next module after a brief delay
     setTimeout(() => {
       const quizSection = document.getElementById('module-quizzes-section');
       if (quizSection) {
         quizSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
+      // Move to next module after showing the generate button
+      setTimeout(() => {
+        if (currentModuleIndex < updatedModules.length - 1) {
+          setCurrentModuleIndex(prev => prev + 1);
+          setCurrentSectionIndex(0);
+        }
+      }, 500);
     }, 100);
-    
-    // Don't move to next module automatically - let user decide when to proceed
-    // User can generate quiz manually using the "Generate Quiz" button
   };
 
   const handleSectionComplete = () => {
