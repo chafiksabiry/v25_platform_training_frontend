@@ -1432,7 +1432,7 @@ function AppContent() {
                       if (userType === 'rep') {
                         navigate('/repdashboard');
                       } else if (userType === 'company') {
-                        navigate('/companydashboard');
+                        navigate('/');
                       }
                       window.scrollTo({ top: 0, behavior: 'smooth' });
                     }}
@@ -1890,7 +1890,7 @@ function AppContent() {
                       if (userType === 'rep') {
                         navigate('/repdashboard');
                       } else if (userType === 'company') {
-                        navigate('/companydashboard');
+                        navigate('/');
                       }
                       window.scrollTo({ top: 0, behavior: 'smooth' });
                     }}
