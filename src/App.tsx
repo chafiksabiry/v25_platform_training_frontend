@@ -135,22 +135,22 @@ function App() {
               console.log('[App] Fallback: Loaded all journeys:', journeys.length);
             } catch (fallbackError) {
               console.error('[App] Error loading all journeys:', fallbackError);
-            }
+        }
           }
         } else if (companyId) {
           // For trainers/companies, load by company
-          const response = await JourneyService.getJourneysByCompany(companyId);
-          console.log('[App] Raw response from JourneyService:', response);
-          
-          // Handle response format: {data: [...], success: true, count: 31}
-          if (Array.isArray(response)) {
-            journeys = response;
-          } else if (response?.data && Array.isArray(response.data)) {
-            journeys = response.data;
-          } else if (response?.data?.data && Array.isArray(response.data.data)) {
-            journeys = response.data.data;
-          } else if (response?.journeys && Array.isArray(response.journeys)) {
-            journeys = response.journeys;
+        const response = await JourneyService.getJourneysByCompany(companyId);
+        console.log('[App] Raw response from JourneyService:', response);
+        
+        // Handle response format: {data: [...], success: true, count: 31}
+        if (Array.isArray(response)) {
+          journeys = response;
+        } else if (response?.data && Array.isArray(response.data)) {
+          journeys = response.data;
+        } else if (response?.data?.data && Array.isArray(response.data.data)) {
+          journeys = response.data.data;
+        } else if (response?.journeys && Array.isArray(response.journeys)) {
+          journeys = response.journeys;
           }
         } else {
           // Try to get all journeys as fallback
@@ -199,7 +199,7 @@ function App() {
 
     // Reload when userType changes or when component mounts
     if (userType !== null || checkingUserType === false) {
-      loadTrainingJourneys();
+    loadTrainingJourneys();
     }
   }, [userType, checkingUserType]);
 
@@ -373,7 +373,7 @@ function App() {
       pending: 0,
       totalModules: 0,
       overallProgress: 0,
-    };
+  };
   };
 
   const progressStats = calculateRealProgressStats();
@@ -1151,6 +1151,9 @@ function App() {
         onBack={() => {
           // Return to journey list
           setSelectedTraineeJourney(null);
+          // Ensure we're on the training tab to show the journey list
+          setActiveTab('training');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
         }}
       />
     );
@@ -1681,33 +1684,33 @@ function App() {
       case 'dashboard':
         // For trainees, show their progress overview instead of trainer dashboard
         if (userType === 'rep') {
-          return (
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2">
-                  <ProgressOverview stats={progressStats} />
-                </div>
-                <div>
-                  <CurrentGig gig={mockGig} />
-                </div>
+        return (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2">
+                <ProgressOverview stats={progressStats} />
               </div>
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2">
+              <div>
+                <CurrentGig gig={mockGig} />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2">
                   {progress.steps.length > 0 ? (
-                    <OnboardingSteps steps={progress.steps} />
+                <OnboardingSteps steps={progress.steps} />
                   ) : (
                     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                       <h2 className="text-lg font-semibold text-gray-900 mb-4">Onboarding Checklist</h2>
                       <p className="text-gray-500 text-sm">Aucune étape d'onboarding disponible pour le moment.</p>
                     </div>
                   )}
-                </div>
-                <div>
-                  <AIInsights insights={mockAIInsights} userRole={userRole} />
-                </div>
+              </div>
+              <div>
+                <AIInsights insights={mockAIInsights} userRole={userRole} />
               </div>
             </div>
-          );
+          </div>
+        );
         }
         return <TrainerDashboard onTraineeSelect={(trainee) => console.log('Selected trainee:', trainee)} />;
       case 'training':
@@ -1744,10 +1747,10 @@ function App() {
                 onJourneySelect={async (journeyId) => {
                   const journey = traineeFilteredJourneys.find(j => (j.id || j._id) === journeyId);
                   if (journey) {
-                    setSelectedJourney(journey);
-                    // Load progress for this journey if trainee
+                    // For trainees, redirect to TraineePortal instead of showing module list
                     if (userType === 'rep' && agentId) {
                       try {
+                        // Load progress for this journey
                         const progressData = await TrainingService.getRepProgress(agentId, journeyId);
                         if (progressData) {
                           const progressArray = Array.isArray(progressData) ? progressData : [progressData];
@@ -1762,59 +1765,59 @@ function App() {
                       } catch (error) {
                         console.error('[App] Error loading progress:', error);
                       }
+                      
+                      // Set the selected trainee journey to trigger TraineePortal display
+                      setSelectedTraineeJourney(journey);
+                      console.log('[App] Redirecting trainee to TraineePortal for journey:', journey.title || journey.name);
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    } else {
+                      // For trainers, show module list as before
+                      setSelectedJourney(journey);
+                      
+                      // Transform journey modules to TrainingModule format
+                      const modules: TrainingModule[] = (journey.modules || []).map((module: any, index: number) => {
+                        const moduleId = module.id || module._id || `module-${journeyId}-${index}`;
+                        
+                        const topics = Array.isArray(module.topics) 
+                          ? module.topics 
+                          : (Array.isArray(module.learningObjectives) 
+                              ? module.learningObjectives.slice(0, 5).map((obj: any) => typeof obj === 'string' ? obj : obj.text || obj.title || '')
+                              : []);
+                        
+                        let duration = 0;
+                        if (typeof module.duration === 'number') {
+                          duration = module.duration;
+                        } else if (Array.isArray(module.content) && module.content.length > 0) {
+                          duration = module.content.reduce((sum: number, item: any) => {
+                            return sum + (item.duration || 0);
+                          }, 0);
+                        }
+                        const durationHours = duration > 0 ? Math.round(duration / 60 * 10) / 10 : 0;
+                        
+                        return {
+                          id: moduleId,
+                          title: module.title || 'Untitled Module',
+                          description: module.description || '',
+                          duration: durationHours,
+                          difficulty: (module.difficulty || 'beginner') as 'beginner' | 'intermediate' | 'advanced',
+                          prerequisites: Array.isArray(module.prerequisites) ? module.prerequisites : [],
+                          learningObjectives: Array.isArray(module.learningObjectives) 
+                            ? module.learningObjectives.map((obj: any) => typeof obj === 'string' ? obj : obj.text || obj.title || '')
+                            : [],
+                          assessments: Array.isArray(module.assessments) ? module.assessments : [],
+                          content: Array.isArray(module.content) ? module.content : [],
+                          sections: Array.isArray(module.sections) ? module.sections : [],
+                          topics: topics,
+                          progress: 0,
+                          completed: false,
+                          order: index,
+                          quizIds: Array.isArray(module.quizIds) ? module.quizIds : []
+                        };
+                      });
+                      setSelectedJourneyModules(modules);
+                      console.log('[App] Selected journey:', journey.title || journey.name, 'with', modules.length, 'modules');
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
                     }
-                    
-                    // Transform journey modules to TrainingModule format with progress
-                    const journeyProgress = userType === 'rep' && agentId ? (traineeProgressData[journeyId] || {}) : {};
-                    const modules: TrainingModule[] = (journey.modules || []).map((module: any, index: number) => {
-                      const moduleId = module.id || module._id || `module-${journeyId}-${index}`;
-                      const moduleProgress = journeyProgress[moduleId];
-                      
-                      const topics = Array.isArray(module.topics) 
-                        ? module.topics 
-                        : (Array.isArray(module.learningObjectives) 
-                            ? module.learningObjectives.slice(0, 5).map((obj: any) => typeof obj === 'string' ? obj : obj.text || obj.title || '')
-                            : []);
-                      
-                      let duration = 0;
-                      if (typeof module.duration === 'number') {
-                        duration = module.duration;
-                      } else if (Array.isArray(module.content) && module.content.length > 0) {
-                        duration = module.content.reduce((sum: number, item: any) => {
-                          return sum + (item.duration || 0);
-                        }, 0);
-                      }
-                      const durationHours = duration > 0 ? Math.round(duration / 60 * 10) / 10 : 0;
-                      
-                      // Get progress from backend data for trainees
-                      const progress = moduleProgress?.progress || 0;
-                      const completed = moduleProgress?.status === 'completed' || progress >= 100;
-                      
-                      return {
-                        id: moduleId,
-                        title: module.title || 'Untitled Module',
-                        description: module.description || '',
-                        duration: durationHours,
-                        difficulty: (module.difficulty || 'beginner') as 'beginner' | 'intermediate' | 'advanced',
-                        prerequisites: Array.isArray(module.prerequisites) ? module.prerequisites : [],
-                        learningObjectives: Array.isArray(module.learningObjectives) 
-                          ? module.learningObjectives.map((obj: any) => typeof obj === 'string' ? obj : obj.text || obj.title || '')
-                          : [],
-                        assessments: Array.isArray(module.assessments) ? module.assessments : [],
-                        content: Array.isArray(module.content) ? module.content : [],
-                        sections: Array.isArray(module.sections) ? module.sections : [],
-                        topics: topics,
-                        progress: progress,
-                        completed: completed,
-                        order: index,
-                        quizIds: Array.isArray(module.quizIds) ? module.quizIds : [],
-                        quizzes: Array.isArray(module.quizzes) ? module.quizzes : []
-                      };
-                    });
-                    setSelectedJourneyModules(modules);
-                    console.log('[App] Selected journey:', journey.title || journey.name, 'with', modules.length, 'modules');
-                    // Scroll to top when selecting a journey
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
                   }
                 }} 
               />

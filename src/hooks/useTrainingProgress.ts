@@ -18,12 +18,12 @@ export const useTrainingProgress = (initialData: {
   const [progress, setProgress] = useState<TrainingProgress>(() => {
     console.log('[useTrainingProgress] Initializing with', initialData.modules.length, 'modules');
     return {
-      modules: initialData.modules,
-      steps: initialData.steps,
-      assessments: initialData.assessments,
-      overallProgress: 0,
-      completedModules: 0,
-      totalModules: initialData.modules.length,
+    modules: initialData.modules,
+    steps: initialData.steps,
+    assessments: initialData.assessments,
+    overallProgress: 0,
+    completedModules: 0,
+    totalModules: initialData.modules.length,
     };
   });
 
