@@ -98,7 +98,6 @@ function App() {
   const [userType, setUserType] = useState<'company' | 'rep' | null>(null);
   const [checkingUserType, setCheckingUserType] = useState(true);
   const [traineeProgressData, setTraineeProgressData] = useState<Record<string, any>>({});
-  const [showTraineeJourneyList, setShowTraineeJourneyList] = useState(true); // Show list first
 
   // Load real training journeys and convert them to modules
   useEffect(() => {
@@ -106,29 +105,39 @@ function App() {
       try {
         setLoadingModules(true);
         const companyId = Cookies.get('companyId');
-        if (!companyId) {
-          console.warn('[App] No companyId found, using mock data');
+        const detectedAgentId = getAgentId();
+        
+        let journeys: any[] = [];
+        
+        // For trainees, load journeys where they are enrolled
+        if (userType === 'rep' && detectedAgentId) {
+          try {
+            const traineeJourneysResponse = await JourneyService.getJourneysForRep(detectedAgentId);
+            console.log('[App] Loaded trainee journeys for dashboard:', traineeJourneysResponse.length);
+            journeys = Array.isArray(traineeJourneysResponse) ? traineeJourneysResponse : [];
+          } catch (error) {
+            console.error('[App] Error loading trainee journeys:', error);
+          }
+        } else if (companyId) {
+          // For trainers/companies, load by company
+          const response = await JourneyService.getJourneysByCompany(companyId);
+          console.log('[App] Raw response from JourneyService:', response);
+          
+          // Handle response format: {data: [...], success: true, count: 31}
+          if (Array.isArray(response)) {
+            journeys = response;
+          } else if (response?.data && Array.isArray(response.data)) {
+            journeys = response.data;
+          } else if (response?.data?.data && Array.isArray(response.data.data)) {
+            journeys = response.data.data;
+          } else if (response?.journeys && Array.isArray(response.journeys)) {
+            journeys = response.journeys;
+          }
+        } else {
+          console.warn('[App] No companyId or agentId found');
           setRealModules([]);
           setLoadingModules(false);
           return;
-        }
-
-        const response = await JourneyService.getJourneysByCompany(companyId);
-        console.log('[App] Raw response from JourneyService:', response);
-        
-        // Handle response format: {data: [...], success: true, count: 31}
-        // JourneyService.getJourneysByCompany returns response.data which is the backend response
-        let journeys: any[] = [];
-        if (Array.isArray(response)) {
-          journeys = response;
-        } else if (response?.data && Array.isArray(response.data)) {
-          // Direct array in data field
-          journeys = response.data;
-        } else if (response?.data?.data && Array.isArray(response.data.data)) {
-          // Nested data structure
-          journeys = response.data.data;
-        } else if (response?.journeys && Array.isArray(response.journeys)) {
-          journeys = response.journeys;
         }
         
         console.log('[App] Extracted journeys:', journeys.length, 'journeys');
@@ -162,8 +171,9 @@ function App() {
       }
     };
 
+    // Reload when userType changes
     loadTrainingJourneys();
-  }, []);
+  }, [userType]);
 
   // Check user type and set appropriate role
   useEffect(() => {
@@ -185,6 +195,7 @@ function App() {
             setLoadingTraineeJourneys(true);
             
             try {
+              // Load journeys where the rep is enrolled
               const journeys = await JourneyService.getJourneysForRep(detectedAgentId);
               console.log('[App] Loaded trainee journeys:', journeys.length);
               
@@ -677,8 +688,8 @@ function App() {
     return <JourneyBuilder onComplete={handleJourneyComplete} />;
   }
 
-  // Show journey list first for trainees, then allow selection (even if empty)
-  if (userType === 'rep' && agentId && !selectedTraineeJourney && !showTraineePortal && !showLaunchedDashboard && !showJourneyBuilder && !showJourneySuccess && !showManualTraining && !checkingUserType) {
+  // Show journey list first for trainees ONLY if they have journeys, otherwise show normal dashboard
+  if (userType === 'rep' && agentId && traineeJourneys.length > 0 && !selectedTraineeJourney && !showTraineePortal && !showLaunchedDashboard && !showJourneyBuilder && !showJourneySuccess && !showManualTraining && !checkingUserType) {
     return (
       <div className="min-h-screen bg-gray-50">
         <Sidebar 
@@ -1577,29 +1588,41 @@ function App() {
       }
     }
 
-    // Trainee view
+    // Trainee view - Use same layout as trainer but with trainee-specific data
+    // Filter journeys to show only those where the trainee is enrolled
+    const traineeFilteredJourneys = userType === 'rep' && agentId 
+      ? realJourneys.filter((journey: any) => {
+          const enrolledRepIds = journey.enrolledRepIds || [];
+          return enrolledRepIds.includes(agentId);
+        })
+      : realJourneys;
+
     switch (activeTab) {
       case 'dashboard':
-        return (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2">
-                <ProgressOverview stats={progressStats} />
+        // For trainees, show their progress overview instead of trainer dashboard
+        if (userType === 'rep') {
+          return (
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2">
+                  <ProgressOverview stats={progressStats} />
+                </div>
+                <div>
+                  <CurrentGig gig={mockGig} />
+                </div>
               </div>
-              <div>
-                <CurrentGig gig={mockGig} />
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2">
+                  <OnboardingSteps steps={progress.steps} />
+                </div>
+                <div>
+                  <AIInsights insights={mockAIInsights} userRole={userRole} />
+                </div>
               </div>
             </div>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2">
-                <OnboardingSteps steps={progress.steps} />
-              </div>
-              <div>
-                <AIInsights insights={mockAIInsights} userRole={userRole} />
-              </div>
-            </div>
-          </div>
-        );
+          );
+        }
+        return <TrainerDashboard onTraineeSelect={(trainee) => console.log('Selected trainee:', trainee)} />;
       case 'training':
         return (
           <div className="space-y-6">
@@ -1628,15 +1651,38 @@ function App() {
                 </div>
                 <TrainingModules modules={selectedJourneyModules} onModuleSelect={setSelectedModule} />
               </div>
-            ) : realJourneys.length > 0 ? (
+            ) : traineeFilteredJourneys.length > 0 ? (
               <JourneyTraining 
-                journeys={realJourneys} 
-                onJourneySelect={(journeyId) => {
-                  const journey = realJourneys.find(j => (j.id || j._id) === journeyId);
+                journeys={traineeFilteredJourneys} 
+                onJourneySelect={async (journeyId) => {
+                  const journey = traineeFilteredJourneys.find(j => (j.id || j._id) === journeyId);
                   if (journey) {
                     setSelectedJourney(journey);
-                    // Transform journey modules to TrainingModule format
+                    // Load progress for this journey if trainee
+                    if (userType === 'rep' && agentId) {
+                      try {
+                        const progressData = await TrainingService.getRepProgress(agentId, journeyId);
+                        if (progressData) {
+                          const progressArray = Array.isArray(progressData) ? progressData : [progressData];
+                          const progressMap: Record<string, any> = {};
+                          progressArray.forEach((p: any) => {
+                            if (p.moduleId) {
+                              progressMap[p.moduleId] = p;
+                            }
+                          });
+                          setTraineeProgressData(prev => ({ ...prev, [journeyId]: progressMap }));
+                        }
+                      } catch (error) {
+                        console.error('[App] Error loading progress:', error);
+                      }
+                    }
+                    
+                    // Transform journey modules to TrainingModule format with progress
+                    const journeyProgress = userType === 'rep' && agentId ? (traineeProgressData[journeyId] || {}) : {};
                     const modules: TrainingModule[] = (journey.modules || []).map((module: any, index: number) => {
+                      const moduleId = module.id || module._id || `module-${journeyId}-${index}`;
+                      const moduleProgress = journeyProgress[moduleId];
+                      
                       const topics = Array.isArray(module.topics) 
                         ? module.topics 
                         : (Array.isArray(module.learningObjectives) 
@@ -1653,8 +1699,12 @@ function App() {
                       }
                       const durationHours = duration > 0 ? Math.round(duration / 60 * 10) / 10 : 0;
                       
+                      // Get progress from backend data for trainees
+                      const progress = moduleProgress?.progress || 0;
+                      const completed = moduleProgress?.status === 'completed' || progress >= 100;
+                      
                       return {
-                        id: module.id || module._id || `module-${journey.id || journey._id}-${index}`,
+                        id: moduleId,
                         title: module.title || 'Untitled Module',
                         description: module.description || '',
                         duration: durationHours,
@@ -1667,10 +1717,11 @@ function App() {
                         content: Array.isArray(module.content) ? module.content : [],
                         sections: Array.isArray(module.sections) ? module.sections : [],
                         topics: topics,
-                        progress: 0,
-                        completed: false,
+                        progress: progress,
+                        completed: completed,
                         order: index,
-                        quizIds: Array.isArray(module.quizIds) ? module.quizIds : []
+                        quizIds: Array.isArray(module.quizIds) ? module.quizIds : [],
+                        quizzes: Array.isArray(module.quizzes) ? module.quizzes : []
                       };
                     });
                     setSelectedJourneyModules(modules);
@@ -1737,6 +1788,7 @@ function App() {
         activeTab={activeTab} 
         onTabChange={setActiveTab}
         isOpen={sidebarOpen}
+        userType={userType}
       />
       
       {/* Overlay for mobile */}
