@@ -334,11 +334,11 @@ function AppContent() {
     if (!userType || checkingUserType) return;
     
     const currentPath = window.location.pathname;
-    // Only redirect if we're at /training (not already at /training/repashboard or /training/companydashboard)
+    // Only redirect if we're at /training (not already at /training/repdashboard or /training/companydashboard)
     if (currentPath === '/training' || currentPath === '/training/') {
       if (userType === 'rep') {
-        console.log('[App] Auto-redirecting rep user to /training/repashboard');
-        window.location.href = '/training/repashboard';
+        console.log('[App] Auto-redirecting rep user to /training/repdashboard');
+        window.location.href = '/training/repdashboard';
       } else if (userType === 'company') {
         console.log('[App] Auto-redirecting company user to /training/companydashboard');
         window.location.href = '/training/companydashboard';
@@ -1303,8 +1303,8 @@ function AppContent() {
           setSelectedTraineeJourney(null);
           // Ensure we're on the training tab to show the journey list
           setActiveTab('training');
-          // Navigate to /training/repashboard to update URL
-          navigate('/repashboard');
+          // Navigate to /training/repdashboard to update URL
+          navigate('/repdashboard');
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }}
       />
@@ -1430,7 +1430,7 @@ function AppContent() {
                       setSelectedJourneyModules([]);
                       // Update URL when going back
                       if (userType === 'rep') {
-                        navigate('/repashboard');
+                        navigate('/repdashboard');
                       } else if (userType === 'company') {
                         navigate('/companydashboard');
                       }
@@ -1888,7 +1888,7 @@ function AppContent() {
                       setSelectedJourneyModules([]);
                       // Update URL when going back
                       if (userType === 'rep') {
-                        navigate('/repashboard');
+                        navigate('/repdashboard');
                       } else if (userType === 'company') {
                         navigate('/companydashboard');
                       }
