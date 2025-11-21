@@ -321,20 +321,23 @@ function App() {
     checkUserTypeAndSetRole();
   }, []); // Run once on mount
 
-  // Use real modules if available, otherwise use empty array (no mock fallback for training display)
-  // Mock modules are only used for progress tracking hooks, not for display
+  // Use real modules if available, otherwise use empty array (no mock fallback)
+  // Only use real data from backend - no mock fallback
   const modulesToUse = realModules.length > 0 ? realModules : [];
   
   console.log('[App] Using', modulesToUse.length, 'modules (real:', realModules.length, ', mock:', mockTrainingModules.length, ')');
+  console.log('[App] modulesToUse array:', modulesToUse.length === 0 ? 'EMPTY' : `has ${modulesToUse.length} modules`);
 
+  // Use empty arrays if no real data - don't use mock data
   const { progress, updateModuleProgress, updateStepProgress, updateAssessmentResult } = useTrainingProgress({
-    modules: modulesToUse.length > 0 ? modulesToUse : mockTrainingModules, // Use mock only for hook initialization
-    steps: mockOnboardingSteps,
-    assessments: mockAssessments,
+    modules: modulesToUse, // Use only real modules, empty array if none
+    steps: [], // Empty steps - no mock data
+    assessments: [], // Empty assessments - no mock data
   });
   
-  console.log('[App] Progress modules count:', progress.modules.length);
+  console.log('[App] Progress modules count:', progress.modules.length, '(should be', modulesToUse.length, ')');
   console.log('[App] Real journeys count:', realJourneys.length);
+  console.log('[App] Real modules count:', realModules.length);
 
   // Calculate progress stats from real journeys data, not mock data
   // For trainees: calculate from their actual progress in realJourneys
@@ -1702,7 +1705,14 @@ function App() {
               </div>
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2">
-                  <OnboardingSteps steps={progress.steps} />
+                  {progress.steps.length > 0 ? (
+                    <OnboardingSteps steps={progress.steps} />
+                  ) : (
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                      <h2 className="text-lg font-semibold text-gray-900 mb-4">Onboarding Checklist</h2>
+                      <p className="text-gray-500 text-sm">Aucune étape d'onboarding disponible pour le moment.</p>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <AIInsights insights={mockAIInsights} userRole={userRole} />

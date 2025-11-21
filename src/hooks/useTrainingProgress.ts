@@ -15,21 +15,31 @@ export const useTrainingProgress = (initialData: {
   steps: OnboardingStep[];
   assessments: Assessment[];
 }) => {
-  const [progress, setProgress] = useState<TrainingProgress>(() => ({
-    modules: initialData.modules,
-    steps: initialData.steps,
-    assessments: initialData.assessments,
-    overallProgress: 0,
-    completedModules: 0,
-    totalModules: initialData.modules.length,
-  }));
+  const [progress, setProgress] = useState<TrainingProgress>(() => {
+    console.log('[useTrainingProgress] Initializing with', initialData.modules.length, 'modules');
+    return {
+      modules: initialData.modules,
+      steps: initialData.steps,
+      assessments: initialData.assessments,
+      overallProgress: 0,
+      completedModules: 0,
+      totalModules: initialData.modules.length,
+    };
+  });
 
   // Update modules when initialData.modules changes
   useEffect(() => {
     const currentModuleIds = progress.modules.map(m => m.id).sort().join(',');
     const newModuleIds = initialData.modules.map(m => m.id).sort().join(',');
     
+    // Always update if length is different or IDs are different
     if (currentModuleIds !== newModuleIds || progress.modules.length !== initialData.modules.length) {
+      console.log('[useTrainingProgress] Updating modules:', {
+        currentLength: progress.modules.length,
+        newLength: initialData.modules.length,
+        currentIds: currentModuleIds.substring(0, 50),
+        newIds: newModuleIds.substring(0, 50)
+      });
       setProgress(prev => ({
         ...prev,
         modules: initialData.modules,
