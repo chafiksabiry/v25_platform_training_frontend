@@ -2076,14 +2076,17 @@ function AppContent() {
 
 function App() {
   // Determine basename based on context (same logic as dash_rep)
-  const isStandaloneMode = !qiankunWindow.__POWERED_BY_QIANKUN__;
+  // Use pathname to determine basename - if pathname starts with /training, we're in Qiankun
   const pathname = window.location.pathname;
+  const isStandaloneMode = import.meta.env.VITE_RUN_MODE === 'standalone' || !pathname.startsWith('/training');
   
   let basename = '/';
   if (!isStandaloneMode) {
+    // When running in Qiankun, determine basename from pathname
     if (pathname.startsWith('/training/companydashboard')) {
       basename = '/training/companydashboard';
-    } else if (pathname.startsWith('/training/repdashboard')) {
+    } else if (pathname.startsWith('/training/repashboard') || pathname.startsWith('/training/repdashboard')) {
+      // Handle both "repashboard" (typo) and "repdashboard" (correct)
       basename = '/training/repdashboard';
     } else if (pathname.startsWith('/training')) {
       basename = '/training';
@@ -2094,7 +2097,8 @@ function App() {
     pathname,
     basename,
     isStandaloneMode,
-    isQiankun: qiankunWindow.__POWERED_BY_QIANKUN__
+    isQiankun: qiankunWindow.__POWERED_BY_QIANKUN__,
+    envMode: import.meta.env.VITE_RUN_MODE
   });
   
   return (
@@ -2102,7 +2106,9 @@ function App() {
       <Routes>
         <Route path="/" element={<AppContent />} />
         <Route path="/companydashboard" element={<AppContent />} />
+        <Route path="/repashboard" element={<AppContent />} />
         <Route path="/repdashboard" element={<AppContent />} />
+        <Route path="/repashboard/:idjourneytraining" element={<AppContent />} />
         <Route path="/repdashboard/:idjourneytraining" element={<AppContent />} />
         <Route path="/:idjourneytraining" element={<AppContent />} />
         <Route path="/*" element={<AppContent />} />
