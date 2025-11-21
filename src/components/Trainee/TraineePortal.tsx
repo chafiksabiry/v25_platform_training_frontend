@@ -442,28 +442,29 @@ export default function TraineePortal({
                       </div>
                     </div>
 
-                  {/* Module Topics Preview */}
-                  {Array.isArray(module.topics) && module.topics.length > 0 && (
-                    <div className="mt-4 pt-4 border-t border-gray-200">
-                      <div className="flex flex-wrap gap-2">
-                        {module.topics.slice(0, 4).map((topic, topicIndex) => (
-                          <span
-                            key={topicIndex}
-                            className="px-3 py-1 bg-gray-100 text-gray-700 text-xs rounded-full"
-                          >
-                            {topic}
-                          </span>
-                        ))}
-                        {module.topics.length > 4 && (
-                          <span className="px-3 py-1 bg-gray-100 text-gray-700 text-xs rounded-full">
-                            +{module.topics.length - 4} more
-                          </span>
-                        )}
+                    {/* Module Topics Preview */}
+                    {Array.isArray(module.topics) && module.topics.length > 0 && (
+                      <div className="mt-4 pt-4 border-t border-gray-200">
+                        <div className="flex flex-wrap gap-2">
+                          {module.topics.slice(0, 4).map((topic, topicIndex) => (
+                            <span
+                              key={topicIndex}
+                              className="px-3 py-1 bg-gray-100 text-gray-700 text-xs rounded-full"
+                            >
+                              {topic}
+                            </span>
+                          ))}
+                          {module.topics.length > 4 && (
+                            <span className="px-3 py-1 bg-gray-100 text-gray-700 text-xs rounded-full">
+                              +{module.topics.length - 4} more
+                            </span>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  )}
-                </div>
-              ))}
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
