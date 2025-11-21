@@ -32,7 +32,7 @@ import TraineeProgressDashboard from './TraineeProgressDashboard';
 import TraineeLiveSession from './TraineeLiveSession';
 import { ProgressService, RepProgress } from '../../infrastructure/services/ProgressService';
 import { getAgentId } from '../../utils/userUtils';
-import { getNormalizedModuleId, extractObjectId } from '../../lib/mongoUtils';
+import { extractObjectId } from '../../lib/mongoUtils';
 
 interface TraineePortalProps {
   trainee: Rep;
@@ -175,7 +175,8 @@ export default function TraineePortal({
     // Find first module that's in progress
     for (let index = 0; index < modules.length; index++) {
       const module = modules[index];
-      const moduleId = getNormalizedModuleId(module, journeyId, index);
+      const moduleId = extractObjectId((module as any)._id) || extractObjectId(module.id);
+      if (!moduleId || !/^[0-9a-fA-F]{24}$/.test(moduleId)) continue;
       const moduleProgress = repProgressData.modules[moduleId];
       
       if (moduleProgress && moduleProgress.status === 'in-progress') {
@@ -186,7 +187,8 @@ export default function TraineePortal({
     // If no in-progress, find first not-started
     for (let index = 0; index < modules.length; index++) {
       const module = modules[index];
-      const moduleId = getNormalizedModuleId(module, journeyId, index);
+      const moduleId = extractObjectId((module as any)._id) || extractObjectId(module.id);
+      if (!moduleId || !/^[0-9a-fA-F]{24}$/.test(moduleId)) continue;
       const moduleProgress = repProgressData.modules[moduleId];
       
       if (!moduleProgress || moduleProgress.status === 'not-started') {
@@ -374,8 +376,12 @@ export default function TraineePortal({
             
             <div className="space-y-4">
               {modules.map((module, index) => {
-                // Use normalized module ID that matches backend format
-                const moduleId = getNormalizedModuleId(module, journeyId, index);
+                // Modules MUST have a MongoDB ObjectId _id
+                const moduleId = extractObjectId((module as any)._id) || extractObjectId(module.id);
+                if (!moduleId || !/^[0-9a-fA-F]{24}$/.test(moduleId)) {
+                  console.error(`[TraineePortal] Module at index ${index} does not have a valid MongoDB ObjectId _id:`, module);
+                  return null; // Skip invalid modules
+                }
                 const moduleProgress = repProgressData?.modules?.[moduleId];
                 const moduleProgressValue = moduleProgress?.progress ?? module.progress ?? 0;
                 const moduleCompleted = moduleProgress 
@@ -592,10 +598,10 @@ export default function TraineePortal({
         module={selectedModule}
         trainee={trainee}
         journeyId={journeyId}
-        moduleIndex={(selectedModule as any).moduleIndex ?? modules.findIndex(m => {
+        moduleIndex={modules.findIndex(m => {
           const mId = extractObjectId((m as any)._id) || extractObjectId(m.id);
           const moduleId = extractObjectId((selectedModule as any)._id) || extractObjectId(selectedModule.id);
-          return mId === moduleId || m === selectedModule;
+          return mId === moduleId && mId && /^[0-9a-fA-F]{24}$/.test(mId);
         })}
         onProgress={(progress) => {
           onProgressUpdate(selectedModule.id, progress);

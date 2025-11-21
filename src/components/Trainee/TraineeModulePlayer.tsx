@@ -31,7 +31,7 @@ import {
 import { TrainingModule, Rep, Exercise, Quiz } from '../../types';
 import DocumentViewer from '../DocumentViewer/DocumentViewer';
 import { ProgressService } from '../../infrastructure/services/ProgressService';
-import { extractObjectId, getNormalizedModuleId, findModuleIndex } from '../../lib/mongoUtils';
+import { extractObjectId } from '../../lib/mongoUtils';
 
 interface TraineeModulePlayerProps {
   module: TrainingModule;
@@ -81,10 +81,10 @@ export default function TraineeModulePlayer({
   const saveProgressToBackend = async (progressPercent: number, timeSpentSeconds: number) => {
     if (!journeyId || !trainee.id) return;
     
-    // Get normalized module ID that matches backend format
-    const moduleId = getNormalizedModuleId(module, journeyId, moduleIndex);
-    if (!moduleId) {
-      console.warn('[TraineeModulePlayer] Module has no ID, cannot save progress');
+    // Module MUST have a MongoDB ObjectId _id
+    const moduleId = extractObjectId((module as any)._id) || extractObjectId(module.id);
+    if (!moduleId || !/^[0-9a-fA-F]{24}$/.test(moduleId)) {
+      console.error('[TraineeModulePlayer] Module must have a valid MongoDB ObjectId _id:', module);
       return;
     }
     
@@ -163,7 +163,11 @@ export default function TraineeModulePlayer({
       }
       // Save progress when component unmounts or stops playing
       if (currentTime > 0 && journeyId && trainee.id) {
-        const moduleId = getNormalizedModuleId(module, journeyId, moduleIndex);
+        const moduleId = extractObjectId((module as any)._id) || extractObjectId(module.id);
+        if (!moduleId || !/^[0-9a-fA-F]{24}$/.test(moduleId)) {
+          console.error('[TraineeModulePlayer] Module must have a valid MongoDB ObjectId _id:', module);
+          return;
+        }
         if (moduleId) {
           const timeSpentMinutes = Math.floor(currentTime / 60);
           const progress = Math.min((currentTime / (parseInt(module.duration) * 60)) * 100, 100);
@@ -203,7 +207,11 @@ export default function TraineeModulePlayer({
       setModuleCompleted(true);
       // Save completed progress
       if (journeyId && trainee.id) {
-        const moduleId = getNormalizedModuleId(module, journeyId, moduleIndex);
+        const moduleId = extractObjectId((module as any)._id) || extractObjectId(module.id);
+        if (!moduleId || !/^[0-9a-fA-F]{24}$/.test(moduleId)) {
+          console.error('[TraineeModulePlayer] Module must have a valid MongoDB ObjectId _id:', module);
+          return;
+        }
         if (moduleId) {
           const timeSpentMinutes = Math.floor(currentTime / 60);
           ProgressService.updateProgress({
@@ -236,7 +244,15 @@ export default function TraineeModulePlayer({
         // No quizzes, complete immediately
         // Save completed progress
         if (journeyId && trainee.id) {
-          const moduleId = getNormalizedModuleId(module, journeyId, moduleIndex);
+          const moduleId = extractObjectId((module as any)._id) || extractObjectId(module.id);
+          if (!moduleId || !/^[0-9a-fA-F]{24}$/.test(moduleId)) {
+            console.error('[TraineeModulePlayer] Module must have a valid MongoDB ObjectId _id:', module);
+            return;
+          }
+          console.log('[TraineeModulePlayer] Marking module complete:', { 
+            moduleId, 
+            journeyId 
+          });
           if (moduleId) {
             const timeSpentMinutes = Math.floor(currentTime / 60);
             ProgressService.updateProgress({
@@ -282,7 +298,11 @@ export default function TraineeModulePlayer({
       // No more quizzes, complete module
       // Save completed progress
       if (journeyId && trainee.id) {
-        const moduleId = getNormalizedModuleId(module, journeyId, moduleIndex);
+        const moduleId = extractObjectId((module as any)._id) || extractObjectId(module.id);
+        if (!moduleId || !/^[0-9a-fA-F]{24}$/.test(moduleId)) {
+          console.error('[TraineeModulePlayer] Module must have a valid MongoDB ObjectId _id:', module);
+          return;
+        }
         if (moduleId) {
           const timeSpentMinutes = Math.floor(currentTime / 60);
           ProgressService.updateProgress({
@@ -322,7 +342,11 @@ export default function TraineeModulePlayer({
       // All quizzes completed, complete module
       // Save final progress before completing
       if (journeyId && trainee.id) {
-        const moduleId = getNormalizedModuleId(module, journeyId, moduleIndex);
+        const moduleId = extractObjectId((module as any)._id) || extractObjectId(module.id);
+        if (!moduleId || !/^[0-9a-fA-F]{24}$/.test(moduleId)) {
+          console.error('[TraineeModulePlayer] Module must have a valid MongoDB ObjectId _id:', module);
+          return;
+        }
         if (moduleId) {
           const timeSpentMinutes = Math.floor(currentTime / 60);
           ProgressService.updateProgress({

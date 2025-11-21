@@ -1157,7 +1157,12 @@ function AppContent() {
     const journeyProgress = traineeProgressData[journeyId] || {};
     
     const journeyModules: TrainingModule[] = (selectedTraineeJourney.modules || []).map((module: any, index: number) => {
-      const moduleId = module.id || module._id || `module-${journeyId}-${index}`;
+      // Modules MUST have a MongoDB ObjectId _id
+      const moduleId = extractObjectId(module._id);
+      if (!moduleId || !/^[0-9a-fA-F]{24}$/.test(moduleId)) {
+        console.error(`[App] Module at index ${index} does not have a valid MongoDB ObjectId _id:`, module);
+        throw new Error(`Module at index ${index} must have a valid MongoDB ObjectId _id`);
+      }
       const moduleProgress = journeyProgress[moduleId];
       
       const topics = Array.isArray(module.topics) 
@@ -1482,8 +1487,12 @@ function AppContent() {
                       if (embeddedModules && Array.isArray(embeddedModules) && embeddedModules.length > 0) {
                         // New embedded structure: modules are directly in journey.modules
                         modules = embeddedModules.map((module: any, index: number): TrainingModule => {
-                          // Extract module ID (may be _id or id)
-                          const moduleId = extractObjectId(module._id || module.id) || `module-${journeyIdStr}-${index}`;
+                          // Modules MUST have a MongoDB ObjectId _id
+                          const moduleId = extractObjectId(module._id);
+                          if (!moduleId || !/^[0-9a-fA-F]{24}$/.test(moduleId)) {
+                            console.error(`[App] Module at index ${index} does not have a valid MongoDB ObjectId _id:`, module);
+                            throw new Error(`Module at index ${index} must have a valid MongoDB ObjectId _id`);
+                          }
                           
                           // Extract sections from embedded module
                           const embeddedSections = module.sections || [];
@@ -1944,7 +1953,12 @@ function AppContent() {
                       
                       // Transform journey modules to TrainingModule format
                       const modules: TrainingModule[] = (journey.modules || []).map((module: any, index: number) => {
-                        const moduleId = module.id || module._id || `module-${journeyId}-${index}`;
+                        // Modules MUST have a MongoDB ObjectId _id
+                        const moduleId = extractObjectId(module._id);
+                        if (!moduleId || !/^[0-9a-fA-F]{24}$/.test(moduleId)) {
+                          console.error(`[App] Module at index ${index} does not have a valid MongoDB ObjectId _id:`, module);
+                          throw new Error(`Module at index ${index} must have a valid MongoDB ObjectId _id`);
+                        }
                         
                         const topics = Array.isArray(module.topics) 
                           ? module.topics 

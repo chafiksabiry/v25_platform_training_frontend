@@ -150,9 +150,9 @@ export function toExtendedJson<T>(data: any): T {
 }
 
 /**
- * Get normalized module ID that matches backend format
- * Backend uses: journeyId_module_${index} when module has no _id
- * This ensures consistency between frontend and backend
+ * Get normalized module ID - MUST be a MongoDB ObjectId
+ * Backend now uses ONLY MongoDB ObjectIds (_id) for modules
+ * This function ensures we always use the MongoDB _id
  */
 export function getNormalizedModuleId(
   module: any, 
@@ -162,22 +162,14 @@ export function getNormalizedModuleId(
   // First try to get the real MongoDB _id
   const moduleId = extractObjectId(module._id) || extractObjectId(module.id);
   
-  if (moduleId) {
+  // Validate that it's a MongoDB ObjectId (24 hex chars)
+  if (moduleId && /^[0-9a-fA-F]{24}$/.test(moduleId)) {
     return moduleId;
   }
   
-  // If no _id exists and we have an index, generate using backend format: journeyId_module_${index}
-  if (moduleIndex !== undefined && moduleIndex !== null) {
-    return `${journeyId}_module_${moduleIndex}`;
-  }
-  
-  // Fallback: try to extract from module.order if available
-  if (module.order !== undefined && module.order !== null) {
-    return `${journeyId}_module_${module.order}`;
-  }
-  
-  // Last resort: return the id as-is (might be a generated ID)
-  return module.id || String(module._id) || '';
+  // If module doesn't have a valid ObjectId, throw an error
+  // Modules MUST have a MongoDB ObjectId _id
+  throw new Error(`Module must have a valid MongoDB ObjectId _id. Got: ${moduleId || 'null'}`);
 }
 
 /**

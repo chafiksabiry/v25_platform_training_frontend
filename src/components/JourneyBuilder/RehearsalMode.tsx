@@ -862,8 +862,8 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
     switch (section.type) {
       case 'document':
         if (content?.file && content.file.url) {
-    return (
-            <div className="w-full h-full" style={{ minHeight: '400px' }}>
+          return (
+            <div className="w-full" style={{ height: 'calc(100vh - 350px)', minHeight: '600px' }}>
               <DocumentViewer
                 fileUrl={content.file.url}
                 fileName={content.file.name}
@@ -928,7 +928,7 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
         const videoUrl = content?.file?.url || content?.url;
         if (videoUrl) {
           return (
-            <div className="w-full h-full" style={{ minHeight: '400px' }}>
+            <div className="w-full" style={{ height: 'calc(100vh - 350px)', minHeight: '600px' }}>
               <DocumentViewer
                 fileUrl={videoUrl}
                 fileName={content?.file?.name}
@@ -947,8 +947,8 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
       case 'youtube':
         const youtubeUrl = content?.youtubeUrl || content?.url || content?.file?.url;
         if (youtubeUrl) {
-    return (
-            <div className="w-full h-full" style={{ minHeight: '400px' }}>
+          return (
+            <div className="w-full" style={{ height: 'calc(100vh - 350px)', minHeight: '600px' }}>
               <DocumentViewer
                 fileUrl={youtubeUrl}
                 fileName={content?.file?.name}
@@ -1080,65 +1080,101 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
             </div>
           )}
 
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-            {/* Main Content Area */}
-            <div className="lg:col-span-3">
-              {/* Module Navigation */}
-              <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-6 mb-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    Module {currentModuleIndex + 1} of {updatedModules.length}
-                  </h3>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Left Sidebar - Section Navigation */}
+            <div className="lg:col-span-2">
+              <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-6 sticky top-6">
+                {/* Module Navigation */}
+                <div className="mb-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-semibold text-gray-900">
+                      Module {currentModuleIndex + 1} of {updatedModules.length}
+                    </h3>
+                  </div>
+                  <div className="flex flex-col gap-2 mb-4">
+                    {updatedModules.map((module, index) => (
+                      <button
+                        key={module.id}
+                        onClick={() => {
+                          setCurrentModuleIndex(index);
+                          setCurrentSectionIndex(0);
+                        }}
+                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors text-left ${
+                          index === currentModuleIndex
+                            ? 'bg-purple-600 text-white'
+                            : completedModules.includes(module.id)
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span>{index + 1}. {module.title}</span>
+                          {completedModules.includes(module.id) && (
+                            <CheckCircle className="h-4 w-4 ml-1 flex-shrink-0" />
+                          )}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
                   <div className="flex items-center space-x-2">
-                <button
+                    <button
                       onClick={handlePreviousModule}
                       disabled={currentModuleIndex === 0}
-                      className="px-3 py-1 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      className="flex-1 px-3 py-2 text-xs border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                       Previous
                     </button>
                     <button
                       onClick={handleNextModule}
                       disabled={currentModuleIndex === modules.length - 1}
-                      className="px-3 py-1 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      className="flex-1 px-3 py-2 text-xs bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                       Next
                     </button>
                   </div>
                 </div>
 
-                <div className="flex flex-wrap gap-2">
-                  {updatedModules.map((module, index) => (
-                    <button
-                      key={module.id}
-                      onClick={() => {
-                        setCurrentModuleIndex(index);
-                        setCurrentSectionIndex(0);
-                      }}
-                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                        index === currentModuleIndex
-                          ? 'bg-purple-600 text-white'
-                          : completedModules.includes(module.id)
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
-                    >
-                      {index + 1}. {module.title}
-                      {completedModules.includes(module.id) && (
-                        <CheckCircle className="h-4 w-4 inline ml-1" />
-                      )}
-                    </button>
-                  ))}
-                </div>
+                {/* Sections Navigation */}
+                {hasSections && (
+                  <div className="border-t border-gray-200 pt-6">
+                    <h3 className="text-sm font-semibold text-gray-900 mb-4">
+                      Section {currentSectionIndex + 1} of {currentModule.sections!.length}
+                    </h3>
+                    <div className="flex flex-col gap-2">
+                      {currentModule.sections!.map((section, index) => (
+                        <button
+                          key={section.id || index}
+                          onClick={() => setCurrentSectionIndex(index)}
+                          className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors text-left ${
+                            index === currentSectionIndex
+                              ? 'bg-purple-600 text-white'
+                              : completedSections.has(section.id || '')
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span>{index + 1}. {section.title}</span>
+                            {completedSections.has(section.id || '') && (
+                              <CheckCircle className="h-4 w-4 ml-1 flex-shrink-0" />
+                            )}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
+            </div>
 
-              {/* Current Module Content - Unified Component */}
+            {/* Main Content Area - Document Viewer */}
+            <div className="lg:col-span-7">
               {currentModule && (
-                <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-8">
-                  {/* Module Title */}
-                  <div className="mb-6 pb-6 border-b border-gray-200">
+                <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-6">
+                  {/* Module Header */}
+                  <div className="mb-6 pb-4 border-b border-gray-200">
                     <div className="flex items-center justify-between mb-2">
-                      <h2 className="text-2xl font-bold text-gray-900">{currentModule.title}</h2>
+                      <h2 className="text-xl font-bold text-gray-900">{currentModule.title}</h2>
                       {completedModules.includes(currentModule.id) && (
                         <div className="flex items-center space-x-2 text-green-600">
                           <CheckCircle className="h-5 w-5" />
@@ -1162,45 +1198,11 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
                     </div>
                   </div>
 
-                  {/* Sections Navigation (if module has sections) */}
-                  {hasSections && (
-                    <div className="mb-6">
-                      <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-lg font-semibold text-gray-900">
-                          Section {currentSectionIndex + 1} of {currentModule.sections!.length}
-                        </h3>
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {currentModule.sections!.map((section, index) => (
-                          <button
-                            key={section.id || index}
-                            onClick={() => setCurrentSectionIndex(index)}
-                            className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                              index === currentSectionIndex
-                                ? 'bg-purple-600 text-white'
-                                : completedSections.has(section.id || '')
-                                ? 'bg-green-100 text-green-800'
-                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                            }`}
-                          >
-                            {index + 1}. {section.title}
-                            {completedSections.has(section.id || '') && (
-                              <CheckCircle className="h-4 w-4 inline ml-1" />
-                            )}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
                   {/* Content */}
-                  <div className="mb-6">
+                  <div className="w-full flex-1">
                     {hasSections && currentSection ? (
-                      <div className="bg-gray-50 rounded-xl p-6">
-                        {/* Section Content - Display document directly without header */}
-                        <div className="bg-white rounded-lg p-6 shadow-sm">
-                          {renderSectionContent(currentSection)}
-                        </div>
+                      <div className="w-full">
+                        {renderSectionContent(currentSection)}
                       </div>
                     ) : (
                       <div className="text-center py-12 bg-gray-50 rounded-lg border border-gray-200">
@@ -1214,7 +1216,7 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
                     )}
                   </div>
 
-                  {/* Navigation Controls - Bottom with Mark Complete */}
+                  {/* Navigation Controls - Bottom */}
                   <div className="flex items-center justify-between mt-6 pt-6 border-t border-gray-200">
                     <div className="flex items-center space-x-2">
                       {hasSections && (
@@ -1599,8 +1601,8 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
               )}
             </div>
 
-            {/* Feedback Sidebar */}
-            <div className="lg:col-span-1 space-y-6">
+            {/* Right Sidebar - Feedback */}
+            <div className="lg:col-span-3 space-y-6">
               {/* Add Feedback */}
               <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Add Feedback</h3>
