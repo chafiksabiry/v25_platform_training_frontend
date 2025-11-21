@@ -1298,7 +1298,7 @@ function AppContent() {
           // Ensure we're on the training tab to show the journey list
           setActiveTab('training');
           // Navigate to /training/repdashboard to update URL
-          navigate('/repdashboard');
+          navigate('/');
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }}
       />
