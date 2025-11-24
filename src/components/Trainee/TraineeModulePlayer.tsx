@@ -186,6 +186,17 @@ export default function TraineeModulePlayer({
     };
   }, [isPlaying, module.duration, onProgress, playbackSpeed, currentTime, journeyId, trainee.id, engagementScore]);
 
+  // Debug quiz state
+  useEffect(() => {
+    console.log('[TraineeModulePlayer] Quiz state:', {
+      showModuleQuiz,
+      currentQuiz: currentQuiz ? { id: currentQuiz.id, question: currentQuiz.question?.substring(0, 50) } : null,
+      currentQuizIndex,
+      hasAssessments: module.assessments && module.assessments.length > 0,
+      assessments: module.assessments
+    });
+  }, [showModuleQuiz, currentQuiz, currentQuizIndex, module.assessments]);
+
   const handleInteraction = () => {
     setEngagementScore(prev => Math.min(prev + 2, 100));
   };
@@ -237,43 +248,70 @@ export default function TraineeModulePlayer({
       const hasQuizzes = (module as any).quizzes && Array.isArray((module as any).quizzes) && 
                         (module as any).quizzes.length > 0;
       
+      console.log('[TraineeModulePlayer] Module completed, checking for quizzes:', {
+        hasAssessments,
+        hasQuizzes,
+        assessments: module.assessments,
+        quizzes: (module as any).quizzes
+      });
+      
       // If quizzes exist, redirect automatically to quiz
       if (hasAssessments) {
         console.log('[TraineeModulePlayer] Module completed, redirecting to quiz automatically');
-        setShowModuleQuiz(true);
-        setCurrentQuizIndex(0);
-        // Start with first quiz question
         const firstQuestion = module.assessments[0].questions[0];
+        console.log('[TraineeModulePlayer] First question:', firstQuestion);
+        
         if (firstQuestion) {
-          setCurrentQuiz({
+          const quizData = {
             id: `quiz-0`,
-            question: firstQuestion.text,
+            question: firstQuestion.text || firstQuestion.question || '',
             options: firstQuestion.options || [],
-            correctAnswer: firstQuestion.correctAnswer,
+            correctAnswer: firstQuestion.correctAnswer || firstQuestion.correct_answer || 0,
             explanation: firstQuestion.explanation || 'Good job!',
             difficulty: firstQuestion.difficulty === 'easy' ? 3 : firstQuestion.difficulty === 'medium' ? 5 : 8
-          });
+          };
+          console.log('[TraineeModulePlayer] Setting quiz data:', quizData);
+          
+          setCurrentQuiz(quizData);
+          setShowModuleQuiz(true);
+          setCurrentQuizIndex(0);
+          
+          // Scroll to quiz section after state update
+          setTimeout(() => {
+            const quizSection = document.querySelector('.bg-white.rounded-2xl.shadow-xl.border.border-gray-200.mt-6');
+            if (quizSection) {
+              quizSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+          }, 300);
+        } else {
+          console.warn('[TraineeModulePlayer] No first question found in assessments');
         }
-        // Scroll to quiz modal
-        setTimeout(() => {
-          const quizModal = document.querySelector('.fixed.inset-0.bg-black');
-          if (quizModal) {
-            quizModal.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          }
-        }, 100);
       } else if (hasQuizzes) {
         // If module has quizzes array, redirect to first quiz
-        console.log('[TraineeModulePlayer] Module completed, redirecting to quiz automatically');
+        console.log('[TraineeModulePlayer] Module completed, redirecting to quiz automatically (quizzes array)');
         const firstQuiz = (module as any).quizzes[0];
         if (firstQuiz) {
-          startQuiz({
+          const quizData = {
             id: firstQuiz.id || `quiz-${firstQuiz._id}`,
             question: firstQuiz.question || firstQuiz.text || '',
             options: firstQuiz.options || [],
             correctAnswer: firstQuiz.correctAnswer || firstQuiz.correct_answer || 0,
             explanation: firstQuiz.explanation || 'Good job!',
             difficulty: firstQuiz.difficulty === 'easy' ? 3 : firstQuiz.difficulty === 'medium' ? 5 : 8
-          });
+          };
+          console.log('[TraineeModulePlayer] Setting quiz data from quizzes array:', quizData);
+          
+          setCurrentQuiz(quizData);
+          setShowModuleQuiz(true);
+          setCurrentQuizIndex(0);
+          
+          // Scroll to quiz section after state update
+          setTimeout(() => {
+            const quizSection = document.querySelector('.bg-white.rounded-2xl.shadow-xl.border.border-gray-200.mt-6');
+            if (quizSection) {
+              quizSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+          }, 300);
         }
       } else {
         // No quizzes, complete immediately
@@ -990,15 +1028,17 @@ export default function TraineeModulePlayer({
           )}
 
           {/* Quiz Section - Show at bottom after module completion */}
-          {showModuleQuiz && currentQuiz && module.assessments && module.assessments[0] && (
-            <div className="bg-white rounded-2xl shadow-xl border border-gray-200 mt-6">
+          {showModuleQuiz && currentQuiz && (
+            <div id="quiz-section" className="bg-white rounded-2xl shadow-xl border border-gray-200 mt-6">
               <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-indigo-50">
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900">Module Quiz - {module.title}</h3>
-                    <p className="text-sm text-gray-600 mt-1">
-                      Question {currentQuizIndex + 1} of {module.assessments[0].questions.length}
-                    </p>
+                    {module.assessments && module.assessments[0] && module.assessments[0].questions && (
+                      <p className="text-sm text-gray-600 mt-1">
+                        Question {currentQuizIndex + 1} of {module.assessments[0].questions.length}
+                      </p>
+                    )}
                   </div>
                   <div className="text-right">
                     <div className="text-2xl font-bold text-green-600">
@@ -1075,7 +1115,11 @@ export default function TraineeModulePlayer({
                       onClick={handleNextQuiz}
                       className="flex-1 bg-green-600 text-white py-3 px-6 rounded-lg hover:bg-green-700 transition-colors font-semibold flex items-center justify-center space-x-2"
                     >
-                      <span>{currentQuizIndex < (module.assessments[0].questions.length - 1) ? 'Next Question' : 'Complete Module'}</span>
+                      <span>
+                        {module.assessments && module.assessments[0] && module.assessments[0].questions 
+                          ? (currentQuizIndex < (module.assessments[0].questions.length - 1) ? 'Next Question' : 'Complete Module')
+                          : 'Next'}
+                      </span>
                       <ArrowRight className="h-5 w-5" />
                     </button>
                   )}
