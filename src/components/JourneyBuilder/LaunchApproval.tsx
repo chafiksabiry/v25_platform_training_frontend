@@ -230,9 +230,9 @@ export default function LaunchApproval({
           ? (journey as any)._id 
           : undefined;
 
-      // Calculate passing score (always 70%)
+      // Calculate passing score (always 70% - percentage, not points)
       const totalPoints = assessmentQuestions.reduce((sum, q) => sum + (q.points || 10), 0);
-      const passingScore = Math.round(totalPoints * 0.7); // Always 70% (rounded to nearest)
+      const passingScore = 70; // Always 70% (percentage)
 
       // Create assessment
       const assessment: Assessment = {

@@ -508,9 +508,9 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
         };
       });
 
-      // Calculate passing score (always 70%)
+      // Calculate passing score (always 70% - percentage, not points)
       const totalPoints = assessmentQuestions.reduce((sum, q) => sum + (q.points || 10), 0);
-      const passingScore = Math.round(totalPoints * 0.7); // Always 70% (rounded to nearest)
+      const passingScore = 70; // Always 70% (percentage)
 
       // IMPORTANT: Get draftId first to use MongoDB ObjectId instead of journey.id (which might be a timestamp)
       const isValidMongoId = (id: string | undefined) => id && /^[0-9a-fA-F]{24}$/.test(id);

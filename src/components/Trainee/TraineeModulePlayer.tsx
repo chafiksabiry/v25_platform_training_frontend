@@ -138,29 +138,29 @@ export default function TraineeModulePlayer({
   };
 
   // Helper function to get quiz metadata (passingScore, totalPoints)
+  // passingScore is always a percentage (70% by default)
   const getQuizMetadata = (): { passingScore: number; totalPoints: number; passingScoreIsPercentage: boolean } => {
     const moduleAny = module as any;
-    let passingScore = 70; // Default
+    let passingScore = 70; // Default is always 70% (percentage)
     let totalPoints = 0;
-    let passingScoreIsPercentage = true; // Assume percentage by default
+    const passingScoreIsPercentage = true; // Always percentage
     
     // Check quizzes first (new structure)
     if (moduleAny.quizzes && Array.isArray(moduleAny.quizzes) && moduleAny.quizzes.length > 0) {
       const firstQuiz = moduleAny.quizzes[0];
       if (firstQuiz) {
+        // passingScore is always a percentage (70% by default)
         passingScore = firstQuiz.passingScore || 70;
         const questions = getQuizQuestions();
         totalPoints = questions.reduce((sum: number, q: any) => sum + (q.points || 10), 0);
-        // If passingScore is less than or equal to totalPoints, it's likely points, not percentage
-        passingScoreIsPercentage = passingScore > totalPoints || passingScore > 100;
       }
     } else if (module.assessments && Array.isArray(module.assessments) && module.assessments.length > 0) {
       const firstAssessment = module.assessments[0];
       if (firstAssessment) {
+        // passingScore is always a percentage (70% by default)
         passingScore = firstAssessment.passingScore || 70;
         const questions = getQuizQuestions();
         totalPoints = questions.reduce((sum: number, q: any) => sum + (q.points || 10), 0);
-        passingScoreIsPercentage = passingScore > totalPoints || passingScore > 100;
       }
     } else {
       const questions = getQuizQuestions();

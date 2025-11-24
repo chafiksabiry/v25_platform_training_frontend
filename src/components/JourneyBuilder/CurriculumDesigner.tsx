@@ -379,7 +379,7 @@ export default function CurriculumDesigner({ uploads, methodology, onComplete, o
           
           setFinalExam(examData);
           console.log(`✅ Examen final généré : ${examData.questionCount} questions (${examData.totalPoints} points)`);
-          console.log(`⏱️ Temps: ${examData.duration} minutes | Score passage: ${examData.passingScore} points (70%)`);
+          console.log(`⏱️ Temps: ${examData.duration} minutes | Score passage: ${examData.passingScore}%`);
         } catch (error) {
           console.warn('⚠️ Using fallback final exam');
           // Fallback simple si l'API échoue
@@ -781,7 +781,7 @@ export default function CurriculumDesigner({ uploads, methodology, onComplete, o
       setFinalExam(examData);
       
       console.log(`✅ Examen final généré : ${examData.questionCount} questions (${examData.totalPoints} points)`);
-      console.log(`⏱️ Temps: ${examData.duration} minutes | Score passage: ${examData.passingScore} points (70%)`);
+      console.log(`⏱️ Temps: ${examData.duration} minutes | Score passage: ${examData.passingScore}%`);
       console.log('✅ Final exam data:', examData);
 
     } catch (error) {
@@ -982,7 +982,7 @@ export default function CurriculumDesigner({ uploads, methodology, onComplete, o
         title: `QCM : ${moduleTitle}`,
         type: 'quiz',
         questions: fallbackQuestions,
-        passingScore: 56, // 70% of 80 points
+        passingScore: 70, // Always 70% (percentage)
         timeLimit: 16
       }];
     }
@@ -1379,7 +1379,7 @@ export default function CurriculumDesigner({ uploads, methodology, onComplete, o
                                   <CheckSquare className="h-4 w-4 text-green-600" />
                                   <span>{assessment.title}</span>
                                   <span className="text-xs bg-green-200 text-green-800 px-2 py-1 rounded-full">
-                                    {assessment.questions?.length || 0} Q • {assessment.passingScore || 0} pts min (70%)
+                                    {assessment.questions?.length || 0} Q • {assessment.passingScore || 70}% min
                                   </span>
                                 </div>
                                 <ChevronRight className="h-4 w-4 text-green-600 group-open:rotate-90 transition-transform" />
