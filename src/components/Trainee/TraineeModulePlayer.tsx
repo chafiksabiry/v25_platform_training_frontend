@@ -117,6 +117,26 @@ export default function TraineeModulePlayer({
     }
   };
 
+  // Helper function to get quiz questions from module (supports both assessments and quizzes)
+  const getQuizQuestions = (): any[] => {
+    const moduleAny = module as any;
+    // Check quizzes first (new structure)
+    if (moduleAny.quizzes && Array.isArray(moduleAny.quizzes) && moduleAny.quizzes.length > 0) {
+      const firstQuiz = moduleAny.quizzes[0];
+      if (firstQuiz && firstQuiz.questions && Array.isArray(firstQuiz.questions)) {
+        return firstQuiz.questions;
+      }
+    }
+    // Fallback to assessments (old structure)
+    if (module.assessments && Array.isArray(module.assessments) && module.assessments.length > 0) {
+      const firstAssessment = module.assessments[0];
+      if (firstAssessment && firstAssessment.questions && Array.isArray(firstAssessment.questions)) {
+        return firstAssessment.questions;
+      }
+    }
+    return [];
+  };
+
   // Get sections from module.content or module.sections
   const moduleAny = module as any;
   const sections = (moduleAny.sections && Array.isArray(moduleAny.sections) && moduleAny.sections.length > 0)
@@ -297,29 +317,40 @@ export default function TraineeModulePlayer({
       } else if (hasQuizzes) {
         // If module has quizzes array, redirect to first quiz
         console.log('[TraineeModulePlayer] Module completed, redirecting to quiz automatically (quizzes array)');
-        const firstQuiz = (module as any).quizzes[0];
-        if (firstQuiz) {
-          const quizData = {
-            id: firstQuiz.id || `quiz-${firstQuiz._id}`,
-            question: firstQuiz.question || firstQuiz.text || '',
-            options: firstQuiz.options || [],
-            correctAnswer: firstQuiz.correctAnswer || firstQuiz.correct_answer || 0,
-            explanation: firstQuiz.explanation || 'Good job!',
-            difficulty: firstQuiz.difficulty === 'easy' ? 3 : firstQuiz.difficulty === 'medium' ? 5 : 8
-          };
-          console.log('[TraineeModulePlayer] Setting quiz data from quizzes array:', quizData);
+        const questions = getQuizQuestions();
+        if (questions.length > 0) {
+          const firstQuestion = questions[0];
+          console.log('[TraineeModulePlayer] First question from quizzes:', firstQuestion);
           
-          setCurrentQuiz(quizData);
-          setShowModuleQuiz(true);
-          setCurrentQuizIndex(0);
-          
-          // Scroll to quiz section after state update
-          setTimeout(() => {
-            const quizSection = document.querySelector('.bg-white.rounded-2xl.shadow-xl.border.border-gray-200.mt-6');
-            if (quizSection) {
-              quizSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
-          }, 300);
+          if (firstQuestion) {
+            const quizData = {
+              id: firstQuestion._id ? `quiz-${firstQuestion._id}` : `quiz-0`,
+              question: firstQuestion.question || firstQuestion.text || '',
+              options: firstQuestion.options || [],
+              correctAnswer: Array.isArray(firstQuestion.correctAnswer) 
+                ? firstQuestion.correctAnswer[0] 
+                : (firstQuestion.correctAnswer !== undefined ? firstQuestion.correctAnswer : 0),
+              explanation: firstQuestion.explanation || 'Good job!',
+              difficulty: firstQuestion.difficulty === 'easy' ? 3 : firstQuestion.difficulty === 'medium' ? 5 : 8
+            };
+            console.log('[TraineeModulePlayer] Setting quiz data from quizzes array:', quizData);
+            
+            setCurrentQuiz(quizData);
+            setShowModuleQuiz(true);
+            setCurrentQuizIndex(0);
+            
+            // Scroll to quiz section after state update
+            setTimeout(() => {
+              const quizSection = document.querySelector('.bg-white.rounded-2xl.shadow-xl.border.border-gray-200.mt-6');
+              if (quizSection) {
+                quizSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }
+            }, 300);
+          } else {
+            console.warn('[TraineeModulePlayer] No first question found in quizzes');
+          }
+        } else {
+          console.warn('[TraineeModulePlayer] No questions found in quizzes array');
         }
       } else {
         // No quizzes, complete immediately
@@ -351,17 +382,21 @@ export default function TraineeModulePlayer({
         const newAnswers = { ...prev, [currentQuizIndex]: quizAnswer };
         
         // Check if all quizzes are passed
-        if (module.assessments && module.assessments[0] && module.assessments[0].questions) {
-          const questions = module.assessments[0].questions;
+        const questions = getQuizQuestions();
+        if (questions && questions.length > 0) {
           const allAnswered = questions.every((q: any, idx: number) => newAnswers[idx] !== undefined);
           const allCorrect = questions.every((q: any, idx: number) => {
             const answer = newAnswers[idx];
-            return answer !== undefined && answer === q.correctAnswer;
+            const correctAnswer = Array.isArray(q.correctAnswer) ? q.correctAnswer[0] : q.correctAnswer;
+            return answer !== undefined && answer === correctAnswer;
           });
           
           if (allAnswered && allCorrect) {
             setAllQuizzesPassed(true);
-            console.log('[TraineeModulePlayer] All quizzes passed!');
+            console.log('[TraineeModulePlayer] ✅ All quizzes passed!');
+          } else {
+            setAllQuizzesPassed(false);
+            console.log('[TraineeModulePlayer] ⚠️ Not all quizzes are passed yet.');
           }
         }
         
@@ -371,7 +406,9 @@ export default function TraineeModulePlayer({
   };
 
   const handleNextQuiz = () => {
-    if (!module.assessments || !module.assessments[0] || !module.assessments[0].questions) {
+    const questions = getQuizQuestions();
+    
+    if (!questions || questions.length === 0) {
       // No more quizzes, complete module
       // Save completed progress
       if (journeyId && trainee.id) {
@@ -396,13 +433,6 @@ export default function TraineeModulePlayer({
       onComplete();
       return;
     }
-
-    if (!module.assessments || !module.assessments[0] || !module.assessments[0].questions) {
-      console.error('[TraineeModulePlayer] Cannot access questions: assessments data is invalid');
-      return;
-    }
-
-    const questions = module.assessments[0].questions;
     if (currentQuizIndex < questions.length - 1) {
       // Move to next question
       const nextIndex = currentQuizIndex + 1;
@@ -414,31 +444,34 @@ export default function TraineeModulePlayer({
       const nextQuestion = questions[nextIndex];
       if (nextQuestion) {
         setCurrentQuiz({
-          id: `quiz-${nextIndex}`,
-          question: nextQuestion.text,
+          id: nextQuestion._id ? `quiz-${nextQuestion._id}` : `quiz-${nextIndex}`,
+          question: nextQuestion.question || nextQuestion.text || '',
           options: nextQuestion.options || [],
-          correctAnswer: nextQuestion.correctAnswer,
+          correctAnswer: Array.isArray(nextQuestion.correctAnswer) 
+            ? nextQuestion.correctAnswer[0] 
+            : (nextQuestion.correctAnswer !== undefined ? nextQuestion.correctAnswer : 0),
           explanation: nextQuestion.explanation || 'Good job!',
           difficulty: nextQuestion.difficulty === 'easy' ? 3 : nextQuestion.difficulty === 'medium' ? 5 : 8
         });
       }
     } else {
       // Last question answered, check if all quizzes are passed
-      if (!module.assessments || !module.assessments[0] || !module.assessments[0].questions) {
-        console.error('[TraineeModulePlayer] Cannot check quiz completion: assessments data is invalid');
+      const allQuestions = getQuizQuestions();
+      if (!allQuestions || allQuestions.length === 0) {
+        console.error('[TraineeModulePlayer] Cannot check quiz completion: no questions found');
         return;
       }
-      const questions = module.assessments[0].questions;
-      const allAnswered = questions.every((q: any, idx: number) => quizAnswers[idx] !== undefined);
-      const allCorrect = questions.every((q: any, idx: number) => {
+      const allAnswered = allQuestions.every((q: any, idx: number) => quizAnswers[idx] !== undefined);
+      const allCorrect = allQuestions.every((q: any, idx: number) => {
         const answer = quizAnswers[idx];
-        return answer !== undefined && answer === q.correctAnswer;
+        const correctAnswer = Array.isArray(q.correctAnswer) ? q.correctAnswer[0] : q.correctAnswer;
+        return answer !== undefined && answer === correctAnswer;
       });
       
       console.log('[TraineeModulePlayer] Quiz completion check:', {
         allAnswered,
         allCorrect,
-        totalQuestions: questions.length,
+        totalQuestions: allQuestions.length,
         answeredCount: Object.keys(quizAnswers).length
       });
       
@@ -1090,23 +1123,25 @@ export default function TraineeModulePlayer({
           )}
 
           {/* Quiz Section - Show at bottom after module completion */}
-          {showModuleQuiz && currentQuiz && (
+          {showModuleQuiz && currentQuiz && (() => {
+            const quizQuestions = getQuizQuestions();
+            return (
             <div id="quiz-section" className="bg-white rounded-2xl shadow-xl border border-gray-200 mt-6">
               <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-indigo-50">
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900">Module Quiz - {module.title}</h3>
-                    {module.assessments && module.assessments[0] && module.assessments[0].questions && (
+                    {quizQuestions.length > 0 && (
                       <p className="text-sm text-gray-600 mt-1">
-                        Question {currentQuizIndex + 1} of {module.assessments[0].questions.length}
+                        Question {currentQuizIndex + 1} of {quizQuestions.length}
                       </p>
                     )}
                   </div>
                   <div className="text-right">
-                    {module.assessments && module.assessments[0] && module.assessments[0].questions && (
+                    {quizQuestions.length > 0 && (
                       <>
                         <div className="text-2xl font-bold text-green-600">
-                          {Math.round(((currentQuizIndex + (showQuizResult ? 1 : 0)) / module.assessments[0].questions.length) * 100)}%
+                          {Math.round(((currentQuizIndex + (showQuizResult ? 1 : 0)) / quizQuestions.length) * 100)}%
                         </div>
                         <div className="text-xs text-gray-600">Progress</div>
                       </>
@@ -1182,10 +1217,12 @@ export default function TraineeModulePlayer({
                     >
                       Submit Answer
                     </button>
-                  ) : (
+                  ) : (() => {
+                    const quizQuestions = getQuizQuestions();
+                    return (
                     <>
-                      {module.assessments && module.assessments[0] && module.assessments[0].questions && 
-                       currentQuizIndex < (module.assessments[0].questions.length - 1) ? (
+                      {quizQuestions.length > 0 && 
+                       currentQuizIndex < (quizQuestions.length - 1) ? (
                         <button
                           onClick={handleNextQuiz}
                           className="flex-1 bg-green-600 text-white py-3 px-6 rounded-lg hover:bg-green-700 transition-colors font-semibold flex items-center justify-center space-x-2"
@@ -1241,18 +1278,19 @@ export default function TraineeModulePlayer({
                                   setCurrentQuizIndex(0);
                                   setQuizAnswer(null);
                                   setAllQuizzesPassed(false);
-                                  if (module.assessments && module.assessments[0] && module.assessments[0].questions) {
-                                    const questions = module.assessments[0].questions;
-                                    if (questions && questions[0]) {
-                                      setCurrentQuiz({
-                                        id: `quiz-0`,
-                                        question: questions[0].text,
-                                        options: questions[0].options || [],
-                                        correctAnswer: questions[0].correctAnswer,
-                                        explanation: questions[0].explanation || 'Please retry the quiz.',
-                                        difficulty: questions[0].difficulty === 'easy' ? 3 : questions[0].difficulty === 'medium' ? 5 : 8
-                                      });
-                                    }
+                                  const questions = getQuizQuestions();
+                                  if (questions && questions.length > 0 && questions[0]) {
+                                    const firstQuestion = questions[0];
+                                    setCurrentQuiz({
+                                      id: firstQuestion._id ? `quiz-${firstQuestion._id}` : `quiz-0`,
+                                      question: firstQuestion.question || firstQuestion.text || '',
+                                      options: firstQuestion.options || [],
+                                      correctAnswer: Array.isArray(firstQuestion.correctAnswer) 
+                                        ? firstQuestion.correctAnswer[0] 
+                                        : (firstQuestion.correctAnswer !== undefined ? firstQuestion.correctAnswer : 0),
+                                      explanation: firstQuestion.explanation || 'Please retry the quiz.',
+                                      difficulty: firstQuestion.difficulty === 'easy' ? 3 : firstQuestion.difficulty === 'medium' ? 5 : 8
+                                    });
                                   }
                                   setQuizAnswers({});
                                 }}
@@ -1265,11 +1303,13 @@ export default function TraineeModulePlayer({
                         </>
                       )}
                     </>
-                  )}
+                    );
+                  })()}
                 </div>
               </div>
             </div>
-          )}
+            );
+          })()}
 
           {/* Regular Quiz Modal (for inline quizzes during module) - DISABLED */}
           {false && !showModuleQuiz && currentQuiz && (

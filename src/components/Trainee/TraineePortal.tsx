@@ -199,6 +199,26 @@ export default function TraineePortal({
     return null;
   }, [modules, repProgressData]);
 
+  // Helper function to get quiz questions from module (supports both assessments and quizzes)
+  const getModuleQuizQuestions = (module: TrainingModule): any[] => {
+    const moduleAny = module as any;
+    // Check quizzes first (new structure)
+    if (moduleAny.quizzes && Array.isArray(moduleAny.quizzes) && moduleAny.quizzes.length > 0) {
+      const firstQuiz = moduleAny.quizzes[0];
+      if (firstQuiz && firstQuiz.questions && Array.isArray(firstQuiz.questions)) {
+        return firstQuiz.questions;
+      }
+    }
+    // Fallback to assessments (old structure)
+    if (module.assessments && Array.isArray(module.assessments) && module.assessments.length > 0) {
+      const firstAssessment = module.assessments[0];
+      if (firstAssessment && firstAssessment.questions && Array.isArray(firstAssessment.questions)) {
+        return firstAssessment.questions;
+      }
+    }
+    return [];
+  };
+
   // Check if a module can be accessed (previous module quiz passed)
   const canAccessModule = (moduleIndex: number): boolean => {
     // First module is always accessible
@@ -219,17 +239,20 @@ export default function TraineePortal({
         ? (prevModuleProgress.status === 'completed' || prevModuleProgress.status === 'finished' || prevModuleProgress.progress >= 100)
         : prevModule.completed;
       
-      if (!isCompleted) {
+      // Check if previous module has quizzes
+      const quizQuestions = getModuleQuizQuestions(prevModule);
+      const hasQuizzes = quizQuestions.length > 0;
+      
+      // If module has quizzes, it must be completed (which implies quizzes are passed)
+      // If module has no quizzes, it just needs to be completed
+      if (hasQuizzes && !isCompleted) {
+        console.log(`[TraineePortal] Module ${i} has quizzes but is not completed. Cannot access module ${moduleIndex}.`);
         return false;
       }
       
-      // Check if previous module has quizzes and if they are passed
-      if (prevModule.assessments && prevModule.assessments.length > 0 && prevModule.assessments[0].questions) {
-        // For now, if module is completed, we assume quizzes are passed
-        // In a real scenario, you'd check quiz attempts from backend
-        if (!isCompleted) {
-          return false;
-        }
+      if (!hasQuizzes && !isCompleted) {
+        console.log(`[TraineePortal] Module ${i} is not completed. Cannot access module ${moduleIndex}.`);
+        return false;
       }
     }
     
