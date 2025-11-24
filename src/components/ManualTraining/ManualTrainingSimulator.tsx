@@ -720,11 +720,53 @@ export default function ManualTrainingSimulator({
       setCompletedSections(prev => new Set(prev).add(currentSection.id));
     }
 
-    // Move to next section or module
-    if (currentModule && currentSectionIndex < (currentModule.sections?.length || 0) - 1) {
-      setCurrentSectionIndex(prev => prev + 1);
+    if (!currentModule) return;
+
+    const totalSections = currentModule.sections?.length || 0;
+    
+    // Check if there's a next section in the current module
+    if (currentSectionIndex < totalSections - 1) {
+      // Check if the next section is a quiz
+      const nextSection = currentModule.sections?.[currentSectionIndex + 1];
+      if (nextSection && nextSection.type === 'quiz') {
+        // Automatically move to quiz section
+        console.log('✅ Section completed, automatically redirecting to quiz');
+        setCurrentSectionIndex(prev => prev + 1);
+        // Scroll to quiz section
+        setTimeout(() => {
+          const quizSection = document.getElementById('quiz-section');
+          if (quizSection) {
+            quizSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        }, 100);
+      } else {
+        // Move to next regular section
+        setCurrentSectionIndex(prev => prev + 1);
+      }
     } else {
-      // End of module - move to next module
+      // Last section of module - check if there's a quiz for this module
+      const moduleQuiz = quizzes.get(currentModule.id);
+      if (moduleQuiz) {
+        // Check if quiz section exists but wasn't reached yet
+        const quizSection = currentModule.sections?.find(s => s.type === 'quiz' && s.id === `quiz-${currentModule.id}`);
+        if (quizSection) {
+          // Find quiz section index and navigate to it
+          const quizIndex = currentModule.sections?.findIndex(s => s.id === quizSection.id);
+          if (quizIndex !== undefined && quizIndex !== -1) {
+            console.log('✅ Module completed, automatically redirecting to quiz');
+            setCurrentSectionIndex(quizIndex);
+            setTimeout(() => {
+              const quizElement = document.getElementById('quiz-section');
+              if (quizElement) {
+                quizElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }
+            }, 100);
+            return;
+          }
+        }
+      }
+      
+      // No quiz found, move to next module
       handleModuleComplete();
     }
   };

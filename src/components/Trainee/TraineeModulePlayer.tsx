@@ -203,8 +203,9 @@ export default function TraineeModulePlayer({
       setSectionProgress(0);
       setCurrentTime(0);
     } else {
-      // Module completed - show quizzes if available
+      // Module completed - check for quizzes and redirect automatically
       setModuleCompleted(true);
+      
       // Save completed progress
       if (journeyId && trainee.id) {
         const moduleId = extractObjectId((module as any)._id) || extractObjectId(module.id);
@@ -225,7 +226,19 @@ export default function TraineeModulePlayer({
           }).catch(err => console.error('Error saving completed progress:', err));
         }
       }
-      if (module.assessments && module.assessments.length > 0 && module.assessments[0].questions && module.assessments[0].questions.length > 0) {
+      
+      // Check for quizzes in assessments
+      const hasAssessments = module.assessments && module.assessments.length > 0 && 
+                             module.assessments[0].questions && 
+                             module.assessments[0].questions.length > 0;
+      
+      // Check for quizzes in module.quizzes
+      const hasQuizzes = (module as any).quizzes && Array.isArray((module as any).quizzes) && 
+                        (module as any).quizzes.length > 0;
+      
+      // If quizzes exist, redirect automatically to quiz
+      if (hasAssessments) {
+        console.log('[TraineeModulePlayer] Module completed, redirecting to quiz automatically');
         setShowModuleQuiz(true);
         setCurrentQuizIndex(0);
         // Start with first quiz question
@@ -240,32 +253,30 @@ export default function TraineeModulePlayer({
             difficulty: firstQuestion.difficulty === 'easy' ? 3 : firstQuestion.difficulty === 'medium' ? 5 : 8
           });
         }
+        // Scroll to quiz modal
+        setTimeout(() => {
+          const quizModal = document.querySelector('.fixed.inset-0.bg-black');
+          if (quizModal) {
+            quizModal.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 100);
+      } else if (hasQuizzes) {
+        // If module has quizzes array, redirect to first quiz
+        console.log('[TraineeModulePlayer] Module completed, redirecting to quiz automatically');
+        const firstQuiz = (module as any).quizzes[0];
+        if (firstQuiz) {
+          startQuiz({
+            id: firstQuiz.id || `quiz-${firstQuiz._id}`,
+            question: firstQuiz.question || firstQuiz.text || '',
+            options: firstQuiz.options || [],
+            correctAnswer: firstQuiz.correctAnswer || firstQuiz.correct_answer || 0,
+            explanation: firstQuiz.explanation || 'Good job!',
+            difficulty: firstQuiz.difficulty === 'easy' ? 3 : firstQuiz.difficulty === 'medium' ? 5 : 8
+          });
+        }
       } else {
         // No quizzes, complete immediately
-        // Save completed progress
-        if (journeyId && trainee.id) {
-          const moduleId = extractObjectId((module as any)._id) || extractObjectId(module.id);
-          if (!moduleId || !/^[0-9a-fA-F]{24}$/.test(moduleId)) {
-            console.error('[TraineeModulePlayer] Module must have a valid MongoDB ObjectId _id:', module);
-            return;
-          }
-          console.log('[TraineeModulePlayer] Marking module complete:', { 
-            moduleId, 
-            journeyId 
-          });
-          if (moduleId) {
-            const timeSpentMinutes = Math.floor(currentTime / 60);
-            ProgressService.updateProgress({
-              repId: trainee.id,
-              journeyId: journeyId,
-              moduleId: moduleId,
-              progress: 100,
-              status: 'completed',
-              timeSpent: timeSpentMinutes,
-              engagementScore: engagementScore
-            }).catch(err => console.error('Error saving completed progress:', err));
-          }
-        }
+        console.log('[TraineeModulePlayer] Module completed, no quizzes available');
         onComplete();
       }
     }
