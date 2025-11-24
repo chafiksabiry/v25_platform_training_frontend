@@ -245,8 +245,11 @@ export default function TraineeModulePlayer({
       }
       
       // Check for quizzes in assessments
-      const hasAssessments = module.assessments && module.assessments.length > 0 && 
+      const hasAssessments = module.assessments && 
+                             module.assessments.length > 0 && 
+                             module.assessments[0] &&
                              module.assessments[0].questions && 
+                             Array.isArray(module.assessments[0].questions) &&
                              module.assessments[0].questions.length > 0;
       
       // Check for quizzes in module.quizzes
@@ -261,7 +264,7 @@ export default function TraineeModulePlayer({
       });
       
       // If quizzes exist, redirect automatically to quiz
-      if (hasAssessments) {
+      if (hasAssessments && module.assessments && module.assessments[0] && module.assessments[0].questions) {
         console.log('[TraineeModulePlayer] Module completed, redirecting to quiz automatically');
         const firstQuestion = module.assessments[0].questions[0];
         console.log('[TraineeModulePlayer] First question:', firstQuestion);
@@ -336,7 +339,7 @@ export default function TraineeModulePlayer({
 
   const submitQuizAnswer = () => {
     handleInteraction();
-    if (quizAnswer !== null && currentQuiz) {
+    if (quizAnswer !== null && currentQuiz && currentQuiz.correctAnswer !== undefined) {
       setShowQuizResult(true);
       const isCorrect = quizAnswer === currentQuiz.correctAnswer;
       if (isCorrect) {
@@ -394,6 +397,11 @@ export default function TraineeModulePlayer({
       return;
     }
 
+    if (!module.assessments || !module.assessments[0] || !module.assessments[0].questions) {
+      console.error('[TraineeModulePlayer] Cannot access questions: assessments data is invalid');
+      return;
+    }
+
     const questions = module.assessments[0].questions;
     if (currentQuizIndex < questions.length - 1) {
       // Move to next question
@@ -416,6 +424,10 @@ export default function TraineeModulePlayer({
       }
     } else {
       // Last question answered, check if all quizzes are passed
+      if (!module.assessments || !module.assessments[0] || !module.assessments[0].questions) {
+        console.error('[TraineeModulePlayer] Cannot check quiz completion: assessments data is invalid');
+        return;
+      }
       const questions = module.assessments[0].questions;
       const allAnswered = questions.every((q: any, idx: number) => quizAnswers[idx] !== undefined);
       const allCorrect = questions.every((q: any, idx: number) => {
@@ -1091,19 +1103,25 @@ export default function TraineeModulePlayer({
                     )}
                   </div>
                   <div className="text-right">
-                    <div className="text-2xl font-bold text-green-600">
-                      {Math.round(((currentQuizIndex + (showQuizResult ? 1 : 0)) / module.assessments[0].questions.length) * 100)}%
-                    </div>
-                    <div className="text-xs text-gray-600">Progress</div>
+                    {module.assessments && module.assessments[0] && module.assessments[0].questions && (
+                      <>
+                        <div className="text-2xl font-bold text-green-600">
+                          {Math.round(((currentQuizIndex + (showQuizResult ? 1 : 0)) / module.assessments[0].questions.length) * 100)}%
+                        </div>
+                        <div className="text-xs text-gray-600">Progress</div>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
               
               <div className="p-6">
-                <p className="text-gray-700 mb-4 text-lg font-medium">{currentQuiz.question}</p>
-                
-                <div className="space-y-2 mb-4">
-                  {currentQuiz.options.map((option, index) => (
+                {currentQuiz && currentQuiz.question && (
+                  <>
+                    <p className="text-gray-700 mb-4 text-lg font-medium">{currentQuiz.question}</p>
+                    
+                    <div className="space-y-2 mb-4">
+                      {currentQuiz.options && Array.isArray(currentQuiz.options) && currentQuiz.options.map((option, index) => (
                     <button
                       key={index}
                       onClick={() => {
@@ -1133,10 +1151,12 @@ export default function TraineeModulePlayer({
                         )}
                       </div>
                     </button>
-                  ))}
-                </div>
+                      ))}
+                    </div>
+                  </>
+                )}
 
-                {showQuizResult && (
+                {showQuizResult && currentQuiz && (
                   <div className={`p-4 rounded-lg mb-4 ${
                     quizAnswer === currentQuiz.correctAnswer
                       ? 'bg-green-50 border border-green-200'
@@ -1147,7 +1167,9 @@ export default function TraineeModulePlayer({
                     }`}>
                       {quizAnswer === currentQuiz.correctAnswer ? 'Correct! 🎉' : 'Incorrect 😔'}
                     </p>
-                    <p className="text-sm text-gray-700 mt-2">{currentQuiz.explanation}</p>
+                    {currentQuiz.explanation && (
+                      <p className="text-sm text-gray-700 mt-2">{currentQuiz.explanation}</p>
+                    )}
                   </div>
                 )}
 
@@ -1219,16 +1241,18 @@ export default function TraineeModulePlayer({
                                   setCurrentQuizIndex(0);
                                   setQuizAnswer(null);
                                   setAllQuizzesPassed(false);
-                                  const questions = module.assessments[0].questions;
-                                  if (questions && questions[0]) {
-                                    setCurrentQuiz({
-                                      id: `quiz-0`,
-                                      question: questions[0].text,
-                                      options: questions[0].options || [],
-                                      correctAnswer: questions[0].correctAnswer,
-                                      explanation: questions[0].explanation || 'Please retry the quiz.',
-                                      difficulty: questions[0].difficulty === 'easy' ? 3 : questions[0].difficulty === 'medium' ? 5 : 8
-                                    });
+                                  if (module.assessments && module.assessments[0] && module.assessments[0].questions) {
+                                    const questions = module.assessments[0].questions;
+                                    if (questions && questions[0]) {
+                                      setCurrentQuiz({
+                                        id: `quiz-0`,
+                                        question: questions[0].text,
+                                        options: questions[0].options || [],
+                                        correctAnswer: questions[0].correctAnswer,
+                                        explanation: questions[0].explanation || 'Please retry the quiz.',
+                                        difficulty: questions[0].difficulty === 'easy' ? 3 : questions[0].difficulty === 'medium' ? 5 : 8
+                                      });
+                                    }
                                   }
                                   setQuizAnswers({});
                                 }}
