@@ -199,6 +199,43 @@ export default function TraineePortal({
     return null;
   }, [modules, repProgressData]);
 
+  // Check if a module can be accessed (previous module quiz passed)
+  const canAccessModule = (moduleIndex: number): boolean => {
+    // First module is always accessible
+    if (moduleIndex === 0) return true;
+    
+    // Check all previous modules
+    for (let i = 0; i < moduleIndex; i++) {
+      const prevModule = modules[i];
+      if (!prevModule) continue;
+      
+      const prevModuleId = extractObjectId((prevModule as any)._id) || extractObjectId(prevModule.id);
+      if (!prevModuleId || !/^[0-9a-fA-F]{24}$/.test(prevModuleId)) continue;
+      
+      const prevModuleProgress = repProgressData?.modules?.[prevModuleId];
+      
+      // Check if previous module is completed
+      const isCompleted = prevModuleProgress 
+        ? (prevModuleProgress.status === 'completed' || prevModuleProgress.status === 'finished' || prevModuleProgress.progress >= 100)
+        : prevModule.completed;
+      
+      if (!isCompleted) {
+        return false;
+      }
+      
+      // Check if previous module has quizzes and if they are passed
+      if (prevModule.assessments && prevModule.assessments.length > 0 && prevModule.assessments[0].questions) {
+        // For now, if module is completed, we assume quizzes are passed
+        // In a real scenario, you'd check quiz attempts from backend
+        if (!isCompleted) {
+          return false;
+        }
+      }
+    }
+    
+    return true;
+  };
+
   const handleModuleSelect = (module: TrainingModule) => {
     // Find module index for ID normalization
     const moduleIndex = modules.findIndex(m => {
@@ -207,8 +244,36 @@ export default function TraineePortal({
       return mId === moduleId || m === module;
     });
     
+    // Check if module can be accessed
+    if (moduleIndex !== -1 && !canAccessModule(moduleIndex)) {
+      alert('⚠️ Vous devez compléter le module précédent et passer son quiz avant d\'accéder à ce module.');
+      return;
+    }
+    
     setSelectedModule({ ...module, moduleIndex: moduleIndex !== -1 ? moduleIndex : undefined } as any);
     setActiveView('module');
+  };
+
+  const handleNextModule = () => {
+    if (!selectedModule) return;
+    
+    const currentIndex = modules.findIndex(m => {
+      const mId = extractObjectId((m as any)._id) || extractObjectId(m.id);
+      const moduleId = extractObjectId((selectedModule as any)._id) || extractObjectId(selectedModule.id);
+      return mId === moduleId && mId && /^[0-9a-fA-F]{24}$/.test(mId);
+    });
+    
+    if (currentIndex !== -1 && currentIndex < modules.length - 1) {
+      const nextModule = modules[currentIndex + 1];
+      if (nextModule && canAccessModule(currentIndex + 1)) {
+        handleModuleSelect(nextModule);
+      } else {
+        alert('⚠️ Le module suivant n\'est pas encore accessible. Vous devez compléter le module actuel et passer son quiz.');
+      }
+    } else {
+      // Last module completed
+      handleBackToDashboard();
+    }
   };
 
   const handleAssessmentSelect = (assessment: Assessment) => {
@@ -388,12 +453,21 @@ export default function TraineePortal({
                   ? (moduleProgress.status === 'completed' || moduleProgress.status === 'finished' || moduleProgress.progress >= 100)
                   : module.completed;
                 const moduleInProgress = moduleProgress?.status === 'in-progress';
+                const canAccess = canAccessModule(index);
                 
                 return (
                   <div
                     key={module.id}
-                    className={`border-2 rounded-xl p-6 transition-all hover:shadow-md cursor-pointer ${getModuleStatusColor({ ...module, completed: moduleCompleted, progress: moduleProgressValue })}`}
-                    onClick={() => handleModuleSelect({ ...module, progress: moduleProgressValue, completed: moduleCompleted })}
+                    className={`border-2 rounded-xl p-6 transition-all ${
+                      canAccess 
+                        ? 'hover:shadow-md cursor-pointer' 
+                        : 'opacity-50 cursor-not-allowed bg-gray-100'
+                    } ${getModuleStatusColor({ ...module, completed: moduleCompleted, progress: moduleProgressValue })}`}
+                    onClick={() => {
+                      if (canAccess) {
+                        handleModuleSelect({ ...module, progress: moduleProgressValue, completed: moduleCompleted });
+                      }
+                    }}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-4">
@@ -413,8 +487,14 @@ export default function TraineePortal({
                         </div>
                         
                         <div className="flex-1">
-                          <h3 className="text-lg font-semibold text-gray-900">{module.title}</h3>
-                          <p className="text-gray-600 text-sm">{module.description}</p>
+                          <h3 className={`text-lg font-semibold ${canAccess ? 'text-gray-900' : 'text-gray-400'}`}>{module.title}</h3>
+                          <p className={`text-sm ${canAccess ? 'text-gray-600' : 'text-gray-400'}`}>{module.description}</p>
+                          {!canAccess && (
+                            <p className="text-xs text-orange-600 mt-1 flex items-center space-x-1">
+                              <AlertTriangle className="h-3 w-3" />
+                              <span>Complétez le module précédent et passez son quiz pour débloquer</span>
+                            </p>
+                          )}
                           <div className="flex items-center space-x-4 mt-2 text-sm text-gray-500">
                             <span className="flex items-center space-x-1">
                               <Clock className="h-3 w-3" />
@@ -618,6 +698,8 @@ export default function TraineePortal({
           }
           handleBackToDashboard();
         }}
+        onNextModule={handleNextModule}
+        totalModules={modules.length}
         onBack={handleBackToDashboard}
       />
     );

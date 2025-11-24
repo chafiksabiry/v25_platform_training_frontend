@@ -42,6 +42,8 @@ interface TraineeModulePlayerProps {
   onProgress: (progress: number) => void;
   onComplete: () => void;
   onBack: () => void;
+  onNextModule?: () => void; // Callback to navigate to next module
+  totalModules?: number; // Total number of modules in the journey
 }
 
 export default function TraineeModulePlayer({ 
@@ -51,7 +53,9 @@ export default function TraineeModulePlayer({
   moduleIndex,
   onProgress, 
   onComplete, 
-  onBack 
+  onBack,
+  onNextModule,
+  totalModules
 }: TraineeModulePlayerProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -73,6 +77,7 @@ export default function TraineeModulePlayer({
   const [showModuleQuiz, setShowModuleQuiz] = useState(false);
   const [currentQuizIndex, setCurrentQuizIndex] = useState(0);
   const [quizAnswers, setQuizAnswers] = useState<Record<number, number>>({});
+  const [allQuizzesPassed, setAllQuizzesPassed] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const progressInterval = useRef<NodeJS.Timeout | null>(null);
@@ -339,7 +344,26 @@ export default function TraineeModulePlayer({
         setEngagementScore(prev => Math.min(prev + 5, 100));
       }
       // Save answer
-      setQuizAnswers(prev => ({ ...prev, [currentQuizIndex]: quizAnswer }));
+      setQuizAnswers(prev => {
+        const newAnswers = { ...prev, [currentQuizIndex]: quizAnswer };
+        
+        // Check if all quizzes are passed
+        if (module.assessments && module.assessments[0] && module.assessments[0].questions) {
+          const questions = module.assessments[0].questions;
+          const allAnswered = questions.every((q: any, idx: number) => newAnswers[idx] !== undefined);
+          const allCorrect = questions.every((q: any, idx: number) => {
+            const answer = newAnswers[idx];
+            return answer !== undefined && answer === q.correctAnswer;
+          });
+          
+          if (allAnswered && allCorrect) {
+            setAllQuizzesPassed(true);
+            console.log('[TraineeModulePlayer] All quizzes passed!');
+          }
+        }
+        
+        return newAnswers;
+      });
     }
   };
 
@@ -377,6 +401,8 @@ export default function TraineeModulePlayer({
       setCurrentQuizIndex(nextIndex);
       setQuizAnswer(null);
       setShowQuizResult(false);
+      // Reset allQuizzesPassed when moving to next question (will be recalculated when all are done)
+      setAllQuizzesPassed(false);
       const nextQuestion = questions[nextIndex];
       if (nextQuestion) {
         setCurrentQuiz({
@@ -389,28 +415,52 @@ export default function TraineeModulePlayer({
         });
       }
     } else {
-      // All quizzes completed, complete module
-      // Save final progress before completing
-      if (journeyId && trainee.id) {
-        const moduleId = extractObjectId((module as any)._id) || extractObjectId(module.id);
-        if (!moduleId || !/^[0-9a-fA-F]{24}$/.test(moduleId)) {
-          console.error('[TraineeModulePlayer] Module must have a valid MongoDB ObjectId _id:', module);
-          return;
+      // Last question answered, check if all quizzes are passed
+      const questions = module.assessments[0].questions;
+      const allAnswered = questions.every((q: any, idx: number) => quizAnswers[idx] !== undefined);
+      const allCorrect = questions.every((q: any, idx: number) => {
+        const answer = quizAnswers[idx];
+        return answer !== undefined && answer === q.correctAnswer;
+      });
+      
+      console.log('[TraineeModulePlayer] Quiz completion check:', {
+        allAnswered,
+        allCorrect,
+        totalQuestions: questions.length,
+        answeredCount: Object.keys(quizAnswers).length
+      });
+      
+      if (allAnswered && allCorrect) {
+        setAllQuizzesPassed(true);
+        console.log('[TraineeModulePlayer] ✅ All quizzes passed! Module can be completed.');
+        
+        // Save final progress before completing
+        if (journeyId && trainee.id) {
+          const moduleId = extractObjectId((module as any)._id) || extractObjectId(module.id);
+          if (!moduleId || !/^[0-9a-fA-F]{24}$/.test(moduleId)) {
+            console.error('[TraineeModulePlayer] Module must have a valid MongoDB ObjectId _id:', module);
+            return;
+          }
+          if (moduleId) {
+            const timeSpentMinutes = Math.floor(currentTime / 60);
+            ProgressService.updateProgress({
+              repId: trainee.id,
+              journeyId: journeyId,
+              moduleId: moduleId,
+              progress: 100,
+              status: 'completed',
+              timeSpent: timeSpentMinutes,
+              engagementScore: engagementScore
+            }).catch(err => console.error('Error saving final progress:', err));
+          }
         }
-        if (moduleId) {
-          const timeSpentMinutes = Math.floor(currentTime / 60);
-          ProgressService.updateProgress({
-            repId: trainee.id,
-            journeyId: journeyId,
-            moduleId: moduleId,
-            progress: 100,
-            status: 'completed',
-            timeSpent: timeSpentMinutes,
-            engagementScore: engagementScore
-          }).catch(err => console.error('Error saving final progress:', err));
-        }
+        
+        // Don't auto-navigate, let user click "Next Module" button
+        // The button will appear after all quizzes are passed
+      } else {
+        console.log('[TraineeModulePlayer] ⚠️ Not all quizzes are passed. Cannot proceed to next module.');
+        setAllQuizzesPassed(false);
       }
-      onComplete();
     }
   };
 
@@ -1111,17 +1161,86 @@ export default function TraineeModulePlayer({
                       Submit Answer
                     </button>
                   ) : (
-                    <button
-                      onClick={handleNextQuiz}
-                      className="flex-1 bg-green-600 text-white py-3 px-6 rounded-lg hover:bg-green-700 transition-colors font-semibold flex items-center justify-center space-x-2"
-                    >
-                      <span>
-                        {module.assessments && module.assessments[0] && module.assessments[0].questions 
-                          ? (currentQuizIndex < (module.assessments[0].questions.length - 1) ? 'Next Question' : 'Complete Module')
-                          : 'Next'}
-                      </span>
-                      <ArrowRight className="h-5 w-5" />
-                    </button>
+                    <>
+                      {module.assessments && module.assessments[0] && module.assessments[0].questions && 
+                       currentQuizIndex < (module.assessments[0].questions.length - 1) ? (
+                        <button
+                          onClick={handleNextQuiz}
+                          className="flex-1 bg-green-600 text-white py-3 px-6 rounded-lg hover:bg-green-700 transition-colors font-semibold flex items-center justify-center space-x-2"
+                        >
+                          <span>Next Question</span>
+                          <ArrowRight className="h-5 w-5" />
+                        </button>
+                      ) : (
+                        <>
+                          {allQuizzesPassed && onNextModule && moduleIndex !== undefined && totalModules && moduleIndex < totalModules - 1 ? (
+                            <button
+                              onClick={() => {
+                                // Save progress before moving to next module
+                                if (journeyId && trainee.id) {
+                                  const moduleId = extractObjectId((module as any)._id) || extractObjectId(module.id);
+                                  if (moduleId && /^[0-9a-fA-F]{24}$/.test(moduleId)) {
+                                    const timeSpentMinutes = Math.floor(currentTime / 60);
+                                    ProgressService.updateProgress({
+                                      repId: trainee.id,
+                                      journeyId: journeyId,
+                                      moduleId: moduleId,
+                                      progress: 100,
+                                      status: 'completed',
+                                      timeSpent: timeSpentMinutes,
+                                      engagementScore: engagementScore
+                                    }).catch(err => console.error('Error saving progress:', err));
+                                  }
+                                }
+                                onNextModule();
+                              }}
+                              className="flex-1 bg-purple-600 text-white py-3 px-6 rounded-lg hover:bg-purple-700 transition-colors font-semibold flex items-center justify-center space-x-2"
+                            >
+                              <span>Next Module</span>
+                              <ArrowRight className="h-5 w-5" />
+                            </button>
+                          ) : allQuizzesPassed ? (
+                            <button
+                              onClick={onComplete}
+                              className="flex-1 bg-green-600 text-white py-3 px-6 rounded-lg hover:bg-green-700 transition-colors font-semibold flex items-center justify-center space-x-2"
+                            >
+                              <span>Complete Module</span>
+                              <ArrowRight className="h-5 w-5" />
+                            </button>
+                          ) : (
+                            <div className="flex-1">
+                              <p className="text-sm text-red-600 mb-2 text-center">
+                                ⚠️ Vous devez répondre correctement à toutes les questions pour passer au module suivant.
+                              </p>
+                              <button
+                                onClick={() => {
+                                  // Reset quiz to allow retry
+                                  setShowQuizResult(false);
+                                  setCurrentQuizIndex(0);
+                                  setQuizAnswer(null);
+                                  setAllQuizzesPassed(false);
+                                  const questions = module.assessments[0].questions;
+                                  if (questions && questions[0]) {
+                                    setCurrentQuiz({
+                                      id: `quiz-0`,
+                                      question: questions[0].text,
+                                      options: questions[0].options || [],
+                                      correctAnswer: questions[0].correctAnswer,
+                                      explanation: questions[0].explanation || 'Please retry the quiz.',
+                                      difficulty: questions[0].difficulty === 'easy' ? 3 : questions[0].difficulty === 'medium' ? 5 : 8
+                                    });
+                                  }
+                                  setQuizAnswers({});
+                                }}
+                                className="w-full bg-orange-600 text-white py-3 px-6 rounded-lg hover:bg-orange-700 transition-colors font-semibold"
+                              >
+                                Retry Quiz
+                              </button>
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
