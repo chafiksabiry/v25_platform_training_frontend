@@ -4,7 +4,8 @@ import {
   Pause, 
   RotateCcw, 
   CheckCircle, 
-  ArrowLeft, 
+  ArrowLeft,
+  ArrowRight, 
   Volume2, 
   VolumeX, 
   Maximize, 
@@ -988,97 +989,96 @@ export default function TraineeModulePlayer({
             </div>
           )}
 
-          {/* Quiz Modal - Show after module completion */}
+          {/* Quiz Section - Show at bottom after module completion */}
           {showModuleQuiz && currentQuiz && module.assessments && module.assessments[0] && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-              <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                <div className="p-6 border-b border-gray-200 sticky top-0 bg-white z-10">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900">Module Quiz - {module.title}</h3>
-                      <p className="text-sm text-gray-600 mt-1">
-                        Question {currentQuizIndex + 1} of {module.assessments[0].questions.length}
-                      </p>
+            <div className="bg-white rounded-2xl shadow-xl border border-gray-200 mt-6">
+              <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-indigo-50">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">Module Quiz - {module.title}</h3>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Question {currentQuizIndex + 1} of {module.assessments[0].questions.length}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-2xl font-bold text-green-600">
+                      {Math.round(((currentQuizIndex + (showQuizResult ? 1 : 0)) / module.assessments[0].questions.length) * 100)}%
                     </div>
-                    <div className="text-right">
-                      <div className="text-2xl font-bold text-green-600">
-                        {Math.round(((currentQuizIndex + (showQuizResult ? 1 : 0)) / module.assessments[0].questions.length) * 100)}%
-                      </div>
-                      <div className="text-xs text-gray-600">Progress</div>
-                    </div>
+                    <div className="text-xs text-gray-600">Progress</div>
                   </div>
                 </div>
+              </div>
+              
+              <div className="p-6">
+                <p className="text-gray-700 mb-4 text-lg font-medium">{currentQuiz.question}</p>
                 
-                <div className="p-6">
-                  <p className="text-gray-700 mb-4 text-lg font-medium">{currentQuiz.question}</p>
-                  
-                  <div className="space-y-2 mb-4">
-                    {currentQuiz.options.map((option, index) => (
-                      <button
-                        key={index}
-                        onClick={() => {
-                          handleInteraction();
-                          setQuizAnswer(index);
-                        }}
-                        disabled={showQuizResult}
-                        className={`w-full text-left p-4 border-2 rounded-lg transition-colors ${
-                          quizAnswer === index
-                            ? showQuizResult && quizAnswer === currentQuiz.correctAnswer
-                              ? 'border-green-500 bg-green-50'
-                              : showQuizResult && quizAnswer !== currentQuiz.correctAnswer
-                              ? 'border-red-500 bg-red-50'
-                              : 'border-blue-500 bg-blue-50'
-                            : showQuizResult && index === currentQuiz.correctAnswer
+                <div className="space-y-2 mb-4">
+                  {currentQuiz.options.map((option, index) => (
+                    <button
+                      key={index}
+                      onClick={() => {
+                        handleInteraction();
+                        setQuizAnswer(index);
+                      }}
+                      disabled={showQuizResult}
+                      className={`w-full text-left p-4 border-2 rounded-lg transition-colors ${
+                        quizAnswer === index
+                          ? showQuizResult && quizAnswer === currentQuiz.correctAnswer
                             ? 'border-green-500 bg-green-50'
-                            : 'border-gray-200 hover:bg-gray-50'
-                        } ${showQuizResult ? 'cursor-default' : 'cursor-pointer'}`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="font-medium">{option}</span>
-                          {showQuizResult && index === currentQuiz.correctAnswer && (
-                            <span className="text-green-600 font-bold">✓ Correct</span>
-                          )}
-                          {showQuizResult && quizAnswer === index && quizAnswer !== currentQuiz.correctAnswer && (
-                            <span className="text-red-600 font-bold">✗ Incorrect</span>
-                          )}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
+                            : showQuizResult && quizAnswer !== currentQuiz.correctAnswer
+                            ? 'border-red-500 bg-red-50'
+                            : 'border-blue-500 bg-blue-50'
+                          : showQuizResult && index === currentQuiz.correctAnswer
+                          ? 'border-green-500 bg-green-50'
+                          : 'border-gray-200 hover:bg-gray-50'
+                      } ${showQuizResult ? 'cursor-default' : 'cursor-pointer'}`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium">{option}</span>
+                        {showQuizResult && index === currentQuiz.correctAnswer && (
+                          <span className="text-green-600 font-bold">✓ Correct</span>
+                        )}
+                        {showQuizResult && quizAnswer === index && quizAnswer !== currentQuiz.correctAnswer && (
+                          <span className="text-red-600 font-bold">✗ Incorrect</span>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
 
-                  {showQuizResult && (
-                    <div className={`p-4 rounded-lg mb-4 ${
-                      quizAnswer === currentQuiz.correctAnswer
-                        ? 'bg-green-50 border border-green-200'
-                        : 'bg-red-50 border border-red-200'
+                {showQuizResult && (
+                  <div className={`p-4 rounded-lg mb-4 ${
+                    quizAnswer === currentQuiz.correctAnswer
+                      ? 'bg-green-50 border border-green-200'
+                      : 'bg-red-50 border border-red-200'
+                  }`}>
+                    <p className={`font-medium text-lg ${
+                      quizAnswer === currentQuiz.correctAnswer ? 'text-green-800' : 'text-red-800'
                     }`}>
-                      <p className={`font-medium text-lg ${
-                        quizAnswer === currentQuiz.correctAnswer ? 'text-green-800' : 'text-red-800'
-                      }`}>
-                        {quizAnswer === currentQuiz.correctAnswer ? 'Correct! 🎉' : 'Incorrect 😔'}
-                      </p>
-                      <p className="text-sm text-gray-700 mt-2">{currentQuiz.explanation}</p>
-                    </div>
-                  )}
-
-                  <div className="flex space-x-3">
-                    {!showQuizResult ? (
-                      <button
-                        onClick={submitQuizAnswer}
-                        disabled={quizAnswer === null}
-                        className="flex-1 bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-semibold"
-                      >
-                        Submit Answer
-                      </button>
-                    ) : (
-                      <button
-                        onClick={handleNextQuiz}
-                        className="flex-1 bg-green-600 text-white py-3 px-6 rounded-lg hover:bg-green-700 transition-colors font-semibold"
-                      >
-                        {currentQuizIndex < (module.assessments[0].questions.length - 1) ? 'Next Question' : 'Complete Module'}
-                      </button>
-                    )}
+                      {quizAnswer === currentQuiz.correctAnswer ? 'Correct! 🎉' : 'Incorrect 😔'}
+                    </p>
+                    <p className="text-sm text-gray-700 mt-2">{currentQuiz.explanation}</p>
                   </div>
+                )}
+
+                <div className="flex space-x-3">
+                  {!showQuizResult ? (
+                    <button
+                      onClick={submitQuizAnswer}
+                      disabled={quizAnswer === null}
+                      className="flex-1 bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-semibold"
+                    >
+                      Submit Answer
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleNextQuiz}
+                      className="flex-1 bg-green-600 text-white py-3 px-6 rounded-lg hover:bg-green-700 transition-colors font-semibold flex items-center justify-center space-x-2"
+                    >
+                      <span>{currentQuizIndex < (module.assessments[0].questions.length - 1) ? 'Next Question' : 'Complete Module'}</span>
+                      <ArrowRight className="h-5 w-5" />
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
