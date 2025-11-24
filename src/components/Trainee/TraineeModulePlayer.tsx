@@ -137,6 +137,65 @@ export default function TraineeModulePlayer({
     return [];
   };
 
+  // Helper function to get quiz metadata (passingScore, totalPoints)
+  const getQuizMetadata = (): { passingScore: number; totalPoints: number; passingScoreIsPercentage: boolean } => {
+    const moduleAny = module as any;
+    let passingScore = 70; // Default
+    let totalPoints = 0;
+    let passingScoreIsPercentage = true; // Assume percentage by default
+    
+    // Check quizzes first (new structure)
+    if (moduleAny.quizzes && Array.isArray(moduleAny.quizzes) && moduleAny.quizzes.length > 0) {
+      const firstQuiz = moduleAny.quizzes[0];
+      if (firstQuiz) {
+        passingScore = firstQuiz.passingScore || 70;
+        const questions = getQuizQuestions();
+        totalPoints = questions.reduce((sum: number, q: any) => sum + (q.points || 10), 0);
+        // If passingScore is less than or equal to totalPoints, it's likely points, not percentage
+        passingScoreIsPercentage = passingScore > totalPoints || passingScore > 100;
+      }
+    } else if (module.assessments && Array.isArray(module.assessments) && module.assessments.length > 0) {
+      const firstAssessment = module.assessments[0];
+      if (firstAssessment) {
+        passingScore = firstAssessment.passingScore || 70;
+        const questions = getQuizQuestions();
+        totalPoints = questions.reduce((sum: number, q: any) => sum + (q.points || 10), 0);
+        passingScoreIsPercentage = passingScore > totalPoints || passingScore > 100;
+      }
+    } else {
+      const questions = getQuizQuestions();
+      totalPoints = questions.reduce((sum: number, q: any) => sum + (q.points || 10), 0);
+    }
+    
+    return { passingScore, totalPoints, passingScoreIsPercentage };
+  };
+
+  // Calculate quiz score
+  const calculateQuizScore = (): { score: number; totalPoints: number; percentage: number; passed: boolean; passingScore: number; passingScoreIsPercentage: boolean } => {
+    const questions = getQuizQuestions();
+    const { passingScore, totalPoints, passingScoreIsPercentage } = getQuizMetadata();
+    
+    let score = 0;
+    questions.forEach((q: any, idx: number) => {
+      const answer = quizAnswers[idx];
+      if (answer !== undefined) {
+        const correctAnswer = Array.isArray(q.correctAnswer) ? q.correctAnswer[0] : q.correctAnswer;
+        if (answer === correctAnswer) {
+          score += q.points || 10;
+        }
+      }
+    });
+    
+    const percentage = totalPoints > 0 ? Math.round((score / totalPoints) * 100) : 0;
+    
+    // Determine if passed: if passingScore is percentage, compare percentage; otherwise compare points
+    const passed = passingScoreIsPercentage 
+      ? percentage >= passingScore 
+      : score >= passingScore;
+    
+    return { score, totalPoints, percentage, passed, passingScore, passingScoreIsPercentage };
+  };
+
   // Get sections from module.content or module.sections
   const moduleAny = module as any;
   const sections = (moduleAny.sections && Array.isArray(moduleAny.sections) && moduleAny.sections.length > 0)
@@ -381,22 +440,42 @@ export default function TraineeModulePlayer({
       setQuizAnswers(prev => {
         const newAnswers = { ...prev, [currentQuizIndex]: quizAnswer };
         
-        // Check if all quizzes are passed
+        // Check if quiz is passed based on score
         const questions = getQuizQuestions();
         if (questions && questions.length > 0) {
           const allAnswered = questions.every((q: any, idx: number) => newAnswers[idx] !== undefined);
-          const allCorrect = questions.every((q: any, idx: number) => {
-            const answer = newAnswers[idx];
-            const correctAnswer = Array.isArray(q.correctAnswer) ? q.correctAnswer[0] : q.correctAnswer;
-            return answer !== undefined && answer === correctAnswer;
-          });
           
-          if (allAnswered && allCorrect) {
-            setAllQuizzesPassed(true);
-            console.log('[TraineeModulePlayer] ✅ All quizzes passed!');
+          if (allAnswered) {
+            // Calculate score
+            let score = 0;
+            const totalPoints = questions.reduce((sum: number, q: any) => sum + (q.points || 10), 0);
+            questions.forEach((q: any, idx: number) => {
+              const answer = newAnswers[idx];
+              if (answer !== undefined) {
+                const correctAnswer = Array.isArray(q.correctAnswer) ? q.correctAnswer[0] : q.correctAnswer;
+                if (answer === correctAnswer) {
+                  score += q.points || 10;
+                }
+              }
+            });
+            
+            const percentage = totalPoints > 0 ? Math.round((score / totalPoints) * 100) : 0;
+            const { passingScore, passingScoreIsPercentage } = getQuizMetadata();
+            
+            // Check if passed: if passingScore is percentage, compare percentage; otherwise compare points
+            const passed = passingScoreIsPercentage 
+              ? percentage >= passingScore 
+              : score >= passingScore;
+            
+            if (passed) {
+              setAllQuizzesPassed(true);
+              console.log('[TraineeModulePlayer] ✅ Quiz passed! Score:', score, '/', totalPoints, `(${percentage}%)`);
+            } else {
+              setAllQuizzesPassed(false);
+              console.log('[TraineeModulePlayer] ⚠️ Quiz not passed. Score:', score, '/', totalPoints, `(${percentage}%)`);
+            }
           } else {
             setAllQuizzesPassed(false);
-            console.log('[TraineeModulePlayer] ⚠️ Not all quizzes are passed yet.');
           }
         }
         
@@ -455,55 +534,81 @@ export default function TraineeModulePlayer({
         });
       }
     } else {
-      // Last question answered, check if all quizzes are passed
+      // Last question answered, check if quiz is passed based on score
       const allQuestions = getQuizQuestions();
       if (!allQuestions || allQuestions.length === 0) {
         console.error('[TraineeModulePlayer] Cannot check quiz completion: no questions found');
         return;
       }
+      
       const allAnswered = allQuestions.every((q: any, idx: number) => quizAnswers[idx] !== undefined);
-      const allCorrect = allQuestions.every((q: any, idx: number) => {
-        const answer = quizAnswers[idx];
-        const correctAnswer = Array.isArray(q.correctAnswer) ? q.correctAnswer[0] : q.correctAnswer;
-        return answer !== undefined && answer === correctAnswer;
-      });
       
-      console.log('[TraineeModulePlayer] Quiz completion check:', {
-        allAnswered,
-        allCorrect,
-        totalQuestions: allQuestions.length,
-        answeredCount: Object.keys(quizAnswers).length
-      });
-      
-      if (allAnswered && allCorrect) {
-        setAllQuizzesPassed(true);
-        console.log('[TraineeModulePlayer] ✅ All quizzes passed! Module can be completed.');
+      if (allAnswered) {
+        // Calculate score
+        let score = 0;
+        const totalPoints = allQuestions.reduce((sum: number, q: any) => sum + (q.points || 10), 0);
+        allQuestions.forEach((q: any, idx: number) => {
+          const answer = quizAnswers[idx];
+          if (answer !== undefined) {
+            const correctAnswer = Array.isArray(q.correctAnswer) ? q.correctAnswer[0] : q.correctAnswer;
+            if (answer === correctAnswer) {
+              score += q.points || 10;
+            }
+          }
+        });
         
-        // Save final progress before completing
-        if (journeyId && trainee.id) {
-          const moduleId = extractObjectId((module as any)._id) || extractObjectId(module.id);
-          if (!moduleId || !/^[0-9a-fA-F]{24}$/.test(moduleId)) {
-            console.error('[TraineeModulePlayer] Module must have a valid MongoDB ObjectId _id:', module);
-            return;
+        const percentage = totalPoints > 0 ? Math.round((score / totalPoints) * 100) : 0;
+        const { passingScore, passingScoreIsPercentage } = getQuizMetadata();
+        
+        // Check if passed: if passingScore is percentage, compare percentage; otherwise compare points
+        const passed = passingScoreIsPercentage 
+          ? percentage >= passingScore 
+          : score >= passingScore;
+        
+        console.log('[TraineeModulePlayer] Quiz completion check:', {
+          allAnswered,
+          score,
+          totalPoints,
+          percentage,
+          passingScore,
+          passingScoreIsPercentage,
+          passed,
+          totalQuestions: allQuestions.length,
+          answeredCount: Object.keys(quizAnswers).length
+        });
+        
+        if (passed) {
+          setAllQuizzesPassed(true);
+          console.log('[TraineeModulePlayer] ✅ Quiz passed! Module can be completed.');
+          
+          // Save final progress before completing
+          if (journeyId && trainee.id) {
+            const moduleId = extractObjectId((module as any)._id) || extractObjectId(module.id);
+            if (!moduleId || !/^[0-9a-fA-F]{24}$/.test(moduleId)) {
+              console.error('[TraineeModulePlayer] Module must have a valid MongoDB ObjectId _id:', module);
+              return;
+            }
+            if (moduleId) {
+              const timeSpentMinutes = Math.floor(currentTime / 60);
+              ProgressService.updateProgress({
+                repId: trainee.id,
+                journeyId: journeyId,
+                moduleId: moduleId,
+                progress: 100,
+                status: 'completed',
+                timeSpent: timeSpentMinutes,
+                engagementScore: engagementScore
+              }).catch(err => console.error('Error saving final progress:', err));
+            }
           }
-          if (moduleId) {
-            const timeSpentMinutes = Math.floor(currentTime / 60);
-            ProgressService.updateProgress({
-              repId: trainee.id,
-              journeyId: journeyId,
-              moduleId: moduleId,
-              progress: 100,
-              status: 'completed',
-              timeSpent: timeSpentMinutes,
-              engagementScore: engagementScore
-            }).catch(err => console.error('Error saving final progress:', err));
-          }
+          
+          // Don't auto-navigate, let user click "Next Module" button
+          // The button will appear after all quizzes are passed
+        } else {
+          console.log('[TraineeModulePlayer] ⚠️ Quiz not passed. Cannot proceed to next module.');
+          setAllQuizzesPassed(false);
         }
-        
-        // Don't auto-navigate, let user click "Next Module" button
-        // The button will appear after all quizzes are passed
       } else {
-        console.log('[TraineeModulePlayer] ⚠️ Not all quizzes are passed. Cannot proceed to next module.');
         setAllQuizzesPassed(false);
       }
     }
@@ -1171,18 +1276,16 @@ export default function TraineeModulePlayer({
                             : showQuizResult && quizAnswer !== currentQuiz.correctAnswer
                             ? 'border-red-500 bg-red-50'
                             : 'border-blue-500 bg-blue-50'
-                          : showQuizResult && index === currentQuiz.correctAnswer
-                          ? 'border-green-500 bg-green-50'
                           : 'border-gray-200 hover:bg-gray-50'
                       } ${showQuizResult ? 'cursor-default' : 'cursor-pointer'}`}
                     >
                       <div className="flex items-center justify-between">
                         <span className="font-medium">{option}</span>
-                        {showQuizResult && index === currentQuiz.correctAnswer && (
-                          <span className="text-green-600 font-bold">✓ Correct</span>
-                        )}
                         {showQuizResult && quizAnswer === index && quizAnswer !== currentQuiz.correctAnswer && (
                           <span className="text-red-600 font-bold">✗ Incorrect</span>
+                        )}
+                        {showQuizResult && quizAnswer === index && quizAnswer === currentQuiz.correctAnswer && (
+                          <span className="text-green-600 font-bold">✓ Correct</span>
                         )}
                       </div>
                     </button>
@@ -1230,8 +1333,61 @@ export default function TraineeModulePlayer({
                           <span>Next Question</span>
                           <ArrowRight className="h-5 w-5" />
                         </button>
-                      ) : (
+                      ) : (() => {
+                        // Show quiz summary when all questions are answered
+                        const quizQuestions = getQuizQuestions();
+                        const allAnswered = quizQuestions.every((q: any, idx: number) => quizAnswers[idx] !== undefined);
+                        const quizScore = calculateQuizScore();
+                        
+                        return (
                         <>
+                          {/* Quiz Summary - Show when all questions are answered */}
+                          {allAnswered && (
+                            <div className={`mb-6 p-6 rounded-lg border-2 ${
+                              quizScore.passed 
+                                ? 'bg-green-50 border-green-300' 
+                                : 'bg-red-50 border-red-300'
+                            }`}>
+                              <div className="flex items-center justify-between mb-4">
+                                <h4 className={`text-xl font-bold ${
+                                  quizScore.passed ? 'text-green-800' : 'text-red-800'
+                                }`}>
+                                  {quizScore.passed ? '✅ Quiz Réussi!' : '❌ Quiz Échoué'}
+                                </h4>
+                                <div className={`text-2xl font-bold ${
+                                  quizScore.passed ? 'text-green-600' : 'text-red-600'
+                                }`}>
+                                  {quizScore.percentage}%
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-2 gap-4 text-sm">
+                                <div>
+                                  <span className="text-gray-600">Score obtenu:</span>
+                                  <span className="ml-2 font-semibold text-gray-900">
+                                    {quizScore.score} / {quizScore.totalPoints} points
+                                  </span>
+                                </div>
+                                <div>
+                                  <span className="text-gray-600">Score de passage:</span>
+                                  <span className="ml-2 font-semibold text-gray-900">
+                                    {quizScore.passingScoreIsPercentage 
+                                      ? `${quizScore.passingScore}%` 
+                                      : `${quizScore.passingScore} points`}
+                                  </span>
+                                </div>
+                              </div>
+                              {!quizScore.passed && (
+                                <p className="mt-4 text-sm text-red-700">
+                                  ⚠️ Vous devez obtenir au moins {
+                                    quizScore.passingScoreIsPercentage 
+                                      ? `${quizScore.passingScore}%` 
+                                      : `${quizScore.passingScore} points`
+                                  } pour réussir ce quiz.
+                                </p>
+                              )}
+                            </div>
+                          )}
+                          
                           {allQuizzesPassed && onNextModule && moduleIndex !== undefined && totalModules && moduleIndex < totalModules - 1 ? (
                             <button
                               onClick={() => {
@@ -1301,7 +1457,8 @@ export default function TraineeModulePlayer({
                             </div>
                           )}
                         </>
-                      )}
+                        );
+                      })()}
                     </>
                     );
                   })()}
