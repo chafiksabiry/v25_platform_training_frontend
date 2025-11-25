@@ -339,18 +339,6 @@ export default function TraineeModulePlayer({
         }
       }
       
-      // Check for quizzes in assessments
-      const hasAssessments = module.assessments && 
-                             module.assessments.length > 0 && 
-                             module.assessments[0] &&
-                             module.assessments[0].questions && 
-                             Array.isArray(module.assessments[0].questions) &&
-                             module.assessments[0].questions.length > 0;
-      
-      // Check for quizzes in module.quizzes
-      const hasQuizzes = (module as any).quizzes && Array.isArray((module as any).quizzes) && 
-                        (module as any).quizzes.length > 0;
-      
       console.log('[TraineeModulePlayer] Module completed, checking for quizzes:', {
         hasAssessments,
         hasQuizzes,
