@@ -327,6 +327,20 @@ export default function TraineeModulePlayer({
           // Only mark as completed if there are no quizzes
           // If there are quizzes, keep status as "in-progress" until quizzes are passed
           const moduleStatus = (hasAssessments || hasQuizzes) ? 'in-progress' : 'completed';
+          
+          // Show alert if module has quizzes and is being marked as in-progress
+          if ((hasAssessments || hasQuizzes) && moduleStatus === 'in-progress') {
+            // Get passing score from quiz metadata
+            const { passingScore, passingScoreIsPercentage } = getQuizMetadata();
+            const passingScoreText = passingScoreIsPercentage 
+              ? `${passingScore}%` 
+              : `${passingScore} points`;
+            
+            setTimeout(() => {
+              alert(`⚠️ Module en cours\n\nVous devez réussir le quiz de ce module avec un score minimum de ${passingScoreText} pour passer au module suivant.\n\nVeuillez compléter le quiz ci-dessous.`);
+            }, 500);
+          }
+          
           ProgressService.updateProgress({
             repId: trainee.id,
             journeyId: journeyId,
@@ -471,6 +485,58 @@ export default function TraineeModulePlayer({
               ? percentage >= passingScore 
               : score >= passingScore;
             
+            // ALWAYS save quiz results when all questions are answered
+            if (journeyId && trainee.id) {
+              const moduleId = extractObjectId((module as any)._id) || extractObjectId(module.id);
+              if (moduleId && /^[0-9a-fA-F]{24}$/.test(moduleId)) {
+                // Get quiz ID - check assessments first, then quizzes
+                let quizId = moduleId; // Default to moduleId
+                const moduleAny = module as any;
+                
+                if (moduleAny.assessments && Array.isArray(moduleAny.assessments) && moduleAny.assessments.length > 0) {
+                  const firstAssessment = moduleAny.assessments[0];
+                  quizId = extractObjectId(firstAssessment._id) || extractObjectId(firstAssessment.id) || moduleId;
+                } else if (moduleAny.quizzes && Array.isArray(moduleAny.quizzes) && moduleAny.quizzes.length > 0) {
+                  const firstQuiz = moduleAny.quizzes[0];
+                  quizId = extractObjectId(firstQuiz._id) || extractObjectId(firstQuiz.id) || moduleId;
+                }
+                
+                const correctAnswers = questions.filter((q: any, idx: number) => {
+                  const answer = newAnswers[idx];
+                  if (answer === undefined) return false;
+                  const correctAnswer = Array.isArray(q.correctAnswer) ? q.correctAnswer[0] : q.correctAnswer;
+                  return answer === correctAnswer;
+                }).length;
+                
+                const quizz: Record<string, any> = {};
+                quizz[quizId] = {
+                  quizId: quizId,
+                  score: percentage,
+                  passed: passed,
+                  totalQuestions: questions.length,
+                  correctAnswers: correctAnswers,
+                  completedAt: new Date().toISOString(),
+                  attempts: 1
+                };
+                
+                console.log('[TraineeModulePlayer] 💾 Saving quiz result in submitQuizAnswer:', {
+                  quizId,
+                  score: percentage,
+                  passed,
+                  correctAnswers,
+                  totalQuestions: questions.length
+                });
+                
+                // Save quiz results immediately
+                ProgressService.updateProgress({
+                  repId: trainee.id,
+                  journeyId: journeyId,
+                  moduleId: moduleId,
+                  quizz: quizz
+                }).catch(err => console.error('Error saving quiz result in submitQuizAnswer:', err));
+              }
+            }
+            
             if (passed) {
               setAllQuizzesPassed(true);
               console.log('[TraineeModulePlayer] ✅ Quiz passed! Score:', score, '/', totalPoints, `(${percentage}%)`);
@@ -595,11 +661,17 @@ export default function TraineeModulePlayer({
             if (moduleId) {
               const timeSpentMinutes = Math.floor(currentTime / 60);
               
-              // Get quiz ID from module quizzes or use module ID as fallback
-              const moduleQuizzes = (module as any).quizzes || [];
-              const quizId = moduleQuizzes.length > 0 
-                ? (extractObjectId(moduleQuizzes[0]._id) || extractObjectId(moduleQuizzes[0].id) || moduleId)
-                : moduleId;
+              // Get quiz ID - check assessments first, then quizzes
+              const moduleAny = module as any;
+              let quizId = moduleId; // Default to moduleId
+              
+              if (moduleAny.assessments && Array.isArray(moduleAny.assessments) && moduleAny.assessments.length > 0) {
+                const firstAssessment = moduleAny.assessments[0];
+                quizId = extractObjectId(firstAssessment._id) || extractObjectId(firstAssessment.id) || moduleId;
+              } else if (moduleAny.quizzes && Array.isArray(moduleAny.quizzes) && moduleAny.quizzes.length > 0) {
+                const firstQuiz = moduleAny.quizzes[0];
+                quizId = extractObjectId(firstQuiz._id) || extractObjectId(firstQuiz.id) || moduleId;
+              }
               
               // Count correct answers
               const correctAnswers = allQuestions.filter((q: any, idx: number) => {
@@ -645,10 +717,17 @@ export default function TraineeModulePlayer({
           if (journeyId && trainee.id) {
             const moduleId = extractObjectId((module as any)._id) || extractObjectId(module.id);
             if (moduleId && /^[0-9a-fA-F]{24}$/.test(moduleId)) {
-              const moduleQuizzes = (module as any).quizzes || [];
-              const quizId = moduleQuizzes.length > 0 
-                ? (extractObjectId(moduleQuizzes[0]._id) || extractObjectId(moduleQuizzes[0].id) || moduleId)
-                : moduleId;
+              // Get quiz ID - check assessments first, then quizzes
+              const moduleAny = module as any;
+              let quizId = moduleId; // Default to moduleId
+              
+              if (moduleAny.assessments && Array.isArray(moduleAny.assessments) && moduleAny.assessments.length > 0) {
+                const firstAssessment = moduleAny.assessments[0];
+                quizId = extractObjectId(firstAssessment._id) || extractObjectId(firstAssessment.id) || moduleId;
+              } else if (moduleAny.quizzes && Array.isArray(moduleAny.quizzes) && moduleAny.quizzes.length > 0) {
+                const firstQuiz = moduleAny.quizzes[0];
+                quizId = extractObjectId(firstQuiz._id) || extractObjectId(firstQuiz.id) || moduleId;
+              }
               
               const correctAnswers = allQuestions.filter((q: any, idx: number) => {
                 const answer = quizAnswers[idx];

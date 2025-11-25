@@ -586,6 +586,52 @@ export default function TraineePortal({
                       </div>
                     </div>
 
+                    {/* Alert message if module is in-progress with quizzes */}
+                    {moduleInProgress && moduleProgress && (() => {
+                      const quizQuestions = getModuleQuizQuestions(module);
+                      const hasQuizzes = quizQuestions.length > 0;
+                      const moduleQuizz = moduleProgress.quizz || {};
+                      
+                      // Check if module has quizzes that are not passed
+                      let hasUnpassedQuizzes = false;
+                      if (hasQuizzes) {
+                        const moduleQuizzes = (module as any).quizzes || [];
+                        for (const quiz of moduleQuizzes) {
+                          const quizId = extractObjectId(quiz._id) || extractObjectId(quiz.id);
+                          if (!quizId) continue;
+                          const quizResult = moduleQuizz[quizId];
+                          if (!quizResult || !quizResult.passed) {
+                            hasUnpassedQuizzes = true;
+                            break;
+                          }
+                        }
+                      }
+                      
+                      // Show alert if module has quizzes and they're not all passed
+                      if (hasQuizzes && hasUnpassedQuizzes) {
+                        const moduleQuizzes = (module as any).quizzes || [];
+                        const firstQuiz = moduleQuizzes.length > 0 ? moduleQuizzes[0] : null;
+                        const passingScore = firstQuiz?.passingScore || 70;
+                        
+                        return (
+                          <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                            <div className="flex items-start space-x-2">
+                              <span className="text-yellow-600 text-lg">⚠️</span>
+                              <div className="flex-1">
+                                <p className="text-sm text-yellow-800 font-medium">
+                                  Module en cours
+                                </p>
+                                <p className="text-xs text-yellow-700 mt-1">
+                                  Vous devez réussir le quiz de ce module avec un score minimum de {passingScore}% pour passer au module suivant.
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
+
                     {/* Module Topics Preview */}
                     {Array.isArray(module.topics) && module.topics.length > 0 && (
                       <div className="mt-4 pt-4 border-t border-gray-200">
