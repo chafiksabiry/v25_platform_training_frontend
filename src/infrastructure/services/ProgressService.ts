@@ -1,12 +1,23 @@
 // src/infrastructure/services/ProgressService.ts
 import { ApiClient } from '../../lib/api';
 
+export interface QuizResult {
+  quizId: string;
+  score?: number; // Score obtained (0-100)
+  passed?: boolean; // Whether the quiz was passed
+  totalQuestions?: number; // Total number of questions
+  correctAnswers?: number; // Number of correct answers
+  completedAt?: string; // When the quiz was completed
+  attempts?: number; // Number of attempts
+}
+
 export interface ModuleProgress {
   status: 'not-started' | 'in-progress' | 'completed' | 'finished';
   progress: number; // 0-100
   score?: number; // 0-100
   timeSpent: number; // in minutes
   sections?: Record<string, SectionProgress>;
+  quizz?: Record<string, QuizResult>; // Map of quizId -> QuizResult
   lastAccessed?: string;
 }
 
@@ -45,6 +56,7 @@ export interface UpdateProgressRequest {
   totalTimeSpent?: number; // Total time spent across all modules
   engagementScore?: number;
   completed?: boolean; // For section-level updates
+  quizz?: Record<string, QuizResult>; // Map of quizId -> QuizResult
 }
 
 export interface RepProgressOverview {
