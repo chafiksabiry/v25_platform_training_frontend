@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
   BookOpen, 
   Play, 
@@ -105,8 +105,12 @@ export default function TraineePortal({
         try {
           const progress = await ProgressService.getRepProgress(agentId, journeyId);
           if (progress) {
+            console.log('[TraineePortal] Progress reloaded when returning to dashboard:', {
+              modules: progress.modules,
+              moduleFinished: progress.moduleFinished,
+              moduleInProgress: progress.moduleInProgress
+            });
             setRepProgressData(progress);
-            console.log('[TraineePortal] Progress reloaded when returning to dashboard');
           }
         } catch (error) {
           console.error('Error reloading progress:', error);
@@ -218,7 +222,7 @@ export default function TraineePortal({
   }, [modules, repProgressData]);
 
   // Helper function to get quiz questions from module (supports both assessments and quizzes)
-  const getModuleQuizQuestions = (module: TrainingModule): any[] => {
+  const getModuleQuizQuestions = useCallback((module: TrainingModule): any[] => {
     const moduleAny = module as any;
     // Check quizzes first (new structure)
     if (moduleAny.quizzes && Array.isArray(moduleAny.quizzes) && moduleAny.quizzes.length > 0) {
@@ -235,12 +239,18 @@ export default function TraineePortal({
       }
     }
     return [];
-  };
+  }, []);
 
   // Check if a module can be accessed (previous module quiz passed)
-  const canAccessModule = (moduleIndex: number): boolean => {
+  const canAccessModule = useCallback((moduleIndex: number): boolean => {
     // First module is always accessible
     if (moduleIndex === 0) return true;
+    
+    // If progress data is not loaded yet, don't block access (will be checked again when data loads)
+    if (!repProgressData || !repProgressData.modules) {
+      console.log(`[TraineePortal] Progress data not loaded yet for module ${moduleIndex}, allowing access temporarily`);
+      return true;
+    }
     
     // Check all previous modules
     for (let i = 0; i < moduleIndex; i++) {
@@ -250,7 +260,16 @@ export default function TraineePortal({
       const prevModuleId = extractObjectId((prevModule as any)._id) || extractObjectId(prevModule.id);
       if (!prevModuleId || !/^[0-9a-fA-F]{24}$/.test(prevModuleId)) continue;
       
-      const prevModuleProgress = repProgressData?.modules?.[prevModuleId];
+      const prevModuleProgress = repProgressData.modules[prevModuleId];
+      
+      // Debug log
+      console.log(`[TraineePortal] Checking module ${i} (${prevModuleId}) for access to module ${moduleIndex}:`, {
+        hasProgress: !!prevModuleProgress,
+        status: prevModuleProgress?.status,
+        progress: prevModuleProgress?.progress,
+        quizz: prevModuleProgress?.quizz,
+        quizzKeys: prevModuleProgress?.quizz ? Object.keys(prevModuleProgress.quizz) : []
+      });
       
       // Check if previous module is completed
       const isCompleted = prevModuleProgress 
@@ -264,25 +283,48 @@ export default function TraineePortal({
       // If module has quizzes, verify that all quizzes are passed in the quizz field
       if (hasQuizzes) {
         if (!isCompleted) {
-          console.log(`[TraineePortal] Module ${i} has quizzes but is not completed. Cannot access module ${moduleIndex}.`);
+          console.log(`[TraineePortal] Module ${i} (${prevModuleId}) has quizzes but is not completed (status: ${prevModuleProgress?.status}). Cannot access module ${moduleIndex}.`);
           return false;
         }
         
         // Verify that quizzes are passed in the quizz field
         const moduleQuizz = prevModuleProgress?.quizz || {};
         const moduleQuizzes = (prevModule as any).quizzes || [];
+        const moduleAssessments = (prevModule as any).assessments || [];
         
         // Check if all quizzes have passed results
         let allQuizzesPassed = true;
-        for (const quiz of moduleQuizzes) {
-          const quizId = extractObjectId(quiz._id) || extractObjectId(quiz.id);
-          if (!quizId) continue;
-          
-          const quizResult = moduleQuizz[quizId];
-          if (!quizResult || !quizResult.passed) {
-            console.log(`[TraineePortal] Module ${i} quiz ${quizId} not passed. Cannot access module ${moduleIndex}.`);
-            allQuizzesPassed = false;
-            break;
+        
+        // If module has quizzes array, check each quiz
+        if (moduleQuizzes.length > 0) {
+          for (const quiz of moduleQuizzes) {
+            const quizId = extractObjectId(quiz._id) || extractObjectId(quiz.id);
+            if (!quizId) continue;
+            
+            const quizResult = moduleQuizz[quizId];
+            if (!quizResult || !quizResult.passed) {
+              console.log(`[TraineePortal] Module ${i} (${prevModuleId}) quiz ${quizId} not passed (result: ${JSON.stringify(quizResult)}). Cannot access module ${moduleIndex}.`);
+              allQuizzesPassed = false;
+              break;
+            }
+          }
+        } 
+        // If module has assessments instead, check if any quiz result exists and is passed
+        else if (moduleAssessments.length > 0 || quizQuestions.length > 0) {
+          // Quizzes are in assessments or questions, check if quizz field has any passed results
+          const quizzKeys = Object.keys(moduleQuizz);
+          if (quizzKeys.length === 0) {
+            console.log(`[TraineePortal] Module ${i} (${prevModuleId}) has quizzes but no quiz results in quizz field. Cannot access module ${moduleIndex}.`);
+            return false;
+          }
+          // Check if at least one quiz result is passed
+          allQuizzesPassed = quizzKeys.some(key => moduleQuizz[key]?.passed === true);
+          if (!allQuizzesPassed) {
+            console.log(`[TraineePortal] Module ${i} (${prevModuleId}) has quiz results but none are passed. Cannot access module ${moduleIndex}.`, {
+              quizzKeys,
+              results: quizzKeys.map(key => ({ key, result: moduleQuizz[key] }))
+            });
+            return false;
           }
         }
         
@@ -292,14 +334,14 @@ export default function TraineePortal({
       } else {
         // If module has no quizzes, it just needs to be completed
         if (!isCompleted) {
-          console.log(`[TraineePortal] Module ${i} is not completed. Cannot access module ${moduleIndex}.`);
+          console.log(`[TraineePortal] Module ${i} (${prevModuleId}) is not completed (status: ${prevModuleProgress?.status}). Cannot access module ${moduleIndex}.`);
           return false;
         }
       }
     }
     
     return true;
-  };
+  }, [modules, repProgressData, getModuleQuizQuestions]);
 
   const handleModuleSelect = (module: TrainingModule) => {
     // Find module index for ID normalization
@@ -809,11 +851,23 @@ export default function TraineePortal({
           }
           handleBackToDashboard();
         }}
-        onQuizComplete={() => {
+        onQuizComplete={async () => {
           // Reload progress from backend after quiz is saved
           console.log('[TraineePortal] Reloading progress after quiz completion');
           if (agentId && journeyId) {
-            ProgressService.getRepProgress(agentId, journeyId).then(setRepProgressData).catch(console.error);
+            try {
+              const progress = await ProgressService.getRepProgress(agentId, journeyId);
+              if (progress) {
+                console.log('[TraineePortal] Progress reloaded after quiz completion:', {
+                  modules: progress.modules,
+                  moduleFinished: progress.moduleFinished,
+                  moduleInProgress: progress.moduleInProgress
+                });
+                setRepProgressData(progress);
+              }
+            } catch (error) {
+              console.error('[TraineePortal] Error reloading progress after quiz completion:', error);
+            }
           }
         }}
         onNextModule={handleNextModule}
