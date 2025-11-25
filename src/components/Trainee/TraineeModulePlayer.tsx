@@ -590,6 +590,33 @@ export default function TraineeModulePlayer({
             }
             if (moduleId) {
               const timeSpentMinutes = Math.floor(currentTime / 60);
+              
+              // Get quiz ID from module quizzes or use module ID as fallback
+              const moduleQuizzes = (module as any).quizzes || [];
+              const quizId = moduleQuizzes.length > 0 
+                ? (extractObjectId(moduleQuizzes[0]._id) || extractObjectId(moduleQuizzes[0].id) || moduleId)
+                : moduleId;
+              
+              // Count correct answers
+              const correctAnswers = allQuestions.filter((q: any, idx: number) => {
+                const answer = quizAnswers[idx];
+                if (answer === undefined) return false;
+                const correctAnswer = Array.isArray(q.correctAnswer) ? q.correctAnswer[0] : q.correctAnswer;
+                return answer === correctAnswer;
+              }).length;
+              
+              // Prepare quiz results to save in quizz field
+              const quizz: Record<string, any> = {};
+              quizz[quizId] = {
+                quizId: quizId,
+                score: percentage,
+                passed: true,
+                totalQuestions: allQuestions.length,
+                correctAnswers: correctAnswers,
+                completedAt: new Date().toISOString(),
+                attempts: 1
+              };
+              
               ProgressService.updateProgress({
                 repId: trainee.id,
                 journeyId: journeyId,
@@ -597,7 +624,8 @@ export default function TraineeModulePlayer({
                 progress: 100,
                 status: 'completed',
                 timeSpent: timeSpentMinutes,
-                engagementScore: engagementScore
+                engagementScore: engagementScore,
+                quizz: quizz
               }).catch(err => console.error('Error saving final progress:', err));
             }
           }
@@ -607,6 +635,42 @@ export default function TraineeModulePlayer({
         } else {
           console.log('[TraineeModulePlayer] ⚠️ Quiz not passed. Cannot proceed to next module.');
           setAllQuizzesPassed(false);
+          
+          // Save quiz result even if not passed
+          if (journeyId && trainee.id) {
+            const moduleId = extractObjectId((module as any)._id) || extractObjectId(module.id);
+            if (moduleId && /^[0-9a-fA-F]{24}$/.test(moduleId)) {
+              const moduleQuizzes = (module as any).quizzes || [];
+              const quizId = moduleQuizzes.length > 0 
+                ? (extractObjectId(moduleQuizzes[0]._id) || extractObjectId(moduleQuizzes[0].id) || moduleId)
+                : moduleId;
+              
+              const correctAnswers = allQuestions.filter((q: any, idx: number) => {
+                const answer = quizAnswers[idx];
+                if (answer === undefined) return false;
+                const correctAnswer = Array.isArray(q.correctAnswer) ? q.correctAnswer[0] : q.correctAnswer;
+                return answer === correctAnswer;
+              }).length;
+              
+              const quizz: Record<string, any> = {};
+              quizz[quizId] = {
+                quizId: quizId,
+                score: percentage,
+                passed: false,
+                totalQuestions: allQuestions.length,
+                correctAnswers: correctAnswers,
+                completedAt: new Date().toISOString(),
+                attempts: 1
+              };
+              
+              ProgressService.updateProgress({
+                repId: trainee.id,
+                journeyId: journeyId,
+                moduleId: moduleId,
+                quizz: quizz
+              }).catch(err => console.error('Error saving quiz result:', err));
+            }
+          }
         }
       } else {
         setAllQuizzesPassed(false);
