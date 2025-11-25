@@ -299,10 +299,23 @@ export default function TraineeModulePlayer({
       setSectionProgress(0);
       setCurrentTime(0);
     } else {
-      // Module completed - check for quizzes and redirect automatically
+      // Module sections completed - check for quizzes before marking as completed
       setModuleCompleted(true);
       
-      // Save completed progress
+      // Check for quizzes in assessments
+      const hasAssessments = module.assessments && 
+                             module.assessments.length > 0 && 
+                             module.assessments[0] &&
+                             module.assessments[0].questions && 
+                             Array.isArray(module.assessments[0].questions) &&
+                             module.assessments[0].questions.length > 0;
+      
+      // Check for quizzes in module.quizzes
+      const hasQuizzes = (module as any).quizzes && Array.isArray((module as any).quizzes) && 
+                        (module as any).quizzes.length > 0;
+      
+      // Save progress but DON'T mark as completed if there are quizzes
+      // The module will only be marked as completed after quizzes are passed
       if (journeyId && trainee.id) {
         const moduleId = extractObjectId((module as any)._id) || extractObjectId(module.id);
         if (!moduleId || !/^[0-9a-fA-F]{24}$/.test(moduleId)) {
@@ -311,12 +324,15 @@ export default function TraineeModulePlayer({
         }
         if (moduleId) {
           const timeSpentMinutes = Math.floor(currentTime / 60);
+          // Only mark as completed if there are no quizzes
+          // If there are quizzes, keep status as "in-progress" until quizzes are passed
+          const moduleStatus = (hasAssessments || hasQuizzes) ? 'in-progress' : 'completed';
           ProgressService.updateProgress({
             repId: trainee.id,
             journeyId: journeyId,
             moduleId: moduleId,
             progress: 100,
-            status: 'completed',
+            status: moduleStatus,
             timeSpent: timeSpentMinutes,
             engagementScore: engagementScore
           }).catch(err => console.error('Error saving completed progress:', err));
@@ -617,6 +633,7 @@ export default function TraineeModulePlayer({
                 attempts: 1
               };
               
+              // Now mark module as completed since quiz is passed
               ProgressService.updateProgress({
                 repId: trainee.id,
                 journeyId: journeyId,
@@ -636,7 +653,7 @@ export default function TraineeModulePlayer({
           console.log('[TraineeModulePlayer] ⚠️ Quiz not passed. Cannot proceed to next module.');
           setAllQuizzesPassed(false);
           
-          // Save quiz result even if not passed
+          // ALWAYS save quiz result even if not passed (to track attempts)
           if (journeyId && trainee.id) {
             const moduleId = extractObjectId((module as any)._id) || extractObjectId(module.id);
             if (moduleId && /^[0-9a-fA-F]{24}$/.test(moduleId)) {
@@ -663,10 +680,20 @@ export default function TraineeModulePlayer({
                 attempts: 1
               };
               
+              console.log('[TraineeModulePlayer] 💾 Saving quiz result (failed):', {
+                quizId,
+                score: percentage,
+                passed: false,
+                correctAnswers,
+                totalQuestions: allQuestions.length
+              });
+              
+              // Keep module status as "in-progress" since quiz is not passed
               ProgressService.updateProgress({
                 repId: trainee.id,
                 journeyId: journeyId,
                 moduleId: moduleId,
+                status: 'in-progress',
                 quizz: quizz
               }).catch(err => console.error('Error saving quiz result:', err));
             }
@@ -1456,10 +1483,12 @@ export default function TraineeModulePlayer({
                             <button
                               onClick={() => {
                                 // Save progress before moving to next module
+                                // Note: Quiz results should already be saved when quiz was passed
                                 if (journeyId && trainee.id) {
                                   const moduleId = extractObjectId((module as any)._id) || extractObjectId(module.id);
                                   if (moduleId && /^[0-9a-fA-F]{24}$/.test(moduleId)) {
                                     const timeSpentMinutes = Math.floor(currentTime / 60);
+                                    // Ensure module is marked as completed (quiz results already saved)
                                     ProgressService.updateProgress({
                                       repId: trainee.id,
                                       journeyId: journeyId,

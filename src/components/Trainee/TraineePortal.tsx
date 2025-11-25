@@ -236,23 +236,47 @@ export default function TraineePortal({
       
       // Check if previous module is completed
       const isCompleted = prevModuleProgress 
-        ? (prevModuleProgress.status === 'completed' || prevModuleProgress.status === 'finished' || prevModuleProgress.progress >= 100)
+        ? (prevModuleProgress.status === 'completed' || prevModuleProgress.status === 'finished')
         : prevModule.completed;
       
       // Check if previous module has quizzes
       const quizQuestions = getModuleQuizQuestions(prevModule);
       const hasQuizzes = quizQuestions.length > 0;
       
-      // If module has quizzes, it must be completed (which implies quizzes are passed)
-      // If module has no quizzes, it just needs to be completed
-      if (hasQuizzes && !isCompleted) {
-        console.log(`[TraineePortal] Module ${i} has quizzes but is not completed. Cannot access module ${moduleIndex}.`);
-        return false;
-      }
-      
-      if (!hasQuizzes && !isCompleted) {
-        console.log(`[TraineePortal] Module ${i} is not completed. Cannot access module ${moduleIndex}.`);
-        return false;
+      // If module has quizzes, verify that all quizzes are passed in the quizz field
+      if (hasQuizzes) {
+        if (!isCompleted) {
+          console.log(`[TraineePortal] Module ${i} has quizzes but is not completed. Cannot access module ${moduleIndex}.`);
+          return false;
+        }
+        
+        // Verify that quizzes are passed in the quizz field
+        const moduleQuizz = prevModuleProgress?.quizz || {};
+        const moduleQuizzes = (prevModule as any).quizzes || [];
+        
+        // Check if all quizzes have passed results
+        let allQuizzesPassed = true;
+        for (const quiz of moduleQuizzes) {
+          const quizId = extractObjectId(quiz._id) || extractObjectId(quiz.id);
+          if (!quizId) continue;
+          
+          const quizResult = moduleQuizz[quizId];
+          if (!quizResult || !quizResult.passed) {
+            console.log(`[TraineePortal] Module ${i} quiz ${quizId} not passed. Cannot access module ${moduleIndex}.`);
+            allQuizzesPassed = false;
+            break;
+          }
+        }
+        
+        if (!allQuizzesPassed) {
+          return false;
+        }
+      } else {
+        // If module has no quizzes, it just needs to be completed
+        if (!isCompleted) {
+          console.log(`[TraineePortal] Module ${i} is not completed. Cannot access module ${moduleIndex}.`);
+          return false;
+        }
       }
     }
     
