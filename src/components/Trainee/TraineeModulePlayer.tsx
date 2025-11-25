@@ -44,6 +44,7 @@ interface TraineeModulePlayerProps {
   onBack: () => void;
   onNextModule?: () => void; // Callback to navigate to next module
   totalModules?: number; // Total number of modules in the journey
+  onQuizComplete?: () => void; // Callback to reload progress after quiz is saved
 }
 
 export default function TraineeModulePlayer({ 
@@ -55,7 +56,8 @@ export default function TraineeModulePlayer({
   onComplete, 
   onBack,
   onNextModule,
-  totalModules
+  totalModules,
+  onQuizComplete
 }: TraineeModulePlayerProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -533,6 +535,12 @@ export default function TraineeModulePlayer({
                   journeyId: journeyId,
                   moduleId: moduleId,
                   quizz: quizz
+                }).then(() => {
+                  console.log('[TraineeModulePlayer] ✅ Quiz results saved successfully in submitQuizAnswer');
+                  // Reload progress data after saving quiz
+                  if (onQuizComplete) {
+                    onQuizComplete();
+                  }
                 }).catch(err => console.error('Error saving quiz result in submitQuizAnswer:', err));
               }
             }
@@ -703,6 +711,12 @@ export default function TraineeModulePlayer({
                 timeSpent: timeSpentMinutes,
                 engagementScore: engagementScore,
                 quizz: quizz
+              }).then(() => {
+                console.log('[TraineeModulePlayer] ✅ Module marked as completed with quiz results');
+                // Reload progress data after saving quiz and completing module
+                if (onQuizComplete) {
+                  onQuizComplete();
+                }
               }).catch(err => console.error('Error saving final progress:', err));
             }
           }
@@ -762,6 +776,12 @@ export default function TraineeModulePlayer({
                 moduleId: moduleId,
                 status: 'in-progress',
                 quizz: quizz
+              }).then(() => {
+                console.log('[TraineeModulePlayer] ✅ Quiz result (failed) saved successfully');
+                // Reload progress data after saving quiz result
+                if (onQuizComplete) {
+                  onQuizComplete();
+                }
               }).catch(err => console.error('Error saving quiz result:', err));
             }
           }

@@ -98,6 +98,24 @@ export default function TraineePortal({
     loadProgress();
   }, [agentId, journeyId]);
 
+  // Reload progress when returning to dashboard view
+  useEffect(() => {
+    if (activeView === 'dashboard' && agentId && journeyId) {
+      const reloadProgress = async () => {
+        try {
+          const progress = await ProgressService.getRepProgress(agentId, journeyId);
+          if (progress) {
+            setRepProgressData(progress);
+            console.log('[TraineePortal] Progress reloaded when returning to dashboard');
+          }
+        } catch (error) {
+          console.error('Error reloading progress:', error);
+        }
+      };
+      reloadProgress();
+    }
+  }, [activeView, agentId, journeyId]);
+
   // Calculate progress from backend data or fallback to modules
   const completedModules = repProgressData 
     ? repProgressData.moduleFinished 
@@ -790,6 +808,13 @@ export default function TraineePortal({
             ProgressService.getRepProgress(agentId, journeyId).then(setRepProgressData).catch(console.error);
           }
           handleBackToDashboard();
+        }}
+        onQuizComplete={() => {
+          // Reload progress from backend after quiz is saved
+          console.log('[TraineePortal] Reloading progress after quiz completion');
+          if (agentId && journeyId) {
+            ProgressService.getRepProgress(agentId, journeyId).then(setRepProgressData).catch(console.error);
+          }
         }}
         onNextModule={handleNextModule}
         totalModules={modules.length}
