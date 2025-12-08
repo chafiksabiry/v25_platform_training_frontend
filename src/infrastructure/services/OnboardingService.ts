@@ -2,9 +2,9 @@ import axios from 'axios';
 import Cookies from 'js-cookie';
 import { IndustryApiResponse, GigApiResponse, GigFromApi } from '../../types';
 
-const INDUSTRIES_API_URL = 'https://api-repcreationwizard.harx.ai/api/industries';
-const GIGS_API_URL = 'https://api-gigsmanual.harx.ai/api/gigs/company';
-const COMPANY_API_URL = 'https://api-companysearchwizard.harx.ai/api/companies';
+const INDUSTRIES_API_URL = 'https://prod-api-repcreationwizard.harx.ai/api/industries';
+const GIGS_API_URL = 'https://prod-api-gigsmanual.harx.ai/api/gigs/company';
+const COMPANY_API_URL = 'https://prod-api-companysearchwizard.harx.ai/api/companies';
 
 export const OnboardingService = {
   /**

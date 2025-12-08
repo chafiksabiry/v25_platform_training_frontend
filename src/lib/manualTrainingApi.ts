@@ -17,7 +17,7 @@ const getApiBaseUrl = () => {
     return 'http://localhost:5010';
   } else {
     // Environnement production
-    return 'https://api-training.harx.ai';
+    return 'https://prod-api-training.harx.ai';
   }
 };
 

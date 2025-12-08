@@ -387,7 +387,7 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
     if (import.meta.env.VITE_API_BASE_URL) {
       return import.meta.env.VITE_API_BASE_URL;
     }
-    return 'https://api-training.harx.ai';
+    return 'https://prod-api-training.harx.ai';
   };
   const API_BASE = getApiBaseUrl();
 
