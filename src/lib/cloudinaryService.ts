@@ -7,7 +7,7 @@ const getApiBaseUrl = () => {
   }
   if (typeof window !== 'undefined') {
     const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    return isLocal ? 'http://localhost:5010' : 'https://api-training.harx.ai';
+    return isLocal ? 'http://localhost:5010' : 'https://v25platformtrainingbackend-production.up.railway.app';
   }
   return 'http://localhost:5010';
 };
@@ -53,7 +53,7 @@ class CloudinaryService {
     onProgress?: (progress: UploadProgress) => void
   ): Promise<CloudinaryUploadResult> {
     this.validateImage(file);
-    
+
     return this.uploadFileViaBackend(file, 'image', folder, onProgress);
   }
 
@@ -66,7 +66,7 @@ class CloudinaryService {
     onProgress?: (progress: UploadProgress) => void
   ): Promise<CloudinaryUploadResult> {
     this.validateVideo(file);
-    
+
     return this.uploadFileViaBackend(file, 'video', folder, onProgress);
   }
 
@@ -79,7 +79,7 @@ class CloudinaryService {
     onProgress?: (progress: UploadProgress) => void
   ): Promise<CloudinaryUploadResult> {
     this.validateDocument(file);
-    
+
     return this.uploadFileViaBackend(file, 'document', folder, onProgress);
   }
 
@@ -118,7 +118,7 @@ class CloudinaryService {
       xhr.addEventListener('load', () => {
         if (xhr.status === 200) {
           const response = JSON.parse(xhr.responseText);
-          
+
           const result: CloudinaryUploadResult = {
             publicId: response.publicId || response.public_id,
             url: response.url,
@@ -131,7 +131,7 @@ class CloudinaryService {
             duration: response.duration,
             thumbnailUrl: response.thumbnailUrl,
           };
-          
+
           resolve(result);
         } else {
           // Parse error response

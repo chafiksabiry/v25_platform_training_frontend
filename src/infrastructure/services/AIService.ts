@@ -59,14 +59,14 @@ export class AIService {
    */
   static async analyzeDocument(file: File): Promise<DocumentAnalysis> {
     try {
-    const formData = new FormData();
-    formData.append('file', file);
+      const formData = new FormData();
+      formData.append('file', file);
 
       console.log('📄 Analyzing document:', file.name, 'Size:', file.size, 'Type:', file.type);
 
-    const response = await ApiClient.upload('/api/ai/analyze-document', formData);
-    
-    if (!response.data.success) {
+      const response = await ApiClient.upload('/api/ai/analyze-document', formData);
+
+      if (!response.data.success) {
         const errorMsg = response.data.error || response.data.message || 'Analysis failed';
         console.error('❌ Analysis failed:', errorMsg);
         throw new Error(errorMsg);
@@ -76,29 +76,29 @@ export class AIService {
       return response.data.analysis || response.data.data?.analysis;
     } catch (error: any) {
       console.error('❌ Error in analyzeDocument:', error);
-      
+
       // Provide more specific error messages
       if (error.message?.includes('Failed to fetch') || error.message?.includes('Network error')) {
         throw new Error('Unable to connect to the AI service. Please check your internet connection and try again.');
-    }
+      }
 
       if (error.status === 0) {
         throw new Error('Network error: Unable to reach the server. Please check your connection.');
       }
-      
+
       if (error.status === 413) {
         throw new Error('File too large. Please upload a smaller file.');
       }
-      
+
       if (error.status === 415) {
         throw new Error('Unsupported file type. Please upload a supported document format.');
       }
-      
+
       // Re-throw with original message if it's already an Error
       if (error instanceof Error) {
         throw error;
       }
-      
+
       throw new Error(error.message || 'Document analysis failed. Please try again.');
     }
   }
@@ -108,7 +108,7 @@ export class AIService {
    */
   static async analyzeUrl(url: string): Promise<DocumentAnalysis> {
     const response = await ApiClient.post('/api/ai/analyze-url', { url });
-    
+
     if (!response.data.success) {
       throw new Error(response.data.error || 'URL analysis failed');
     }
@@ -121,7 +121,7 @@ export class AIService {
    */
   static async enhanceContent(content: string): Promise<string> {
     const response = await ApiClient.post('/api/ai/enhance-content', { content });
-    
+
     if (!response.data.success) {
       throw new Error(response.data.error || 'Enhancement failed');
     }
@@ -133,7 +133,7 @@ export class AIService {
    * Génère des questions de quiz avec l'IA
    */
   static async generateQuiz(
-    content: string | object, 
+    content: string | object,
     count: number = 5,
     questionDistribution?: {
       multipleChoice?: number;
@@ -180,10 +180,10 @@ export class AIService {
     }
 
     const response = await ApiClient.post('/api/ai/generate-quiz', requestBody);
-    
+
     // Log the response to verify number of questions returned
     const questions = response.data.data?.questions || response.data.questions || [];
-    
+
     // Always log mismatch as error for debugging
     if (questions.length !== count) {
       console.error(`[AIService] ⚠️ Mismatch: Requested ${count} questions but received ${questions.length}`);
@@ -195,7 +195,7 @@ export class AIService {
       // Log success for large quizzes (like final exams)
       console.log(`[AIService] ✅ Successfully received ${questions.length} questions`);
     }
-    
+
     if (!response.data.success) {
       throw new Error(response.data.error || response.data.message || 'Quiz generation failed');
     }
@@ -208,8 +208,8 @@ export class AIService {
    */
   static async generateAudio(text: string): Promise<Blob> {
     const token = ApiClient.getToken();
-    const apiUrl = import.meta.env.VITE_API_URL || process.env.NEXT_PUBLIC_API_URL || 'https://api-training.harx.ai';
-    
+    const apiUrl = import.meta.env.VITE_API_URL || process.env.NEXT_PUBLIC_API_URL || 'https://v25platformtrainingbackend-production.up.railway.app';
+
     const response = await fetch(`${apiUrl}/api/ai/generate-audio`, {
       method: 'POST',
       headers: {
@@ -231,7 +231,7 @@ export class AIService {
    */
   static async chat(message: string, context: string = ''): Promise<string> {
     const response = await ApiClient.post('/api/ai/chat', { message, context });
-    
+
     if (!response.data.success) {
       throw new Error(response.data.error || 'Chat failed');
     }
@@ -243,19 +243,19 @@ export class AIService {
    * Génère un curriculum complet basé sur l'analyse du document
    */
   static async generateCurriculum(
-    analysis: DocumentAnalysis, 
+    analysis: DocumentAnalysis,
     industry: string = 'General'
   ): Promise<Curriculum> {
-    const response = await ApiClient.post('/api/ai/generate-curriculum', { 
-      analysis, 
-      industry 
+    const response = await ApiClient.post('/api/ai/generate-curriculum', {
+      analysis,
+      industry
     });
-    
+
     // Check if response indicates failure
     if (response.data.success === false) {
       throw new Error(response.data.error || 'Curriculum generation failed');
     }
-    
+
     // Show a console message if using fallback mode
     if (response.data.fallbackMode) {
       console.warn('⚠️ Using fallback curriculum generation (OpenAI quota exceeded or unavailable)');
@@ -319,11 +319,11 @@ export class AIService {
       modules,
       formationTitle
     });
-    
+
     if (!response.data.success) {
       throw new Error(response.data.error || 'Final exam generation failed');
     }
-    
+
     return response.data;
   }
 
@@ -333,8 +333,8 @@ export class AIService {
    */
   static async exportToPowerPoint(curriculum: Curriculum): Promise<Blob> {
     const token = ApiClient.getToken();
-    const apiUrl = import.meta.env.VITE_API_URL || process.env.NEXT_PUBLIC_API_URL || 'https://api-training.harx.ai';
-    
+    const apiUrl = import.meta.env.VITE_API_URL || process.env.NEXT_PUBLIC_API_URL || 'https://v25platformtrainingbackend-production.up.railway.app';
+
     const response = await fetch(`${apiUrl}/ai/export-powerpoint`, {
       method: 'POST',
       headers: {

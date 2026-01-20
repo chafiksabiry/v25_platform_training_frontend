@@ -9,7 +9,7 @@ const getApiBaseUrl = () => {
     return import.meta.env.VITE_API_BASE_URL;
   }
   const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-  return isLocal ? 'http://localhost:5010' : 'https://api-training.harx.ai';
+  return isLocal ? 'http://localhost:5010' : 'https://v25platformtrainingbackend-production.up.railway.app';
 };
 
 const API_BASE = getApiBaseUrl();
@@ -46,7 +46,7 @@ export const AIContentOrganizer: React.FC<AIContentOrganizerProps> = ({
   existingUploads = [],
 }) => {
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
-  
+
   // Initialize with existing uploads if provided
   useEffect(() => {
     if (existingUploads && existingUploads.length > 0) {
@@ -206,22 +206,22 @@ export const AIContentOrganizer: React.FC<AIContentOrganizerProps> = ({
   };
 
   const analyzeFile = async (fileId: string, file: File) => {
-    setUploadedFiles(prev => prev.map(f => 
+    setUploadedFiles(prev => prev.map(f =>
       f.id === fileId ? { ...f, analyzing: true, analysisError: undefined } : f
     ));
 
     try {
       const analysis = await AIService.analyzeDocument(file);
-      setUploadedFiles(prev => prev.map(f => 
+      setUploadedFiles(prev => prev.map(f =>
         f.id === fileId ? { ...f, analysis, analyzing: false } : f
       ));
     } catch (err: any) {
       console.error('Analysis error:', err);
-      setUploadedFiles(prev => prev.map(f => 
-        f.id === fileId ? { 
-          ...f, 
-          analyzing: false, 
-          analysisError: err.message || 'Analysis failed' 
+      setUploadedFiles(prev => prev.map(f =>
+        f.id === fileId ? {
+          ...f,
+          analyzing: false,
+          analysisError: err.message || 'Analysis failed'
         } : f
       ));
     }
@@ -236,7 +236,7 @@ export const AIContentOrganizer: React.FC<AIContentOrganizerProps> = ({
     try {
       // Get all document analyses
       const documentFiles = uploadedFiles.filter(f => f.type === 'document' && f.analysis);
-      
+
       const response = await axios.post(`${API_BASE}/api/ai/generate-training-metadata`, {
         companyName: '', // Can be empty for AIContentOrganizer
         industry: '',
@@ -344,7 +344,7 @@ export const AIContentOrganizer: React.FC<AIContentOrganizerProps> = ({
       // Swap orderIndex values
       const currentModule = trainingOrganization[currentIndex];
       const targetModule = trainingOrganization[newIndex];
-      
+
       const currentOrder = currentModule.orderIndex || currentIndex;
       const targetOrder = targetModule.orderIndex || newIndex;
 
@@ -398,7 +398,7 @@ export const AIContentOrganizer: React.FC<AIContentOrganizerProps> = ({
 
       // Use custom instructions if provided, otherwise use initial organization
       const finalInstructions = organizationInstructions.trim() || initialOrganization || undefined;
-      
+
       const response = await axios.post(`${API_BASE}/api/ai/organize-training`, {
         trainingId,
         files: uploadedFiles.map(f => ({
@@ -427,9 +427,9 @@ export const AIContentOrganizer: React.FC<AIContentOrganizerProps> = ({
     } catch (err: any) {
       console.error('AI processing error:', err);
       console.error('Error response:', err.response?.data);
-      const errorMessage = err.response?.data?.message 
+      const errorMessage = err.response?.data?.message
         || err.response?.data?.error
-        || err.message 
+        || err.message
         || 'Failed to process content with AI';
       setError(`Error organizing training content: ${errorMessage}`);
     } finally {
@@ -492,11 +492,10 @@ export const AIContentOrganizer: React.FC<AIContentOrganizerProps> = ({
         </div>
 
         {/* AI Status */}
-        <div className={`mb-6 p-4 rounded-lg border-2 ${
-          aiAvailable === false 
-            ? 'bg-yellow-50 border-yellow-200' 
+        <div className={`mb-6 p-4 rounded-lg border-2 ${aiAvailable === false
+            ? 'bg-yellow-50 border-yellow-200'
             : 'bg-green-50 border-green-200'
-        }`}>
+          }`}>
           <div className="flex items-center">
             {aiAvailable === false ? (
               <>
@@ -553,21 +552,21 @@ export const AIContentOrganizer: React.FC<AIContentOrganizerProps> = ({
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-3 flex-1">
-                        {getFileIcon(file.type)}
+                          {getFileIcon(file.type)}
                           <div className="flex-1">
-                          <p className="font-medium text-gray-900">{file.name}</p>
-                          <p className="text-sm text-gray-500">
-                            {(file.size / 1024 / 1024).toFixed(2)} MB
-                          </p>
+                            <p className="font-medium text-gray-900">{file.name}</p>
+                            <p className="text-sm text-gray-500">
+                              {(file.size / 1024 / 1024).toFixed(2)} MB
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                      <button
-                        onClick={() => handleRemoveFile(file.id)}
-                        disabled={processing}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
-                      >
-                        <X className="w-5 h-5" />
-                      </button>
+                        <button
+                          onClick={() => handleRemoveFile(file.id)}
+                          disabled={processing}
+                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                        >
+                          <X className="w-5 h-5" />
+                        </button>
                       </div>
 
                       {/* Analysis Results for Documents */}
@@ -594,7 +593,7 @@ export const AIContentOrganizer: React.FC<AIContentOrganizerProps> = ({
                                   <div className="text-xs text-gray-600">Duration</div>
                                 </div>
                               </div>
-                              
+
                               {file.analysis.keyTopics && file.analysis.keyTopics.length > 0 && (
                                 <div>
                                   <h5 className="font-medium text-gray-900 mb-2 text-sm">Key Topics:</h5>
@@ -680,7 +679,7 @@ export const AIContentOrganizer: React.FC<AIContentOrganizerProps> = ({
                 const edited = editedModules.get(moduleId);
                 const currentTitle = edited?.title || module.title || `Module ${moduleIndex + 1}`;
                 const currentDescription = edited?.description || module.description || '';
-                
+
                 return (
                   <div
                     key={moduleId}
@@ -1050,7 +1049,7 @@ export const AIContentOrganizer: React.FC<AIContentOrganizerProps> = ({
                   <p className="text-xs text-gray-600">Automatically create quizzes for each module (5-15 questions based on content)</p>
                 </div>
               </label>
-              
+
               <label className="flex items-center space-x-3 p-3 bg-white rounded-lg border-2 border-purple-200 hover:border-purple-300 cursor-pointer transition-colors">
                 <input
                   type="checkbox"
@@ -1096,33 +1095,33 @@ export const AIContentOrganizer: React.FC<AIContentOrganizerProps> = ({
             </div>
           ) : (
             <>
-          <button
-            onClick={onSkip}
-            className="px-6 py-3 text-gray-600 hover:text-gray-800 transition-colors font-medium"
-            disabled={processing}
-          >
-            {aiAvailable === false ? 'Continue Manual Creation' : 'Skip AI & Create Manually'}
-          </button>
+              <button
+                onClick={onSkip}
+                className="px-6 py-3 text-gray-600 hover:text-gray-800 transition-colors font-medium"
+                disabled={processing}
+              >
+                {aiAvailable === false ? 'Continue Manual Creation' : 'Skip AI & Create Manually'}
+              </button>
 
-          {aiAvailable !== false && (
-            <button
-              onClick={handleProcessWithAI}
-              disabled={uploadedFiles.length === 0 || uploading || processing}
-              className="px-8 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center font-semibold shadow-lg"
-            >
-              {processing ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                  Organizing with AI...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-5 h-5 mr-2" />
-                  Organize with AI
-                  <ArrowRight className="w-5 h-5 ml-2" />
-                </>
-              )}
-            </button>
+              {aiAvailable !== false && (
+                <button
+                  onClick={handleProcessWithAI}
+                  disabled={uploadedFiles.length === 0 || uploading || processing}
+                  className="px-8 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center font-semibold shadow-lg"
+                >
+                  {processing ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                      Organizing with AI...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-5 h-5 mr-2" />
+                      Organize with AI
+                      <ArrowRight className="w-5 h-5 ml-2" />
+                    </>
+                  )}
+                </button>
               )}
             </>
           )}

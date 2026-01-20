@@ -10,7 +10,7 @@ const getApiBaseUrl = () => {
     return import.meta.env.VITE_API_BASE_URL;
   }
   const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-  return isLocal ? 'http://localhost:5010' : 'https://api-training.harx.ai';
+  return isLocal ? 'http://localhost:5010' : 'https://v25platformtrainingbackend-production.up.railway.app';
 };
 
 const API_BASE = getApiBaseUrl();
@@ -93,7 +93,7 @@ export const QuizBuilder: React.FC<QuizBuilderProps> = ({ module, training, onBa
       if (response.data.success) {
         await loadQuizzes();
         setEditingQuiz(false);
-        
+
         if (selectQuiz) {
           // ✨ Automatically select quiz to add questions
           const newQuiz = response.data.data;
@@ -367,11 +367,10 @@ export const QuizBuilder: React.FC<QuizBuilderProps> = ({ module, training, onBa
                     setSelectedQuiz(quiz);
                     setEditingQuiz(false);
                   }}
-                  className={`p-4 rounded-lg cursor-pointer transition-colors ${
-                    selectedQuiz?.id === quiz.id
+                  className={`p-4 rounded-lg cursor-pointer transition-colors ${selectedQuiz?.id === quiz.id
                       ? 'bg-blue-50 border-2 border-blue-500'
                       : 'bg-gray-50 hover:bg-gray-100 border-2 border-transparent'
-                  }`}
+                    }`}
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
@@ -432,238 +431,237 @@ export const QuizBuilder: React.FC<QuizBuilderProps> = ({ module, training, onBa
         {/* Quiz Questions - Right Column with margin for fixed left column */}
         <div className="ml-96 px-6">
           <div className="max-w-5xl">
-          {selectedQuiz && !editingQuiz ? (
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h2 className="text-2xl font-bold mb-4">{selectedQuiz.title}</h2>
-              <p className="text-gray-600 mb-6">{selectedQuiz.description}</p>
+            {selectedQuiz && !editingQuiz ? (
+              <div className="bg-white rounded-lg shadow-md p-6">
+                <h2 className="text-2xl font-bold mb-4">{selectedQuiz.title}</h2>
+                <p className="text-gray-600 mb-6">{selectedQuiz.description}</p>
 
-              {/* Quiz Settings Info */}
-              <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-                <h3 className="font-medium mb-2">Quiz Settings</h3>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="text-gray-600">Passing Score:</span>
-                    <span className="ml-2 font-medium">{selectedQuiz.passingScore}%</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-600">Max Attempts:</span>
-                    <span className="ml-2 font-medium">{selectedQuiz.maxAttempts}</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-600">Time Limit:</span>
-                    <span className="ml-2 font-medium">{selectedQuiz.timeLimit ? `${selectedQuiz.timeLimit} min` : 'Unlimited'}</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-600">Questions:</span>
-                    <span className="ml-2 font-medium">{selectedQuiz.questions?.length || 0}</span>
+                {/* Quiz Settings Info */}
+                <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+                  <h3 className="font-medium mb-2">Quiz Settings</h3>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-gray-600">Passing Score:</span>
+                      <span className="ml-2 font-medium">{selectedQuiz.passingScore}%</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Max Attempts:</span>
+                      <span className="ml-2 font-medium">{selectedQuiz.maxAttempts}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Time Limit:</span>
+                      <span className="ml-2 font-medium">{selectedQuiz.timeLimit ? `${selectedQuiz.timeLimit} min` : 'Unlimited'}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Questions:</span>
+                      <span className="ml-2 font-medium">{selectedQuiz.questions?.length || 0}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Add Question Form */}
-              <div className="mb-6 p-6 bg-gray-50 rounded-lg">
-                <h3 className="font-medium mb-4 flex items-center">
-                  <Plus className="w-5 h-5 mr-2" />
-                  Add New Question
-                </h3>
-                
-                <div className="space-y-4">
-                  <textarea
-                    placeholder="Enter your question"
-                    value={questionForm.question}
-                    onChange={(e) => setQuestionForm({ ...questionForm, question: e.target.value })}
-                    rows={3}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                  />
+                {/* Add Question Form */}
+                <div className="mb-6 p-6 bg-gray-50 rounded-lg">
+                  <h3 className="font-medium mb-4 flex items-center">
+                    <Plus className="w-5 h-5 mr-2" />
+                    Add New Question
+                  </h3>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <select
-                      value={questionForm.type}
-                      onChange={(e) => setQuestionForm({
-                        ...questionForm,
-                        type: e.target.value as any,
-                        options: e.target.value === 'true-false' ? ['True', 'False'] : ['', '', '', ''],
-                        correctAnswer: 0,
-                      })}
-                      className="px-4 py-2 border border-gray-300 rounded-lg"
-                    >
-                      <option value="multiple-choice">Multiple Choice</option>
-                      <option value="true-false">True/False</option>
-                      <option value="short-answer">Short Answer</option>
-                    </select>
-
-                    <input
-                      type="number"
-                      placeholder="Points"
-                      value={questionForm.points}
-                      onChange={(e) => setQuestionForm({ ...questionForm, points: parseInt(e.target.value) || 1 })}
-                      className="px-4 py-2 border border-gray-300 rounded-lg"
+                  <div className="space-y-4">
+                    <textarea
+                      placeholder="Enter your question"
+                      value={questionForm.question}
+                      onChange={(e) => setQuestionForm({ ...questionForm, question: e.target.value })}
+                      rows={3}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg"
                     />
-                  </div>
 
-                  {/* Options for multiple-choice */}
-                  {questionForm.type === 'multiple-choice' && (
-                    <div className="space-y-2">
-                      <label className="block text-sm font-medium text-gray-700">Answer Options</label>
-                      {questionForm.options?.map((option, index) => (
-                        <div key={index} className="flex items-center space-x-2">
-                          <input
-                            type="radio"
-                            name="correctAnswer"
-                            checked={questionForm.correctAnswer === index}
-                            onChange={() => setQuestionForm({ ...questionForm, correctAnswer: index })}
-                            className="w-4 h-4"
-                          />
-                          <input
-                            type="text"
-                            placeholder={`Option ${index + 1}`}
-                            value={option}
-                            onChange={(e) => {
-                              const newOptions = [...(questionForm.options || [])];
-                              newOptions[index] = e.target.value;
-                              setQuestionForm({ ...questionForm, options: newOptions });
-                            }}
-                            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg"
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                    <div className="grid grid-cols-2 gap-4">
+                      <select
+                        value={questionForm.type}
+                        onChange={(e) => setQuestionForm({
+                          ...questionForm,
+                          type: e.target.value as any,
+                          options: e.target.value === 'true-false' ? ['True', 'False'] : ['', '', '', ''],
+                          correctAnswer: 0,
+                        })}
+                        className="px-4 py-2 border border-gray-300 rounded-lg"
+                      >
+                        <option value="multiple-choice">Multiple Choice</option>
+                        <option value="true-false">True/False</option>
+                        <option value="short-answer">Short Answer</option>
+                      </select>
 
-                  {/* True/False */}
-                  {questionForm.type === 'true-false' && (
-                    <div className="space-y-2">
-                      <label className="block text-sm font-medium text-gray-700">Correct Answer</label>
-                      <div className="flex space-x-4">
-                        <label className="flex items-center space-x-2">
-                          <input
-                            type="radio"
-                            checked={questionForm.correctAnswer === 0}
-                            onChange={() => setQuestionForm({ ...questionForm, correctAnswer: 0 })}
-                            className="w-4 h-4"
-                          />
-                          <span>True</span>
-                        </label>
-                        <label className="flex items-center space-x-2">
-                          <input
-                            type="radio"
-                            checked={questionForm.correctAnswer === 1}
-                            onChange={() => setQuestionForm({ ...questionForm, correctAnswer: 1 })}
-                            className="w-4 h-4"
-                          />
-                          <span>False</span>
-                        </label>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Short Answer */}
-                  {questionForm.type === 'short-answer' && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Expected Answer</label>
                       <input
-                        type="text"
-                        placeholder="Enter the correct answer"
-                        value={questionForm.correctAnswer as string || ''}
-                        onChange={(e) => setQuestionForm({ ...questionForm, correctAnswer: e.target.value })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                        type="number"
+                        placeholder="Points"
+                        value={questionForm.points}
+                        onChange={(e) => setQuestionForm({ ...questionForm, points: parseInt(e.target.value) || 1 })}
+                        className="px-4 py-2 border border-gray-300 rounded-lg"
                       />
                     </div>
+
+                    {/* Options for multiple-choice */}
+                    {questionForm.type === 'multiple-choice' && (
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-gray-700">Answer Options</label>
+                        {questionForm.options?.map((option, index) => (
+                          <div key={index} className="flex items-center space-x-2">
+                            <input
+                              type="radio"
+                              name="correctAnswer"
+                              checked={questionForm.correctAnswer === index}
+                              onChange={() => setQuestionForm({ ...questionForm, correctAnswer: index })}
+                              className="w-4 h-4"
+                            />
+                            <input
+                              type="text"
+                              placeholder={`Option ${index + 1}`}
+                              value={option}
+                              onChange={(e) => {
+                                const newOptions = [...(questionForm.options || [])];
+                                newOptions[index] = e.target.value;
+                                setQuestionForm({ ...questionForm, options: newOptions });
+                              }}
+                              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* True/False */}
+                    {questionForm.type === 'true-false' && (
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-gray-700">Correct Answer</label>
+                        <div className="flex space-x-4">
+                          <label className="flex items-center space-x-2">
+                            <input
+                              type="radio"
+                              checked={questionForm.correctAnswer === 0}
+                              onChange={() => setQuestionForm({ ...questionForm, correctAnswer: 0 })}
+                              className="w-4 h-4"
+                            />
+                            <span>True</span>
+                          </label>
+                          <label className="flex items-center space-x-2">
+                            <input
+                              type="radio"
+                              checked={questionForm.correctAnswer === 1}
+                              onChange={() => setQuestionForm({ ...questionForm, correctAnswer: 1 })}
+                              className="w-4 h-4"
+                            />
+                            <span>False</span>
+                          </label>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Short Answer */}
+                    {questionForm.type === 'short-answer' && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Expected Answer</label>
+                        <input
+                          type="text"
+                          placeholder="Enter the correct answer"
+                          value={questionForm.correctAnswer as string || ''}
+                          onChange={(e) => setQuestionForm({ ...questionForm, correctAnswer: e.target.value })}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                        />
+                      </div>
+                    )}
+
+                    <textarea
+                      placeholder="Explanation (optional)"
+                      value={questionForm.explanation}
+                      onChange={(e) => setQuestionForm({ ...questionForm, explanation: e.target.value })}
+                      rows={2}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                    />
+
+                    <button
+                      onClick={handleAddQuestion}
+                      disabled={!questionForm.question}
+                      className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Plus className="w-4 h-4 inline mr-2" />
+                      Add Question
+                    </button>
+                  </div>
+                </div>
+
+                {/* Questions List */}
+                <div className="space-y-4">
+                  <h3 className="font-medium flex items-center">
+                    <HelpCircle className="w-5 h-5 mr-2" />
+                    Questions ({selectedQuiz.questions?.length || 0})
+                  </h3>
+
+                  {selectedQuiz.questions && selectedQuiz.questions.length > 0 ? (
+                    selectedQuiz.questions.map((question, index) => (
+                      <div key={question.id} className="p-4 bg-gray-50 rounded-lg">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-2 mb-2">
+                              <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded">
+                                Q{index + 1}
+                              </span>
+                              <span className="px-2 py-1 bg-gray-200 text-gray-700 text-xs rounded">
+                                {question.type}
+                              </span>
+                              <span className="text-xs text-gray-500">{question.points} point(s)</span>
+                            </div>
+
+                            <p className="font-medium text-gray-900 mb-2">{question.question}</p>
+
+                            {question.type === 'multiple-choice' && question.options && (
+                              <div className="space-y-1 text-sm">
+                                {question.options.map((option, optIdx) => (
+                                  <div key={optIdx} className={`flex items-center space-x-2 ${question.correctAnswer === optIdx ? 'text-green-700 font-medium' : 'text-gray-600'
+                                    }`}>
+                                    <span>{optIdx === question.correctAnswer ? '✓' : '○'}</span>
+                                    <span>{option}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            {question.type === 'true-false' && (
+                              <p className="text-sm text-green-700 font-medium">
+                                Correct Answer: {question.correctAnswer === 0 ? 'True' : 'False'}
+                              </p>
+                            )}
+
+                            {question.explanation && (
+                              <p className="text-sm text-gray-600 mt-2 italic">
+                                Explanation: {question.explanation}
+                              </p>
+                            )}
+                          </div>
+
+                          <button
+                            onClick={() => handleDeleteQuestion(question.id!)}
+                            className="p-2 text-red-600 hover:bg-red-50 rounded transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-center text-gray-500 py-8">No questions yet. Add your first question above.</p>
                   )}
-
-                  <textarea
-                    placeholder="Explanation (optional)"
-                    value={questionForm.explanation}
-                    onChange={(e) => setQuestionForm({ ...questionForm, explanation: e.target.value })}
-                    rows={2}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                  />
-
-                  <button
-                    onClick={handleAddQuestion}
-                    disabled={!questionForm.question}
-                    className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <Plus className="w-4 h-4 inline mr-2" />
-                    Add Question
-                  </button>
                 </div>
               </div>
-
-              {/* Questions List */}
-              <div className="space-y-4">
-                <h3 className="font-medium flex items-center">
-                  <HelpCircle className="w-5 h-5 mr-2" />
-                  Questions ({selectedQuiz.questions?.length || 0})
-                </h3>
-                
-                {selectedQuiz.questions && selectedQuiz.questions.length > 0 ? (
-                  selectedQuiz.questions.map((question, index) => (
-                    <div key={question.id} className="p-4 bg-gray-50 rounded-lg">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-2 mb-2">
-                            <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded">
-                              Q{index + 1}
-                            </span>
-                            <span className="px-2 py-1 bg-gray-200 text-gray-700 text-xs rounded">
-                              {question.type}
-                            </span>
-                            <span className="text-xs text-gray-500">{question.points} point(s)</span>
-                          </div>
-                          
-                          <p className="font-medium text-gray-900 mb-2">{question.question}</p>
-                          
-                          {question.type === 'multiple-choice' && question.options && (
-                            <div className="space-y-1 text-sm">
-                              {question.options.map((option, optIdx) => (
-                                <div key={optIdx} className={`flex items-center space-x-2 ${
-                                  question.correctAnswer === optIdx ? 'text-green-700 font-medium' : 'text-gray-600'
-                                }`}>
-                                  <span>{optIdx === question.correctAnswer ? '✓' : '○'}</span>
-                                  <span>{option}</span>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                          
-                          {question.type === 'true-false' && (
-                            <p className="text-sm text-green-700 font-medium">
-                              Correct Answer: {question.correctAnswer === 0 ? 'True' : 'False'}
-                            </p>
-                          )}
-                          
-                          {question.explanation && (
-                            <p className="text-sm text-gray-600 mt-2 italic">
-                              Explanation: {question.explanation}
-                            </p>
-                          )}
-                        </div>
-                        
-                        <button
-                          onClick={() => handleDeleteQuestion(question.id!)}
-                          className="p-2 text-red-600 hover:bg-red-50 rounded transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-center text-gray-500 py-8">No questions yet. Add your first question above.</p>
-                )}
+            ) : (
+              <div className="bg-white rounded-lg shadow-md p-12 text-center">
+                <div className="text-gray-400 mb-4">
+                  <HelpCircle className="w-16 h-16 mx-auto" />
+                </div>
+                <p className="text-xl text-gray-600">
+                  {editingQuiz ? 'Fill in the quiz details' : 'Select a quiz to manage questions'}
+                </p>
               </div>
-            </div>
-          ) : (
-            <div className="bg-white rounded-lg shadow-md p-12 text-center">
-              <div className="text-gray-400 mb-4">
-                <HelpCircle className="w-16 h-16 mx-auto" />
-              </div>
-              <p className="text-xl text-gray-600">
-                {editingQuiz ? 'Fill in the quiz details' : 'Select a quiz to manage questions'}
-              </p>
-            </div>
-          )}
+            )}
           </div>
         </div>
       </div>

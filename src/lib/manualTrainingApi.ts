@@ -8,16 +8,16 @@ const getApiBaseUrl = () => {
   if (import.meta.env.VITE_API_BASE_URL) {
     return import.meta.env.VITE_API_BASE_URL;
   }
-  
+
   // Détecter selon l'hostname
   const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-  
+
   if (isLocal) {
     // Environnement local
     return 'http://localhost:5010';
   } else {
     // Environnement production
-    return 'https://api-training.harx.ai';
+    return 'https://v25platformtrainingbackend-production.up.railway.app';
   }
 };
 

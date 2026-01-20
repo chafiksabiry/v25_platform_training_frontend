@@ -44,13 +44,13 @@ logger.log('[Training] Stored companyId from cookie:', companyId);
 logger.log('[Training] Stored token from localStorage:', token ? 'Present' : 'Not found');
 
 // Check authentication - redirect if not logged in (check both userId and token)
-if (!token || !userId){
+if (!token || !userId) {
   logger.warn('[Training] Authentication failed - redirecting to login');
-  
+
   // Redirect to main app login page
   if (window.location.hostname === 'training.harx.ai') {
     // If accessed directly via training.harx.ai, redirect to main app
-    window.location.href = 'https://v25.harx.ai/app1';
+    window.location.href = 'https://harx25pageslinks.netlify.app/app1';
   } else {
     // If accessed via v25.harx.ai (Qiankun), redirect to app1
     window.location.href = '/app1';
@@ -59,13 +59,13 @@ if (!token || !userId){
   // Decode token and get user info
   const userInfo = decodeToken(token);
   logger.log('[Training] User authenticated:', userInfo?.name || userInfo?.fullName || 'Unknown');
-    
-    // Check if token is expired
+
+  // Check if token is expired
   if (userInfo && userInfo.exp && userInfo.exp * 1000 < Date.now()) {
     logger.warn('[Training] Token is expired, redirecting to /app1');
-      localStorage.removeItem('token');
-      Cookies.remove('userId');
-      window.location.href = '/app1';
+    localStorage.removeItem('token');
+    Cookies.remove('userId');
+    window.location.href = '/app1';
   }
 }
 
@@ -75,7 +75,7 @@ let root: ReturnType<typeof createRoot> | null = null;
 function render(props: { container?: HTMLElement }) {
   const { container } = props;
   logger.debug('[Training] Rendering app');
-  
+
   const rootElement = container
     ? container.querySelector('#root')
     : document.getElementById('root');
@@ -130,7 +130,7 @@ window.addEventListener('error', (event) => {
 // Standalone mode: If the app is running outside Qiankun, it will use this code
 if (!qiankunWindow.__POWERED_BY_QIANKUN__) {
   logger.debug('[Training] Running in standalone mode');
-  
+
   // Wait for the DOM to be fully loaded
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {

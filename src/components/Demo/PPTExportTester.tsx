@@ -34,7 +34,7 @@ export default function PPTExportTester() {
     try {
       console.log('📊 Exporting curriculum to PowerPoint...');
       const curriculum = getCurriculum();
-      
+
       console.log('Curriculum data:', curriculum);
 
       // Appel à l'API pour générer le PPT
@@ -52,7 +52,7 @@ export default function PPTExportTester() {
 
       setExportStatus('success');
       setMessage('✅ PowerPoint exporté avec succès! Le fichier a été téléchargé.');
-      
+
       console.log('✅ Export completed successfully!');
     } catch (error: any) {
       console.error('❌ Export failed:', error);
@@ -73,7 +73,7 @@ export default function PPTExportTester() {
             <h1 className="text-3xl font-bold text-gray-900">PowerPoint Export Tester</h1>
           </div>
           <p className="text-gray-600">
-            Testez l'export PowerPoint avec différents curricula mock. 
+            Testez l'export PowerPoint avec différents curricula mock.
             Sélectionnez un curriculum et cliquez sur "Export PPT".
           </p>
         </div>
@@ -83,7 +83,7 @@ export default function PPTExportTester() {
           <h2 className="text-xl font-semibold text-gray-900 mb-4">
             Sélectionner un Curriculum de Test
           </h2>
-          
+
           <div className="space-y-3">
             <label className="flex items-start space-x-3 p-4 border-2 rounded-xl cursor-pointer hover:bg-purple-50 transition-colors">
               <input
@@ -159,7 +159,7 @@ export default function PPTExportTester() {
           <h2 className="text-xl font-semibold text-gray-900 mb-4">
             Aperçu du Curriculum Sélectionné
           </h2>
-          
+
           {(() => {
             const curr = getCurriculum();
             return (
@@ -186,7 +186,7 @@ export default function PPTExportTester() {
                     <div className="font-semibold text-gray-900">{curr.methodology}</div>
                   </div>
                 </div>
-                
+
                 <div>
                   <div className="text-sm text-gray-500 mb-2">Modules</div>
                   <div className="space-y-2">
@@ -237,20 +237,18 @@ export default function PPTExportTester() {
 
           {/* Status Message */}
           {message && (
-            <div className={`mt-4 p-4 rounded-xl flex items-start space-x-3 ${
-              exportStatus === 'success' 
-                ? 'bg-green-50 border border-green-200' 
+            <div className={`mt-4 p-4 rounded-xl flex items-start space-x-3 ${exportStatus === 'success'
+                ? 'bg-green-50 border border-green-200'
                 : 'bg-red-50 border border-red-200'
-            }`}>
+              }`}>
               {exportStatus === 'success' ? (
                 <CheckCircle className="h-6 w-6 text-green-600 flex-shrink-0" />
               ) : (
                 <AlertCircle className="h-6 w-6 text-red-600 flex-shrink-0" />
               )}
               <div className="flex-1">
-                <div className={`font-semibold ${
-                  exportStatus === 'success' ? 'text-green-900' : 'text-red-900'
-                }`}>
+                <div className={`font-semibold ${exportStatus === 'success' ? 'text-green-900' : 'text-red-900'
+                  }`}>
                   {exportStatus === 'success' ? 'Succès!' : 'Erreur'}
                 </div>
                 <div className={exportStatus === 'success' ? 'text-green-700' : 'text-red-700'}>
@@ -289,13 +287,13 @@ export default function PPTExportTester() {
               <span>Ouvrez le fichier avec PowerPoint, Keynote ou Google Slides</span>
             </li>
           </ol>
-          
+
           <div className="mt-6 p-4 bg-white rounded-lg border border-blue-200">
             <div className="text-sm font-semibold text-gray-900 mb-2">
               ⚠️ Prérequis
             </div>
             <ul className="text-sm text-gray-600 space-y-1">
-              <li>• Le backend doit être lancé sur <code className="bg-gray-100 px-2 py-1 rounded">https://api-training.harx.ai</code></li>
+              <li>• Le backend doit être lancé sur <code className="bg-gray-100 px-2 py-1 rounded">https://v25platformtrainingbackend-production.up.railway.app</code></li>
               <li>• Le service PPTExportService doit être actif</li>
               <li>• Les dépendances Apache POI doivent être installées</li>
             </ul>

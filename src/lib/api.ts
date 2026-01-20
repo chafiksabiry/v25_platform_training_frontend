@@ -21,7 +21,7 @@ class ApiClientClass {
     } else {
       const isDevelopment = import.meta.env.DEV || import.meta.env.MODE === 'development';
       const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-      this.baseURL = isLocal ? 'http://localhost:5010' : 'https://api-training.harx.ai';
+      this.baseURL = isLocal ? 'http://localhost:5010' : 'https://v25platformtrainingbackend-production.up.railway.app';
     }
   }
 
@@ -112,7 +112,7 @@ class ApiClientClass {
 
   async upload<T>(endpoint: string, formData: FormData): Promise<ApiResponse<T>> {
     const token = this.getToken();
-    
+
     const config: RequestInit = {
       method: 'POST',
       headers: {
@@ -123,14 +123,14 @@ class ApiClientClass {
     };
 
     const url = `${this.baseURL}${endpoint}`;
-    
+
     try {
-    const response = await fetch(url, config);
-      
+      const response = await fetch(url, config);
+
       // Check if response has content before trying to parse JSON
       const contentType = response.headers.get('content-type');
       let data: any;
-      
+
       if (contentType && contentType.includes('application/json')) {
         data = await response.json();
       } else {
@@ -140,26 +140,26 @@ class ApiClientClass {
           data = JSON.parse(text);
         } catch {
           // If text is not JSON, create error object
-          data = { 
-            message: text || 'Upload failed', 
-            error: text || 'Upload failed' 
+          data = {
+            message: text || 'Upload failed',
+            error: text || 'Upload failed'
           };
         }
       }
 
-    if (!response.ok) {
+      if (!response.ok) {
         throw new ApiError(
-          data.message || data.error || 'Upload failed', 
+          data.message || data.error || 'Upload failed',
           response.status,
           data.errors
         );
-    }
+      }
 
-    return {
-      data,
-      status: response.status,
-      message: data.message,
-    };
+      return {
+        data,
+        status: response.status,
+        message: data.message,
+      };
     } catch (error) {
       if (error instanceof ApiError) {
         throw error;

@@ -87,7 +87,7 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
   const modulesWithSections = useMemo(() => {
     return updatedModules.map((module, moduleIndex) => {
       const moduleWithSections = module as ModuleWithSections;
-      
+
       // If module already has sections, use them
       if (moduleWithSections.sections && moduleWithSections.sections.length > 0) {
         // Check if sections have URLs
@@ -99,22 +99,22 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
         });
         return moduleWithSections;
       }
-      
+
       // Otherwise, create sections from uploads
       // Match uploads to modules based on index or content
       const relevantUploads = uploads.filter((upload, uploadIndex) => {
         // Try to match by module title or use index-based matching
         const moduleTitleLower = module.title.toLowerCase();
         const uploadNameLower = upload.name.toLowerCase();
-        return moduleTitleLower.includes(uploadNameLower.replace(/\.[^/.]+$/, '')) || 
-               uploadIndex === moduleIndex;
+        return moduleTitleLower.includes(uploadNameLower.replace(/\.[^/.]+$/, '')) ||
+          uploadIndex === moduleIndex;
       });
-      
+
       // If no direct match, use all uploads for first module, or distribute
-      const uploadsToUse = relevantUploads.length > 0 
-        ? relevantUploads 
+      const uploadsToUse = relevantUploads.length > 0
+        ? relevantUploads
         : (moduleIndex === 0 ? uploads : []);
-      
+
       const sections: TrainingSection[] = uploadsToUse.map((upload, uploadIdx) => {
         // Determine section type based on upload type
         let sectionType: TrainingSection['type'] = 'document';
@@ -123,20 +123,20 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
         } else if (upload.type === 'document' || upload.type === 'presentation') {
           sectionType = 'document';
         }
-        
+
         // Get AI description from upload analysis (formatted nicely)
-        const aiDescription = upload.aiAnalysis 
+        const aiDescription = upload.aiAnalysis
           ? `📚 **Key Topics:**\n${upload.aiAnalysis.keyTopics?.map(topic => `• ${topic}`).join('\n') || 'N/A'}\n\n` +
-            `🎯 **Learning Objectives:**\n${upload.aiAnalysis.learningObjectives?.map(obj => `• ${obj}`).join('\n') || 'N/A'}\n\n` +
-            `⏱️ **Estimated Duration:** ${upload.aiAnalysis.estimatedReadTime || 0} minutes\n\n` +
-            `📊 **Difficulty Level:** ${upload.aiAnalysis.difficulty || 'N/A'}/10`
+          `🎯 **Learning Objectives:**\n${upload.aiAnalysis.learningObjectives?.map(obj => `• ${obj}`).join('\n') || 'N/A'}\n\n` +
+          `⏱️ **Estimated Duration:** ${upload.aiAnalysis.estimatedReadTime || 0} minutes\n\n` +
+          `📊 **Difficulty Level:** ${upload.aiAnalysis.difficulty || 'N/A'}/10`
           : `Document: ${upload.name}`;
-        
+
         // Create content file from upload
         // Use Cloudinary URL if available (persistent), otherwise fallback to blob URL
         let fileUrl = '';
         let filePublicId = upload.id;
-        
+
         if (upload.cloudinaryUrl) {
           // Use Cloudinary URL (persistent)
           fileUrl = upload.cloudinaryUrl;
@@ -151,27 +151,27 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
             console.warn('Could not create object URL for file:', upload.name, e);
           }
         }
-        
+
         const contentFile: ContentFile = {
           id: upload.id,
           name: upload.name,
-          type: upload.type === 'video' ? 'video' : 
-                upload.type === 'presentation' ? 'pdf' : 
-                upload.type === 'document' ? 'pdf' : 'pdf',
+          type: upload.type === 'video' ? 'video' :
+            upload.type === 'presentation' ? 'pdf' :
+              upload.type === 'document' ? 'pdf' : 'pdf',
           url: fileUrl, // Cloudinary URL or blob URL
           publicId: filePublicId, // Cloudinary public ID or upload ID
           size: upload.size || 0,
-          mimeType: upload.type === 'video' ? 'video/mp4' : 
-                   upload.type === 'document' ? 'application/pdf' : 
-                   upload.type === 'presentation' ? 'application/pdf' : 'application/pdf'
+          mimeType: upload.type === 'video' ? 'video/mp4' :
+            upload.type === 'document' ? 'application/pdf' :
+              upload.type === 'presentation' ? 'application/pdf' : 'application/pdf'
         };
-        
+
         const sectionContent: SectionContent = {
           text: aiDescription,
           file: contentFile,
           keyPoints: upload.aiAnalysis?.keyTopics || []
         };
-        
+
         return {
           id: `section-${moduleIndex}-${uploadIdx}`,
           title: upload.name.replace(/\.[^/.]+$/, ''),
@@ -181,18 +181,18 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
           estimatedDuration: upload.aiAnalysis?.estimatedReadTime || 10
         };
       });
-      
+
       const result = {
         ...moduleWithSections,
         sections: sections.length > 0 ? sections : undefined
       };
-      
+
       console.log(`📦 Module ${moduleIndex} (${module.title}) - Created ${sections.length} sections from uploads`);
       sections.forEach((section, idx) => {
         const fileUrl = section.content?.file?.url;
         console.log(`  📄 Section ${idx} (${section.title}):`, fileUrl || 'NO URL');
       });
-      
+
       return result;
     });
   }, [updatedModules, uploads]);
@@ -201,7 +201,7 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
   const isLastModule = currentModuleIndex === updatedModules.length - 1;
   const hasSections = currentModule?.sections && currentModule.sections.length > 0;
   const currentSection = hasSections ? currentModule.sections[currentSectionIndex] : null;
-  
+
   // Debug logs
   useEffect(() => {
     if (currentSection) {
@@ -219,7 +219,7 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
     }
   }, [currentSection]);
   const progress = (completedModules.length / updatedModules.length) * 100;
-  
+
   // Calculate section progress
   const sectionProgress = hasSections && currentModule.sections.length > 0
     ? (completedSections.size / currentModule.sections.length) * 100
@@ -249,11 +249,11 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
   const handleModuleComplete = () => {
     // Prevent scrolling when switching modules
     shouldScrollRef.current = false;
-    
+
     if (currentModule && !completedModules.includes(currentModule.id)) {
       setCompletedModules(prev => [...prev, currentModule.id]);
     }
-    
+
     // Mark all sections as completed
     if (currentModule && currentModule.sections) {
       const sectionIds = currentModule.sections.map(s => s.id || '');
@@ -263,11 +263,11 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
         return newSet;
       });
     }
-    
+
     // Check if current module has quizzes/assessments
     const hasQuizzes = currentModule?.quizzes && currentModule.quizzes.length > 0;
     const hasAssessments = currentModule?.assessments && currentModule.assessments.length > 0;
-    
+
     // If module has quizzes/assessments, scroll to them first, then move to next module
     if (hasQuizzes || hasAssessments) {
       // Scroll to quizzes section briefly to show them
@@ -286,7 +286,7 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
       }, 100);
       return;
     }
-    
+
     // If no quizzes/assessments exist, scroll to quizzes section to show "Generate Quiz" button
     // Then move to next module after a brief delay
     setTimeout(() => {
@@ -307,11 +307,11 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
   const handleSectionComplete = () => {
     // Prevent scrolling when switching sections
     shouldScrollRef.current = false;
-    
+
     if (currentSection?.id) {
       setCompletedSections(prev => new Set(prev).add(currentSection.id!));
     }
-    
+
     if (hasSections && currentSectionIndex < currentModule.sections!.length - 1) {
       setCurrentSectionIndex(prev => prev + 1);
     } else {
@@ -322,7 +322,7 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
   const handleNextSection = () => {
     // Prevent scrolling when clicking Next
     shouldScrollRef.current = false;
-    
+
     if (hasSections && currentSectionIndex < currentModule.sections!.length - 1) {
       setCurrentSectionIndex(prev => prev + 1);
     } else if (currentModuleIndex < updatedModules.length - 1) {
@@ -334,7 +334,7 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
   const handlePreviousSection = () => {
     // Prevent scrolling when clicking Previous
     shouldScrollRef.current = false;
-    
+
     if (currentSectionIndex > 0) {
       setCurrentSectionIndex(prev => prev - 1);
     } else if (currentModuleIndex > 0) {
@@ -387,7 +387,7 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
     if (import.meta.env.VITE_API_BASE_URL) {
       return import.meta.env.VITE_API_BASE_URL;
     }
-    return 'https://api-training.harx.ai';
+    return 'https://v25platformtrainingbackend-production.up.railway.app';
   };
   const API_BASE = getApiBaseUrl();
 
@@ -396,10 +396,10 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
     // Automatically generate quiz with predefined configuration
     // Module: 10 questions (4 QCM, 3 True/False, 3 Multiple Correct Answers)
     // Final Exam: 30 questions (12 QCM, 9 True/False, 9 Multiple Correct Answers)
-    const config = isFinalExam 
+    const config = isFinalExam
       ? { totalQuestions: 30, passingScore: 70, multipleChoice: 12, trueFalse: 9, multipleCorrect: 9 }
       : { totalQuestions: 10, passingScore: 70, multipleChoice: 4, trueFalse: 3, multipleCorrect: 3 };
-    
+
     generateModuleQuiz(module, isFinalExam, config);
   };
 
@@ -412,7 +412,7 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
     multipleCorrect: number;
   }) => {
     const moduleId = module.id;
-    
+
     // Only set generatingQuizForModule if it's NOT a final exam
     if (!isFinalExam) {
       setGeneratingQuizForModule(moduleId);
@@ -423,10 +423,10 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
     // Default configuration if not provided
     // Final Exam: 30 questions (12 QCM, 9 True/False, 9 Multiple Correct Answers)
     // Module Quiz: 10 questions (4 QCM, 3 True/False, 3 Multiple Correct Answers)
-    const finalConfig = config || (isFinalExam 
+    const finalConfig = config || (isFinalExam
       ? { totalQuestions: 30, passingScore: 70, multipleChoice: 12, trueFalse: 9, multipleCorrect: 9 }
       : { totalQuestions: 10, passingScore: 70, multipleChoice: 4, trueFalse: 3, multipleCorrect: 3 });
-    
+
     console.log(`📊 ${isFinalExam ? 'Final Exam' : 'Quiz'} Configuration: ${finalConfig.totalQuestions} questions (${finalConfig.multipleChoice} QCM, ${finalConfig.trueFalse} True/False, ${finalConfig.multipleCorrect} Multiple Correct Answers)`);
 
     try {
@@ -436,7 +436,7 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
       const moduleContent = {
         title: module.title,
         description: isFinalExam ? (module.description || '').substring(0, 100) : (module.description || ''),
-        learningObjectives: isFinalExam 
+        learningObjectives: isFinalExam
           ? (module.learningObjectives || []).slice(0, 5) // Limit to 5 objectives for final exam
           : (module.learningObjectives || []),
         sections: (module as any).sections?.map((section: any) => {
@@ -457,7 +457,7 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
 
       // Generate quiz using AI service with question type distribution
       const questions = await AIService.generateQuiz(
-        moduleContent, 
+        moduleContent,
         finalConfig.totalQuestions,
         {
           multipleChoice: finalConfig.multipleChoice,
@@ -479,24 +479,24 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
       const assessmentQuestions: Question[] = questions.map((q: any, index: number) => {
         // Determine question type from the question data
         let questionType: 'multiple-choice' | 'true-false' | 'multiple-correct' = 'multiple-choice';
-        
+
         // Check if it's a true/false question (usually has 2 options: True/False)
-        if (q.type === 'true-false' || (q.options && q.options.length === 2 && 
-            (q.options[0]?.toLowerCase().includes('true') || q.options[0]?.toLowerCase().includes('vrai') ||
-             q.options[1]?.toLowerCase().includes('false') || q.options[1]?.toLowerCase().includes('faux')))) {
+        if (q.type === 'true-false' || (q.options && q.options.length === 2 &&
+          (q.options[0]?.toLowerCase().includes('true') || q.options[0]?.toLowerCase().includes('vrai') ||
+            q.options[1]?.toLowerCase().includes('false') || q.options[1]?.toLowerCase().includes('faux')))) {
           questionType = 'true-false';
         }
         // Check if it's a multiple correct answers question
         else if (q.type === 'multiple-correct' || Array.isArray(q.correctAnswer)) {
           questionType = 'multiple-correct';
         }
-        
+
         // Ensure True/False questions always have ['True', 'False'] options
         let finalOptions = q.options || [];
         if (questionType === 'true-false' && (!finalOptions || finalOptions.length === 0)) {
           finalOptions = ['True', 'False'];
         }
-        
+
         return {
           id: `q${index + 1}`,
           text: q.text || q.question,
@@ -516,26 +516,26 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
       const isValidMongoId = (id: string | undefined) => id && /^[0-9a-fA-F]{24}$/.test(id);
       const currentDraft = DraftService.getDraft();
       const existingDraftId = currentDraft.draftId; // Never use journey.id as it might be a timestamp
-      
+
       // Validate that it's a MongoDB ObjectId
       if (existingDraftId && !isValidMongoId(existingDraftId)) {
         console.warn('[RehearsalMode] Invalid draftId format (not MongoDB ObjectId):', existingDraftId, '- will use fallback');
       }
-      
+
       // Use existingDraftId if valid, otherwise use journey._id, never journey.id (timestamp)
-      const journeyIdForUse = (existingDraftId && isValidMongoId(existingDraftId)) 
-        ? existingDraftId 
-        : ((journey as any)._id && isValidMongoId((journey as any)._id)) 
-          ? (journey as any)._id 
+      const journeyIdForUse = (existingDraftId && isValidMongoId(existingDraftId))
+        ? existingDraftId
+        : ((journey as any)._id && isValidMongoId((journey as any)._id))
+          ? (journey as any)._id
           : undefined;
 
       // Create assessment
       const assessment: Assessment = {
-        id: isFinalExam 
-          ? `final-exam-${journeyIdForUse || 'new'}` 
+        id: isFinalExam
+          ? `final-exam-${journeyIdForUse || 'new'}`
           : `assessment-${moduleId}-${Date.now()}`,
-        title: isFinalExam 
-          ? `Final Exam - ${journey.name}` 
+        title: isFinalExam
+          ? `Final Exam - ${journey.name}`
           : `Quiz - ${module.title}`,
         type: 'quiz',
         questions: assessmentQuestions,
@@ -556,7 +556,7 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
               return a.id?.startsWith('final-exam-');
             }
           });
-          
+
           return {
             ...m,
             assessments: [...existingAssessments, assessment] // Replace with new assessment
@@ -572,7 +572,7 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
       // The quizzes will be saved to backend when the journey is launched
       try {
         console.log('[RehearsalMode] Saving quiz locally only (not to backend yet)');
-        
+
         // Save locally to preserve the quiz in localStorage
         DraftService.saveDraftLocally({
           modules: updatedModulesList
@@ -643,7 +643,7 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
   // Generate slides from modules
   const generateSlides = (): SlideData[] => {
     const colors = ['#EC4899', '#F59E0B', '#10B981', '#06B6D4', '#3B82F6', '#A855F7'];
-    
+
     const slides: SlideData[] = [
       {
         title: 'Training Curriculum',
@@ -658,11 +658,11 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
         textColor: '#FFFFFF'
       }
     ];
-    
+
     // Generate detailed slides for each module
     updatedModules.forEach((module, index) => {
       const moduleColor = colors[index % colors.length];
-      
+
       // Module title slide
       slides.push({
         title: `Module ${index + 1}: ${module.title}`,
@@ -670,7 +670,7 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
         bgColor: moduleColor,
         textColor: '#FFFFFF'
       });
-      
+
       // Module description slide
       slides.push({
         title: 'Introduction',
@@ -678,7 +678,7 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
         bgColor: moduleColor,
         textColor: '#FFFFFF'
       });
-      
+
       // Learning objectives slide
       if (module.learningObjectives && module.learningObjectives.length > 0) {
         slides.push({
@@ -688,13 +688,13 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
           textColor: '#FFFFFF'
         });
       }
-      
+
       // Content items - Create a slide for each content item with its full text
       if (module.content && module.content.length > 0) {
         module.content.forEach((contentItem, contentIndex) => {
           // Extract text content from the item
           let contentText = '';
-          
+
           // Generate descriptive text based on content type
           if (typeof contentItem.content === 'string') {
             contentText = contentItem.content;
@@ -716,7 +716,7 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
                 'interactive': `This interactive exercise allows you to practice ${contentItem.title} concepts.\n\nActivities include:\n• Scenario-based learning\n• Decision-making exercises\n• Problem-solving tasks\n• Real-world simulations\n\nEstimated time: ${contentItem.duration} minutes`,
                 'audio': `Audio content covering ${contentItem.title}.\n\nListen to expert explanations and insights about:\n• Core concepts\n• Practical applications\n• Industry best practices\n• Case studies\n\nDuration: ${contentItem.duration} minutes`
               };
-              
+
               contentText = typeDescriptions[contentItem.type] || `This ${contentItem.type} content covers important aspects of ${contentItem.title}.\n\nDuration: ${contentItem.duration} minutes\nType: AI-Enhanced ${contentItem.type}\n\nEngage with this content to deepen your understanding of the subject matter.`;
             } else {
               // Default description
@@ -726,7 +726,7 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
             // Fallback for undefined content
             contentText = `${contentItem.title}\n\nThis ${contentItem.type} element is part of the training module.\n\nDuration: ${contentItem.duration} minutes\n\nEngage with this content to build your knowledge and skills in this area.`;
           }
-          
+
           // ✅ Create slide with FULL TEXT CONTENT (no truncation for rich content)
           slides.push({
             title: contentItem.title,
@@ -736,7 +736,7 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
           });
         });
       }
-      
+
       // Prerequisites slide if any
       if (module.prerequisites && module.prerequisites.length > 0) {
         slides.push({
@@ -747,7 +747,7 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
         });
       }
     });
-    
+
     // Final slide
     slides.push({
       title: 'Thank You!',
@@ -755,7 +755,7 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
       bgColor: '#6366F1',
       textColor: '#FFFFFF'
     });
-    
+
     return slides;
   };
 
@@ -777,7 +777,7 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
       [field]: value
     };
     setSlideData(newSlideData);
-    
+
     // In a real implementation, regenerate preview using PowerPointService
     // For now, just update the data
   };
@@ -789,10 +789,10 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
       bgColor: '#6366F1',
       textColor: '#FFFFFF'
     };
-    
+
     const newSlideData = [...slideData, newSlide];
     setSlideData(newSlideData);
-    
+
     // Generate preview image (simplified)
     setSlideImages([...slideImages, 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAwIiBoZWlnaHQ9IjYwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iODAwIiBoZWlnaHQ9IjYwMCIgZmlsbD0iIzYzNjZGMSIvPjx0ZXh0IHg9IjQwMCIgeT0iMzAwIiBmb250LXNpemU9IjQ4IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+TmV3IFNsaWRlPC90ZXh0Pjwvc3ZnPg==']);
     setCurrentSlideIndex(slideImages.length);
@@ -823,10 +823,10 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
       alert('Cannot delete the last slide!');
       return;
     }
-    
+
     const newSlideData = slideData.filter((_, index) => index !== currentSlideIndex);
     const newSlideImages = slideImages.filter((_, index) => index !== currentSlideIndex);
-    
+
     setSlideData(newSlideData);
     setSlideImages(newSlideImages);
     setCurrentSlideIndex(Math.max(0, currentSlideIndex - 1));
@@ -862,7 +862,7 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
       readyForLaunch: overallRating >= 3 && feedback.filter(f => f.severity === 'high').length === 0,
       generatedAt: new Date().toISOString()
     };
-    
+
     const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -891,7 +891,7 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
 
   const renderSectionContent = (section: TrainingSection) => {
     const content = section.content;
-    
+
     switch (section.type) {
       case 'document':
         if (content?.file && content.file.url) {
@@ -1070,9 +1070,9 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
                   <h1 className="text-2xl font-bold text-gray-900">{journey.name}</h1>
                   <p className="text-gray-600">Test and review your training journey before launch</p>
                 </div>
-                </div>
-              
-                <div className="text-right">
+              </div>
+
+              <div className="text-right">
                 <div className="text-sm text-gray-500 mb-1">Rehearsal Time</div>
                 <div className="text-2xl font-bold text-gray-900">{formatTime(rehearsalTime)}</div>
               </div>
@@ -1106,7 +1106,7 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
               </div>
               <div className="mt-4 text-center">
                 <p className="text-purple-700 text-sm">
-                  Complete 360° approach covering foundational knowledge, regulatory compliance, 
+                  Complete 360° approach covering foundational knowledge, regulatory compliance,
                   contact centre excellence, and regional requirements
                 </p>
               </div>
@@ -1132,13 +1132,12 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
                           setCurrentModuleIndex(index);
                           setCurrentSectionIndex(0);
                         }}
-                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors text-left ${
-                          index === currentModuleIndex
+                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors text-left ${index === currentModuleIndex
                             ? 'bg-purple-600 text-white'
                             : completedModules.includes(module.id)
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                        }`}
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }`}
                       >
                         <div className="flex items-center justify-between">
                           <span className="truncate">{index + 1}. {module.title}</span>
@@ -1178,13 +1177,12 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
                         <button
                           key={section.id || index}
                           onClick={() => setCurrentSectionIndex(index)}
-                          className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors text-left ${
-                            index === currentSectionIndex
+                          className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors text-left ${index === currentSectionIndex
                               ? 'bg-purple-600 text-white'
                               : completedSections.has(section.id || '')
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                          }`}
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            }`}
                         >
                           <div className="flex items-center justify-between">
                             <span className="truncate">{index + 1}. {section.title}</span>
@@ -1314,7 +1312,7 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
                           {(() => {
                             const hasRegularQuiz = currentModule.assessments?.some(a => !a.id?.startsWith('final-exam-'));
                             const hasFinalExam = currentModule.assessments?.some(a => a.id?.startsWith('final-exam-'));
-                            
+
                             return (
                               <>
                                 <button
@@ -1326,14 +1324,14 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
                                     <>
                                       <Loader2 className="h-4 w-4 animate-spin" />
                                       <span>Generating...</span>
-                    </>
-                  ) : (
-                    <>
+                                    </>
+                                  ) : (
+                                    <>
                                       <FileQuestion className="h-4 w-4" />
                                       <span>{hasRegularQuiz ? 'Regenerate Quiz' : 'Generate Quiz'}</span>
-                    </>
-                  )}
-                </button>
+                                    </>
+                                  )}
+                                </button>
                                 {isLastModule && (
                                   <button
                                     onClick={() => showQuizConfig(currentModule, true)}
@@ -1356,13 +1354,13 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
                               </>
                             );
                           })()}
-              </div>
-            </div>
+                        </div>
+                      </div>
                       {currentModule.assessments && currentModule.assessments.length > 0 ? (
                         <div className="space-y-3">
                           {currentModule.assessments.map((assessment, idx) => {
                             const isExpanded = expandedQuizId === assessment.id;
-                            
+
                             return (
                               <div key={idx} className="bg-white rounded-lg border border-purple-200 overflow-hidden">
                                 <div className="p-4 flex items-center justify-between">
@@ -1392,7 +1390,7 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
                                     </button>
                                   </div>
                                 </div>
-                                
+
                                 {/* Expanded Quiz Details */}
                                 {isExpanded && assessment.questions && (
                                   <div className="border-t border-purple-200 p-4 bg-gray-50">
@@ -1401,7 +1399,7 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
                                         const questionKey = `${assessment.id}-q${qIdx}`;
                                         const isEditing = editingQuestionId === questionKey;
                                         const editedQuestion = editedQuestions[questionKey] || question;
-                                        
+
                                         return (
                                           <div key={qIdx} className="bg-white rounded-lg p-4 border border-gray-200">
                                             <div className="flex items-start justify-between mb-2">
@@ -1417,7 +1415,7 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
                                                     className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-3"
                                                     placeholder="Question text"
                                                   />
-            <div className="space-y-2">
+                                                  <div className="space-y-2">
                                                     {editedQuestion.options?.map((option, optIdx) => (
                                                       <div key={optIdx} className="flex items-center space-x-2">
                                                         <input
@@ -1444,7 +1442,7 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
                                                           className="flex-1 px-3 py-2 border border-gray-300 rounded-lg"
                                                           placeholder={`Option ${String.fromCharCode(65 + optIdx)}`}
                                                         />
-              </div>
+                                                      </div>
                                                     ))}
                                                   </div>
                                                   <textarea
@@ -1508,19 +1506,19 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
                                                     let options: string[] = [];
                                                     const isMultipleCorrect = question.type === 'multiple-correct';
                                                     const isTrueFalse = question.type === 'true-false';
-                                                    
+
                                                     if (isTrueFalse) {
                                                       // True/False questions always have these options
                                                       options = ['True', 'False'];
                                                     } else if (question.options && question.options.length > 0) {
                                                       options = question.options;
                                                     }
-                                                    
+
                                                     // Determine if an option is correct
                                                     const isOptionCorrect = (option: string, optIdx: number) => {
                                                       if (isMultipleCorrect) {
                                                         // For multiple correct, correctAnswer is an array
-                                                        return Array.isArray(question.correctAnswer) 
+                                                        return Array.isArray(question.correctAnswer)
                                                           ? question.correctAnswer.includes(option) || question.correctAnswer.includes(optIdx)
                                                           : false;
                                                       } else if (isTrueFalse) {
@@ -1538,20 +1536,19 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
                                                         return option === question.correctAnswer || optIdx === question.correctAnswer;
                                                       }
                                                     };
-                                                    
+
                                                     return options.length > 0 ? options.map((option, optIdx) => {
                                                       const isCorrect = isOptionCorrect(option, optIdx);
                                                       const inputType = isMultipleCorrect ? 'checkbox' : 'radio';
                                                       const isChecked = isCorrect; // Pre-select correct answers
-                                                      
+
                                                       return (
                                                         <div
                                                           key={optIdx}
-                                                          className={`p-3 rounded-lg transition-all ${
-                                                            isCorrect
+                                                          className={`p-3 rounded-lg transition-all ${isCorrect
                                                               ? 'bg-green-50 border-2 border-green-500 shadow-sm'
                                                               : 'bg-gray-50 border border-gray-200'
-                                                          }`}
+                                                            }`}
                                                         >
                                                           <div className="flex items-center space-x-3">
                                                             <input
@@ -1561,14 +1558,12 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
                                                               readOnly
                                                               className={isMultipleCorrect ? 'w-4 h-4 text-green-600' : 'w-4 h-4 text-green-600'}
                                                             />
-                                                            <span className={`text-sm font-medium ${
-                                                              isCorrect ? 'text-green-800 font-semibold' : 'text-gray-700'
-                                                            }`}>
+                                                            <span className={`text-sm font-medium ${isCorrect ? 'text-green-800 font-semibold' : 'text-gray-700'
+                                                              }`}>
                                                               {String.fromCharCode(65 + optIdx)}.
                                                             </span>
-                                                            <span className={`text-sm flex-1 ${
-                                                              isCorrect ? 'text-green-900 font-medium' : 'text-gray-700'
-                                                            }`}>
+                                                            <span className={`text-sm flex-1 ${isCorrect ? 'text-green-900 font-medium' : 'text-gray-700'
+                                                              }`}>
                                                               {option}
                                                             </span>
                                                             {isCorrect && (
@@ -1576,8 +1571,8 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
                                                                 Correct
                                                               </span>
                                                             )}
-              </div>
-            </div>
+                                                          </div>
+                                                        </div>
                                                       );
                                                     }) : (
                                                       <div className="text-sm text-gray-500 italic">
@@ -1612,7 +1607,7 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
                           <p className="text-xs mt-1">Click on "Generate Quiz" to create a quiz with AI</p>
                         </div>
                       )}
-          </div>
+                    </div>
 
                     {/* Prerequisites */}
                     {currentModule.prerequisites && currentModule.prerequisites.length > 0 && (
@@ -1722,7 +1717,7 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
                     </div>
                   </div>
                 ))}
-                
+
                 {feedback.length === 0 && (
                   <div className="text-center py-8 text-gray-500">
                     <MessageSquare className="h-8 w-8 text-gray-300 mx-auto mb-2" />
@@ -1735,21 +1730,20 @@ export default function RehearsalMode({ journey, modules, uploads = [], methodol
             {/* Overall Rating Section */}
             <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Overall Rating</h3>
-              
+
               <div className="flex justify-center space-x-2 mb-4">
                 {[1, 2, 3, 4, 5].map((rating) => (
                   <button
                     key={rating}
                     onClick={() => setOverallRating(rating)}
-                    className={`p-2 transition-all transform hover:scale-110 ${
-                      rating <= overallRating ? 'text-yellow-500' : 'text-gray-300 hover:text-yellow-300'
-                    }`}
+                    className={`p-2 transition-all transform hover:scale-110 ${rating <= overallRating ? 'text-yellow-500' : 'text-gray-300 hover:text-yellow-300'
+                      }`}
                   >
                     <Star className="h-8 w-8 fill-current" />
                   </button>
                 ))}
               </div>
-              
+
               <div className="text-center text-sm text-gray-600 mb-6">
                 {overallRating === 0 && 'Rate the training journey'}
                 {overallRating === 1 && 'Needs significant improvement'}

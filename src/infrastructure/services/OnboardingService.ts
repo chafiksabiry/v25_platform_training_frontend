@@ -2,9 +2,9 @@ import axios from 'axios';
 import Cookies from 'js-cookie';
 import { IndustryApiResponse, GigApiResponse, GigFromApi } from '../../types';
 
-const INDUSTRIES_API_URL = 'https://api-repcreationwizard.harx.ai/api/industries';
-const GIGS_API_URL = 'https://api-gigsmanual.harx.ai/api/gigs/company';
-const COMPANY_API_URL = 'https://api-companysearchwizard.harx.ai/api/companies';
+const INDUSTRIES_API_URL = '/api/industries';
+const GIGS_API_URL = 'https://v25gigsmanualcreationbackend-production.up.railway.app/api/gigs/company';
+const COMPANY_API_URL = 'https://v25searchcompanywizardbackend-production.up.railway.app/api/companies';
 
 export const OnboardingService = {
   /**
@@ -35,7 +35,7 @@ export const OnboardingService = {
     try {
       // Use provided companyId or get from cookie
       const effectiveCompanyId = companyId || this.getCompanyIdFromCookie();
-      
+
       if (!effectiveCompanyId) {
         throw new Error('No company ID provided or found in cookies');
       }
@@ -58,27 +58,27 @@ export const OnboardingService = {
       const effectiveCompanyId = companyId || this.getCompanyIdFromCookie();
       console.log('[OnboardingService] Fetching gigs for companyId:', effectiveCompanyId);
       console.log('[OnboardingService] Filtering by industry:', industryIdentifier);
-      
+
       // First fetch all gigs for the company
       const response = await this.fetchGigsByCompany(companyId);
-      
+
       console.log('[OnboardingService] Total gigs fetched:', response.data.length);
       if (response.data.length > 0) {
         console.log('[OnboardingService] First gig industries:', response.data[0]?.industries || 'No industries');
         console.log('[OnboardingService] First gig industry IDs:', response.data[0]?.industries?.map((ind: any) => ind._id || ind.id) || 'No IDs');
         console.log('[OnboardingService] First gig industry names:', response.data[0]?.industries?.map((ind: any) => ind.name) || 'No names');
       }
-      
+
       // Check if industryIdentifier is an ID (ObjectId format: 24 hex characters) or a name
       const isObjectId = /^[0-9a-fA-F]{24}$/.test(industryIdentifier);
       console.log('[OnboardingService] Industry identifier is ObjectId:', isObjectId);
-      
+
       // Filter gigs by industry (by ID or by name)
       const filteredGigs = response.data.filter((gig: GigFromApi) => {
         if (!gig.industries || gig.industries.length === 0) {
           return false;
         }
-        
+
         const hasMatchingIndustry = gig.industries.some((industry: any) => {
           if (isObjectId) {
             // Compare by ID
@@ -97,12 +97,12 @@ export const OnboardingService = {
             return match;
           }
         });
-        
+
         return hasMatchingIndustry;
       });
 
       console.log('[OnboardingService] Filtered gigs count:', filteredGigs.length);
-      
+
       if (filteredGigs.length > 0) {
         console.log('[OnboardingService] Filtered gig titles:', filteredGigs.map(g => g.title));
       } else {
@@ -139,7 +139,7 @@ export const OnboardingService = {
     try {
       // Use provided companyId or get from cookie
       const effectiveCompanyId = companyId || this.getCompanyIdFromCookie();
-      
+
       if (!effectiveCompanyId) {
         throw new Error('No company ID provided or found in cookies');
       }

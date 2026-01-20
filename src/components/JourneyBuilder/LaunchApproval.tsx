@@ -20,16 +20,16 @@ interface LaunchApprovalProps {
   company?: { industry?: string } | null;
 }
 
-export default function LaunchApproval({ 
-  journey, 
-  modules, 
-  rehearsalFeedback, 
-  rehearsalRating, 
-  onLaunch, 
+export default function LaunchApproval({
+  journey,
+  modules,
+  rehearsalFeedback,
+  rehearsalRating,
+  onLaunch,
   onBackToRehearsal,
   onBack,
   gigId,
-  company 
+  company
 }: LaunchApprovalProps) {
   const [selectedReps, setSelectedReps] = useState<string[]>([]);
   const [expandedModules, setExpandedModules] = useState<string[]>([]);
@@ -92,7 +92,7 @@ export default function LaunchApproval({
     if (import.meta.env.VITE_API_BASE_URL) {
       return import.meta.env.VITE_API_BASE_URL;
     }
-    return 'https://api-training.harx.ai';
+    return 'https://v25platformtrainingbackend-production.up.railway.app';
   };
   const API_BASE = getApiBaseUrl();
 
@@ -101,10 +101,10 @@ export default function LaunchApproval({
     // Automatically generate quiz with predefined configuration
     // Module: 10 questions (4 QCM, 3 True/False, 3 Multiple Correct Answers)
     // Final Exam: 30 questions (12 QCM, 9 True/False, 9 Multiple Correct Answers)
-    const config = isFinalExam 
+    const config = isFinalExam
       ? { totalQuestions: 30, passingScore: 70, multipleChoice: 12, trueFalse: 9, multipleCorrect: 9 }
       : { totalQuestions: 10, passingScore: 70, multipleChoice: 4, trueFalse: 3, multipleCorrect: 3 };
-    
+
     generateModuleQuiz(module, isFinalExam, config);
   };
 
@@ -117,7 +117,7 @@ export default function LaunchApproval({
     multipleCorrect: number;
   }) => {
     const moduleId = module.id;
-    
+
     // Only set generatingQuizForModule if it's NOT a final exam
     if (!isFinalExam) {
       setGeneratingQuizForModule(moduleId);
@@ -128,10 +128,10 @@ export default function LaunchApproval({
     // Default configuration if not provided
     // Final Exam: 30 questions (12 QCM, 9 True/False, 9 Multiple Correct Answers)
     // Module Quiz: 10 questions (4 QCM, 3 True/False, 3 Multiple Correct Answers)
-    const finalConfig = config || (isFinalExam 
+    const finalConfig = config || (isFinalExam
       ? { totalQuestions: 30, passingScore: 70, multipleChoice: 12, trueFalse: 9, multipleCorrect: 9 }
       : { totalQuestions: 10, passingScore: 70, multipleChoice: 4, trueFalse: 3, multipleCorrect: 3 });
-    
+
     console.log(`📊 ${isFinalExam ? 'Final Exam' : 'Quiz'} Configuration: ${finalConfig.totalQuestions} questions (${finalConfig.multipleChoice} QCM, ${finalConfig.trueFalse} True/False, ${finalConfig.multipleCorrect} Multiple Correct Answers)`);
 
     try {
@@ -141,7 +141,7 @@ export default function LaunchApproval({
       const moduleContent = {
         title: module.title,
         description: isFinalExam ? (module.description || '').substring(0, 100) : (module.description || ''),
-        learningObjectives: isFinalExam 
+        learningObjectives: isFinalExam
           ? (module.learningObjectives || []).slice(0, 5) // Limit to 5 objectives for final exam
           : (module.learningObjectives || []),
         sections: (module as any).sections?.map((section: any) => {
@@ -162,7 +162,7 @@ export default function LaunchApproval({
 
       // Generate quiz using AI service with question type distribution
       const questions = await AIService.generateQuiz(
-        moduleContent, 
+        moduleContent,
         finalConfig.totalQuestions,
         {
           multipleChoice: finalConfig.multipleChoice,
@@ -184,24 +184,24 @@ export default function LaunchApproval({
       const assessmentQuestions: Question[] = questions.map((q: any, index: number) => {
         // Determine question type from the question data
         let questionType: 'multiple-choice' | 'true-false' | 'multiple-correct' = 'multiple-choice';
-        
+
         // Check if it's a true/false question (usually has 2 options: True/False)
-        if (q.type === 'true-false' || (q.options && q.options.length === 2 && 
-            (q.options[0]?.toLowerCase().includes('true') || q.options[0]?.toLowerCase().includes('vrai') ||
-             q.options[1]?.toLowerCase().includes('false') || q.options[1]?.toLowerCase().includes('faux')))) {
+        if (q.type === 'true-false' || (q.options && q.options.length === 2 &&
+          (q.options[0]?.toLowerCase().includes('true') || q.options[0]?.toLowerCase().includes('vrai') ||
+            q.options[1]?.toLowerCase().includes('false') || q.options[1]?.toLowerCase().includes('faux')))) {
           questionType = 'true-false';
         }
         // Check if it's a multiple correct answers question
         else if (q.type === 'multiple-correct' || Array.isArray(q.correctAnswer)) {
           questionType = 'multiple-correct';
         }
-        
+
         // Ensure True/False questions always have ['True', 'False'] options
         let finalOptions = q.options || [];
         if (questionType === 'true-false' && (!finalOptions || finalOptions.length === 0)) {
           finalOptions = ['True', 'False'];
         }
-        
+
         return {
           id: `q${index + 1}`,
           text: q.text || q.question,
@@ -217,17 +217,17 @@ export default function LaunchApproval({
       const isValidMongoId = (id: string | undefined) => id && /^[0-9a-fA-F]{24}$/.test(id);
       const currentDraft = DraftService.getDraft();
       const existingDraftId = currentDraft.draftId; // Never use journey.id as it might be a timestamp
-      
+
       // Validate that it's a MongoDB ObjectId
       if (existingDraftId && !isValidMongoId(existingDraftId)) {
         console.warn('[LaunchApproval] Invalid draftId format (not MongoDB ObjectId):', existingDraftId, '- will use fallback');
       }
-      
+
       // Use existingDraftId if valid, otherwise use journey._id, never journey.id (timestamp)
-      const journeyIdForUse = (existingDraftId && isValidMongoId(existingDraftId)) 
-        ? existingDraftId 
-        : ((journey as any)._id && isValidMongoId((journey as any)._id)) 
-          ? (journey as any)._id 
+      const journeyIdForUse = (existingDraftId && isValidMongoId(existingDraftId))
+        ? existingDraftId
+        : ((journey as any)._id && isValidMongoId((journey as any)._id))
+          ? (journey as any)._id
           : undefined;
 
       // Calculate passing score (always 70% - percentage, not points)
@@ -236,11 +236,11 @@ export default function LaunchApproval({
 
       // Create assessment
       const assessment: Assessment = {
-        id: isFinalExam 
-          ? `final-exam-${journeyIdForUse || 'new'}` 
+        id: isFinalExam
+          ? `final-exam-${journeyIdForUse || 'new'}`
           : `assessment-${moduleId}-${Date.now()}`,
-        title: isFinalExam 
-          ? `Examen Final - ${journey.name}` 
+        title: isFinalExam
+          ? `Examen Final - ${journey.name}`
           : `Quiz - ${module.title}`,
         type: 'quiz',
         questions: assessmentQuestions,
@@ -261,7 +261,7 @@ export default function LaunchApproval({
               return a.id?.startsWith('final-exam-');
             }
           });
-          
+
           return {
             ...m,
             assessments: [...existingAssessments, assessment] // Replace with new assessment
@@ -277,7 +277,7 @@ export default function LaunchApproval({
       // The quizzes will be saved to backend when the journey is launched
       try {
         console.log('[LaunchApproval] Saving quiz locally only (not to backend yet)');
-        
+
         // Save locally to preserve the quiz in localStorage
         DraftService.saveDraftLocally({
           modules: updatedModulesList
@@ -352,8 +352,8 @@ export default function LaunchApproval({
   ];
 
   const handleRepToggle = (repId: string) => {
-    setSelectedReps(prev => 
-      prev.includes(repId) 
+    setSelectedReps(prev =>
+      prev.includes(repId)
         ? prev.filter(id => id !== repId)
         : [...prev, repId]
     );
@@ -376,37 +376,37 @@ export default function LaunchApproval({
         status: 'active',
         steps: journey.steps.map(step => ({ ...step, status: 'completed' }))
       };
-      
+
       // Get companyId from cookies
       const companyId = Cookies.get('companyId');
-      
+
       // ✅ Sauvegarder dans MongoDB with companyId and gigId
       // Add industry to journey if available from company
       const journeyWithIndustry = {
         ...updatedJourney,
         industry: company?.industry || (updatedJourney as any).industry || null
       };
-      
+
       // Get draftId from DraftService to use existing journey
       // IMPORTANT: Only use MongoDB ObjectId format (24 hex characters)
       // Don't use timestamps or other non-MongoDB IDs from journey.id
       const isValidMongoId = (id: string | undefined) => id && /^[0-9a-fA-F]{24}$/.test(id);
-      
+
       const draft = DraftService.getDraft();
       let existingJourneyId = draft.draftId || (journey as any)._id; // Never use journey.id as it might be a timestamp
-      
+
       // Validate that it's a MongoDB ObjectId
       if (existingJourneyId && !isValidMongoId(existingJourneyId)) {
         console.warn('[LaunchApproval] Invalid journeyId format (not MongoDB ObjectId):', existingJourneyId, '- will create new journey');
         existingJourneyId = undefined;
       }
-      
+
       console.log('[LaunchApproval] Launching journey with ID:', existingJourneyId || 'NEW');
-      
+
       // CRITICAL: Re-load modules from localStorage right before launch to ensure we have the latest quizzes
       const latestDraft = DraftService.getDraft();
       const modulesToLaunch = latestDraft.modules && latestDraft.modules.length > 0 ? latestDraft.modules : updatedModules;
-      
+
       // Log quiz information for debugging
       const modulesWithQuizzes = modulesToLaunch.filter(m => m.assessments && m.assessments.length > 0);
       console.log('[LaunchApproval] Modules to launch:', modulesToLaunch.length);
@@ -415,7 +415,7 @@ export default function LaunchApproval({
         const quizCount = m.assessments ? m.assessments.length : 0;
         console.log(`[LaunchApproval] Module ${idx + 1} (${m.title}): ${quizCount} quiz(es)`);
       });
-      
+
       const launchResponse = await JourneyService.launchJourney({
         journey: journeyWithIndustry,
         modules: modulesToLaunch, // Use modules from localStorage with quizzes
@@ -429,7 +429,7 @@ export default function LaunchApproval({
         companyId: companyId || undefined,
         gigId: gigId || undefined
       }, undefined, existingJourneyId); // Pass existingJourneyId as third parameter
-      
+
       console.log('✅ Journey saved to MongoDB:', launchResponse);
       console.log('📊 Launching with:', {
         journey: updatedJourney.name,
@@ -437,7 +437,7 @@ export default function LaunchApproval({
         enrolledReps: enrolledReps.length,
         assessments: updatedModules.reduce((sum, m) => sum + (m.assessments?.length || 0), 0)
       });
-      
+
       onLaunch(updatedJourney, modulesToLaunch, enrolledReps);
     } catch (error) {
       console.error('❌ Failed to save journey to MongoDB:', error);
@@ -498,7 +498,7 @@ export default function LaunchApproval({
               {/* Rehearsal Summary */}
               <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-8">
                 <h3 className="text-2xl font-semibold text-gray-900 mb-6">Rehearsal Summary</h3>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
                   <div className="text-center p-6 bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl">
                     <Play className="h-10 w-10 text-blue-600 mx-auto mb-3" />
@@ -525,27 +525,24 @@ export default function LaunchApproval({
                 </div>
 
                 {/* Launch Readiness */}
-                <div className={`p-6 rounded-xl border-2 ${
-                  isReadyForLaunch 
-                    ? 'bg-green-50 border-green-200' 
+                <div className={`p-6 rounded-xl border-2 ${isReadyForLaunch
+                    ? 'bg-green-50 border-green-200'
                     : 'bg-yellow-50 border-yellow-200'
-                }`}>
+                  }`}>
                   <div className="flex items-center space-x-3 mb-4">
                     {isReadyForLaunch ? (
                       <CheckCircle className="h-6 w-6 text-green-600" />
                     ) : (
                       <AlertTriangle className="h-6 w-6 text-yellow-600" />
                     )}
-                    <h4 className={`text-lg font-semibold ${
-                      isReadyForLaunch ? 'text-green-900' : 'text-yellow-900'
-                    }`}>
+                    <h4 className={`text-lg font-semibold ${isReadyForLaunch ? 'text-green-900' : 'text-yellow-900'
+                      }`}>
                       {isReadyForLaunch ? 'Ready for Launch!' : 'Review Required'}
                     </h4>
                   </div>
-                  <p className={`text-sm ${
-                    isReadyForLaunch ? 'text-green-700' : 'text-yellow-700'
-                  }`}>
-                    {isReadyForLaunch 
+                  <p className={`text-sm ${isReadyForLaunch ? 'text-green-700' : 'text-yellow-700'
+                    }`}>
+                    {isReadyForLaunch
                       ? 'Your training journey has passed rehearsal and is ready for deployment to your team.'
                       : 'Please address high-priority issues or improve the overall rating before launching.'
                     }
@@ -556,7 +553,7 @@ export default function LaunchApproval({
               {/* Feedback Analysis */}
               <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-8">
                 <h3 className="text-2xl font-semibold text-gray-900 mb-6">Feedback Analysis</h3>
-                
+
                 {highPriorityIssues.length > 0 && (
                   <div className="mb-6">
                     <h4 className="text-lg font-semibold text-red-900 mb-3 flex items-center">
@@ -659,107 +656,89 @@ export default function LaunchApproval({
                     {updatedModules.map((module, index) => {
                       const isLastModule = index === updatedModules.length - 1;
                       return (
-                      <div key={module.id} className="border-2 border-gray-200 rounded-xl overflow-hidden">
-                        {/* Module Header */}
-                        <button
-                          onClick={() => toggleModuleExpansion(module.id)}
-                          className="w-full px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 hover:from-purple-50 hover:to-blue-50 transition-all flex items-center justify-between"
-                        >
-                          <div className="flex items-center space-x-4">
-                            <div className="w-10 h-10 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg flex items-center justify-center font-bold">
-                              {index + 1}
-                            </div>
-                            <div className="text-left">
-                              <h4 className="font-semibold text-gray-800">{module.title}</h4>
-                              <p className="text-sm text-gray-500">{module.duration} min • {module.difficulty}</p>
-                            </div>
-                          </div>
-                          {expandedModules.includes(module.id) ? (
-                            <ChevronUp className="h-5 w-5 text-gray-400" />
-                          ) : (
-                            <ChevronDown className="h-5 w-5 text-gray-400" />
-                          )}
-                        </button>
-
-                        {/* Module Content */}
-                        {expandedModules.includes(module.id) && (
-                          <div className="p-6 bg-white">
-                            <div className="mb-4">
-                              <h5 className="font-semibold text-gray-700 mb-2">Description</h5>
-                              <p className="text-gray-600">{module.description}</p>
-                            </div>
-
-                            <div className="mb-6">
-                              <h5 className="font-semibold text-gray-700 mb-2">Learning Objectives</h5>
-                              <ul className="list-disc list-inside space-y-1 text-gray-600">
-                                {module.learningObjectives.map((obj, i) => (
-                                  <li key={i}>{obj}</li>
-                                ))}
-                              </ul>
-                            </div>
-
-                            {/* Document Display */}
-                            {(module as any).sections && (module as any).sections.length > 0 && (
-                              <div className="mb-6">
-                                <h5 className="font-semibold text-gray-700 mb-3 flex items-center space-x-2">
-                                  <FileText className="h-5 w-5 text-purple-600" />
-                                  <span>Module Document</span>
-                                </h5>
-                                {(module as any).sections.map((section: any, sectionIndex: number) => {
-                                  if (section.type === 'document' && section.content?.file?.url) {
-                                    return (
-                                      <div key={sectionIndex} className="mb-4">
-                                        <DocumentViewer
-                                          fileUrl={section.content.file.url}
-                                          fileName={section.content.file.name}
-                                          mimeType={section.content.file.mimeType}
-                                        />
-                                      </div>
-                                    );
-                                  }
-                                  return null;
-                                })}
+                        <div key={module.id} className="border-2 border-gray-200 rounded-xl overflow-hidden">
+                          {/* Module Header */}
+                          <button
+                            onClick={() => toggleModuleExpansion(module.id)}
+                            className="w-full px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 hover:from-purple-50 hover:to-blue-50 transition-all flex items-center justify-between"
+                          >
+                            <div className="flex items-center space-x-4">
+                              <div className="w-10 h-10 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg flex items-center justify-center font-bold">
+                                {index + 1}
                               </div>
+                              <div className="text-left">
+                                <h4 className="font-semibold text-gray-800">{module.title}</h4>
+                                <p className="text-sm text-gray-500">{module.duration} min • {module.difficulty}</p>
+                              </div>
+                            </div>
+                            {expandedModules.includes(module.id) ? (
+                              <ChevronUp className="h-5 w-5 text-gray-400" />
+                            ) : (
+                              <ChevronDown className="h-5 w-5 text-gray-400" />
                             )}
+                          </button>
 
-                            {/* Quiz Generation Section */}
-                            <div className="border-t border-gray-200 pt-6">
-                              <div className="flex items-center justify-between mb-4">
-                                <h5 className="font-semibold text-gray-700 flex items-center space-x-2">
-                                  <FileQuestion className="h-5 w-5 text-purple-600" />
-                                  <span>Assessments & Quizzes</span>
-                                </h5>
-                                <div className="flex items-center space-x-2">
-                                  {(() => {
-                                    const hasRegularQuiz = module.assessments?.some(a => !a.id?.startsWith('final-exam-'));
-                                    const hasFinalExam = module.assessments?.some(a => a.id?.startsWith('final-exam-'));
-                                    
-                                    return (
-                                      <>
-                                        <button
-                                          onClick={() => showQuizConfig(module, false)}
-                                          disabled={generatingQuizForModule === module.id}
-                                          className="flex items-center space-x-2 px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
-                                        >
-                                          {generatingQuizForModule === module.id ? (
-                                            <>
-                                              <Loader2 className="h-4 w-4 animate-spin" />
-                                              <span>Generating...</span>
-                                            </>
-                                          ) : (
-                                            <>
-                                              <FileQuestion className="h-4 w-4" />
-                                              <span>{hasRegularQuiz ? 'Regenerate Quiz' : 'Generate Quiz'}</span>
-                                            </>
-                                          )}
-                                        </button>
-                                        {isLastModule && (
+                          {/* Module Content */}
+                          {expandedModules.includes(module.id) && (
+                            <div className="p-6 bg-white">
+                              <div className="mb-4">
+                                <h5 className="font-semibold text-gray-700 mb-2">Description</h5>
+                                <p className="text-gray-600">{module.description}</p>
+                              </div>
+
+                              <div className="mb-6">
+                                <h5 className="font-semibold text-gray-700 mb-2">Learning Objectives</h5>
+                                <ul className="list-disc list-inside space-y-1 text-gray-600">
+                                  {module.learningObjectives.map((obj, i) => (
+                                    <li key={i}>{obj}</li>
+                                  ))}
+                                </ul>
+                              </div>
+
+                              {/* Document Display */}
+                              {(module as any).sections && (module as any).sections.length > 0 && (
+                                <div className="mb-6">
+                                  <h5 className="font-semibold text-gray-700 mb-3 flex items-center space-x-2">
+                                    <FileText className="h-5 w-5 text-purple-600" />
+                                    <span>Module Document</span>
+                                  </h5>
+                                  {(module as any).sections.map((section: any, sectionIndex: number) => {
+                                    if (section.type === 'document' && section.content?.file?.url) {
+                                      return (
+                                        <div key={sectionIndex} className="mb-4">
+                                          <DocumentViewer
+                                            fileUrl={section.content.file.url}
+                                            fileName={section.content.file.name}
+                                            mimeType={section.content.file.mimeType}
+                                          />
+                                        </div>
+                                      );
+                                    }
+                                    return null;
+                                  })}
+                                </div>
+                              )}
+
+                              {/* Quiz Generation Section */}
+                              <div className="border-t border-gray-200 pt-6">
+                                <div className="flex items-center justify-between mb-4">
+                                  <h5 className="font-semibold text-gray-700 flex items-center space-x-2">
+                                    <FileQuestion className="h-5 w-5 text-purple-600" />
+                                    <span>Assessments & Quizzes</span>
+                                  </h5>
+                                  <div className="flex items-center space-x-2">
+                                    {(() => {
+                                      const hasRegularQuiz = module.assessments?.some(a => !a.id?.startsWith('final-exam-'));
+                                      const hasFinalExam = module.assessments?.some(a => a.id?.startsWith('final-exam-'));
+
+                                      return (
+                                        <>
                                           <button
-                                            onClick={() => showQuizConfig(module, true)}
-                                            disabled={generatingFinalExam}
-                                            className="flex items-center space-x-2 px-3 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
+                                            onClick={() => showQuizConfig(module, false)}
+                                            disabled={generatingQuizForModule === module.id}
+                                            className="flex items-center space-x-2 px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
                                           >
-                                            {generatingFinalExam ? (
+                                            {generatingQuizForModule === module.id ? (
                                               <>
                                                 <Loader2 className="h-4 w-4 animate-spin" />
                                                 <span>Generating...</span>
@@ -767,277 +746,292 @@ export default function LaunchApproval({
                                             ) : (
                                               <>
                                                 <FileQuestion className="h-4 w-4" />
-                                                <span>{hasFinalExam ? 'Regenerate Final Exam' : 'Generate Final Exam'}</span>
+                                                <span>{hasRegularQuiz ? 'Regenerate Quiz' : 'Generate Quiz'}</span>
                                               </>
                                             )}
                                           </button>
-                                        )}
-                                      </>
-                                    );
-                                  })()}
+                                          {isLastModule && (
+                                            <button
+                                              onClick={() => showQuizConfig(module, true)}
+                                              disabled={generatingFinalExam}
+                                              className="flex items-center space-x-2 px-3 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
+                                            >
+                                              {generatingFinalExam ? (
+                                                <>
+                                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                                  <span>Generating...</span>
+                                                </>
+                                              ) : (
+                                                <>
+                                                  <FileQuestion className="h-4 w-4" />
+                                                  <span>{hasFinalExam ? 'Regenerate Final Exam' : 'Generate Final Exam'}</span>
+                                                </>
+                                              )}
+                                            </button>
+                                          )}
+                                        </>
+                                      );
+                                    })()}
+                                  </div>
                                 </div>
-                              </div>
 
-                              {/* Display existing assessments */}
-                              {module.assessments && module.assessments.length > 0 ? (
-                                <div className="space-y-3">
-                                  {module.assessments.map((assessment, idx) => {
-                                    const isExpanded = expandedQuizId === assessment.id;
-                                    
-                                    return (
-                                      <div key={idx} className="bg-white rounded-lg border border-purple-200 overflow-hidden">
-                                        <div className="p-3 flex items-center justify-between">
-                                          <div className="flex-1">
-                                            <h6 className="font-medium text-gray-900 text-sm mb-1">{assessment.title}</h6>
-                                            <div className="flex items-center space-x-3 text-xs text-gray-600">
-                                              <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded-full">
-                                                {assessment.questions?.length || 0} questions
-                                              </span>
-                                              <span>Type: {assessment.type || 'quiz'}</span>
-                                              <span>Passing Score: {(() => {
-                                                const totalPts = assessment.questions?.reduce((sum, q) => sum + (q.points || 10), 0) || 0;
-                                                const minPassing = Math.round(totalPts * 0.7);
-                                                const actualPassing = assessment.passingScore || minPassing;
-                                                // Always display 70% to match requirement
-                                                return `${actualPassing} pts (70%)`;
-                                              })()}</span>
+                                {/* Display existing assessments */}
+                                {module.assessments && module.assessments.length > 0 ? (
+                                  <div className="space-y-3">
+                                    {module.assessments.map((assessment, idx) => {
+                                      const isExpanded = expandedQuizId === assessment.id;
+
+                                      return (
+                                        <div key={idx} className="bg-white rounded-lg border border-purple-200 overflow-hidden">
+                                          <div className="p-3 flex items-center justify-between">
+                                            <div className="flex-1">
+                                              <h6 className="font-medium text-gray-900 text-sm mb-1">{assessment.title}</h6>
+                                              <div className="flex items-center space-x-3 text-xs text-gray-600">
+                                                <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded-full">
+                                                  {assessment.questions?.length || 0} questions
+                                                </span>
+                                                <span>Type: {assessment.type || 'quiz'}</span>
+                                                <span>Passing Score: {(() => {
+                                                  const totalPts = assessment.questions?.reduce((sum, q) => sum + (q.points || 10), 0) || 0;
+                                                  const minPassing = Math.round(totalPts * 0.7);
+                                                  const actualPassing = assessment.passingScore || minPassing;
+                                                  // Always display 70% to match requirement
+                                                  return `${actualPassing} pts (70%)`;
+                                                })()}</span>
+                                              </div>
+                                            </div>
+                                            <div className="flex items-center space-x-2">
+                                              <CheckCircle className="h-4 w-4 text-purple-600" />
+                                              <button
+                                                onClick={() => setExpandedQuizId(isExpanded ? null : assessment.id)}
+                                                className="ml-2 px-3 py-1 text-xs text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                                              >
+                                                {isExpanded ? 'Hide' : 'View Questions'}
+                                              </button>
                                             </div>
                                           </div>
-                                          <div className="flex items-center space-x-2">
-                                            <CheckCircle className="h-4 w-4 text-purple-600" />
-                                            <button
-                                              onClick={() => setExpandedQuizId(isExpanded ? null : assessment.id)}
-                                              className="ml-2 px-3 py-1 text-xs text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
-                                            >
-                                              {isExpanded ? 'Hide' : 'View Questions'}
-                                            </button>
-                                          </div>
-                                        </div>
-                                        
-                                        {/* Expanded Quiz Details */}
-                                        {isExpanded && assessment.questions && (
-                                          <div className="border-t border-purple-200 p-4 bg-gray-50">
-                                            <div className="space-y-4 max-h-96 overflow-y-auto">
-                                              {assessment.questions.map((question, qIdx) => {
-                                                const questionKey = `${assessment.id}-q${qIdx}`;
-                                                const isEditing = editingQuestionId === questionKey;
-                                                const editedQuestion = editedQuestions[questionKey] || question;
-                                                
-                                                return (
-                                                  <div key={qIdx} className="bg-white rounded-lg p-4 border border-gray-200">
-                                                    <div className="flex items-start justify-between mb-2">
-                                                      {isEditing ? (
-                                                        <div className="flex-1">
-                                                          <input
-                                                            type="text"
-                                                            value={editedQuestion.text}
-                                                            onChange={(e) => setEditedQuestions({
-                                                              ...editedQuestions,
-                                                              [questionKey]: { ...editedQuestion, text: e.target.value }
-                                                            })}
-                                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-3"
-                                                            placeholder="Question text"
-                                                          />
-                                                          <div className="space-y-2">
-                                                            {editedQuestion.options?.map((option, optIdx) => (
-                                                              <div key={optIdx} className="flex items-center space-x-2">
-                                                                <input
-                                                                  type="radio"
-                                                                  name={`correct-${questionKey}`}
-                                                                  checked={option === editedQuestion.correctAnswer}
-                                                                  onChange={() => setEditedQuestions({
-                                                                    ...editedQuestions,
-                                                                    [questionKey]: { ...editedQuestion, correctAnswer: option }
-                                                                  })}
-                                                                  className="text-green-600"
-                                                                />
-                                                                <input
-                                                                  type="text"
-                                                                  value={option}
-                                                                  onChange={(e) => {
-                                                                    const newOptions = [...(editedQuestion.options || [])];
-                                                                    newOptions[optIdx] = e.target.value;
-                                                                    setEditedQuestions({
-                                                                      ...editedQuestions,
-                                                                      [questionKey]: { ...editedQuestion, options: newOptions }
-                                                                    });
-                                                                  }}
-                                                                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg"
-                                                                  placeholder={`Option ${String.fromCharCode(65 + optIdx)}`}
-                                                                />
-                                                              </div>
-                                                            ))}
-                                                          </div>
-                                                          <textarea
-                                                            value={editedQuestion.explanation || ''}
-                                                            onChange={(e) => setEditedQuestions({
-                                                              ...editedQuestions,
-                                                              [questionKey]: { ...editedQuestion, explanation: e.target.value }
-                                                            })}
-                                                            className="w-full mt-3 px-3 py-2 border border-gray-300 rounded-lg"
-                                                            placeholder="Explanation (optional)"
-                                                            rows={2}
-                                                          />
-                                                          <div className="flex items-center space-x-2 mt-3">
-                                                            <button
-                                                              onClick={() => saveQuestionEdit(module.id, assessment.id, qIdx, editedQuestion)}
-                                                              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2"
-                                                            >
-                                                              <Save className="h-4 w-4" />
-                                                              <span>Save</span>
-                                                            </button>
-                                                            <button
-                                                              onClick={() => {
-                                                                setEditingQuestionId(null);
-                                                                setEditedQuestions({});
-                                                              }}
-                                                              className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors flex items-center space-x-2"
-                                                            >
-                                                              <XIcon className="h-4 w-4" />
-                                                              <span>Cancel</span>
-                                                            </button>
-                                                          </div>
-                                                        </div>
-                                                      ) : (
-                                                        <>
+
+                                          {/* Expanded Quiz Details */}
+                                          {isExpanded && assessment.questions && (
+                                            <div className="border-t border-purple-200 p-4 bg-gray-50">
+                                              <div className="space-y-4 max-h-96 overflow-y-auto">
+                                                {assessment.questions.map((question, qIdx) => {
+                                                  const questionKey = `${assessment.id}-q${qIdx}`;
+                                                  const isEditing = editingQuestionId === questionKey;
+                                                  const editedQuestion = editedQuestions[questionKey] || question;
+
+                                                  return (
+                                                    <div key={qIdx} className="bg-white rounded-lg p-4 border border-gray-200">
+                                                      <div className="flex items-start justify-between mb-2">
+                                                        {isEditing ? (
                                                           <div className="flex-1">
-                                                            <h5 className="font-medium text-gray-900 text-sm">
-                                                              Question {qIdx + 1}: {question.text}
-                                                            </h5>
+                                                            <input
+                                                              type="text"
+                                                              value={editedQuestion.text}
+                                                              onChange={(e) => setEditedQuestions({
+                                                                ...editedQuestions,
+                                                                [questionKey]: { ...editedQuestion, text: e.target.value }
+                                                              })}
+                                                              className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-3"
+                                                              placeholder="Question text"
+                                                            />
+                                                            <div className="space-y-2">
+                                                              {editedQuestion.options?.map((option, optIdx) => (
+                                                                <div key={optIdx} className="flex items-center space-x-2">
+                                                                  <input
+                                                                    type="radio"
+                                                                    name={`correct-${questionKey}`}
+                                                                    checked={option === editedQuestion.correctAnswer}
+                                                                    onChange={() => setEditedQuestions({
+                                                                      ...editedQuestions,
+                                                                      [questionKey]: { ...editedQuestion, correctAnswer: option }
+                                                                    })}
+                                                                    className="text-green-600"
+                                                                  />
+                                                                  <input
+                                                                    type="text"
+                                                                    value={option}
+                                                                    onChange={(e) => {
+                                                                      const newOptions = [...(editedQuestion.options || [])];
+                                                                      newOptions[optIdx] = e.target.value;
+                                                                      setEditedQuestions({
+                                                                        ...editedQuestions,
+                                                                        [questionKey]: { ...editedQuestion, options: newOptions }
+                                                                      });
+                                                                    }}
+                                                                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg"
+                                                                    placeholder={`Option ${String.fromCharCode(65 + optIdx)}`}
+                                                                  />
+                                                                </div>
+                                                              ))}
+                                                            </div>
+                                                            <textarea
+                                                              value={editedQuestion.explanation || ''}
+                                                              onChange={(e) => setEditedQuestions({
+                                                                ...editedQuestions,
+                                                                [questionKey]: { ...editedQuestion, explanation: e.target.value }
+                                                              })}
+                                                              className="w-full mt-3 px-3 py-2 border border-gray-300 rounded-lg"
+                                                              placeholder="Explanation (optional)"
+                                                              rows={2}
+                                                            />
+                                                            <div className="flex items-center space-x-2 mt-3">
+                                                              <button
+                                                                onClick={() => saveQuestionEdit(module.id, assessment.id, qIdx, editedQuestion)}
+                                                                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2"
+                                                              >
+                                                                <Save className="h-4 w-4" />
+                                                                <span>Save</span>
+                                                              </button>
+                                                              <button
+                                                                onClick={() => {
+                                                                  setEditingQuestionId(null);
+                                                                  setEditedQuestions({});
+                                                                }}
+                                                                className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors flex items-center space-x-2"
+                                                              >
+                                                                <XIcon className="h-4 w-4" />
+                                                                <span>Cancel</span>
+                                                              </button>
+                                                            </div>
                                                           </div>
-                                                          <div className="flex items-center space-x-2">
-                                                            <span className="text-xs text-gray-500">{question.points || 10} pts</span>
-                                                            <button
-                                                              onClick={() => {
-                                                                setEditingQuestionId(questionKey);
-                                                                setEditedQuestions({ [questionKey]: { ...question } });
-                                                              }}
-                                                              className="p-1 text-purple-600 hover:bg-purple-50 rounded transition-colors"
-                                                              title="Edit question"
-                                                            >
-                                                              <Edit3 className="h-4 w-4" />
-                                                            </button>
+                                                        ) : (
+                                                          <>
+                                                            <div className="flex-1">
+                                                              <h5 className="font-medium text-gray-900 text-sm">
+                                                                Question {qIdx + 1}: {question.text}
+                                                              </h5>
+                                                            </div>
+                                                            <div className="flex items-center space-x-2">
+                                                              <span className="text-xs text-gray-500">{question.points || 10} pts</span>
+                                                              <button
+                                                                onClick={() => {
+                                                                  setEditingQuestionId(questionKey);
+                                                                  setEditedQuestions({ [questionKey]: { ...question } });
+                                                                }}
+                                                                className="p-1 text-purple-600 hover:bg-purple-50 rounded transition-colors"
+                                                                title="Edit question"
+                                                              >
+                                                                <Edit3 className="h-4 w-4" />
+                                                              </button>
+                                                            </div>
+                                                          </>
+                                                        )}
+                                                      </div>
+                                                      {!isEditing && (
+                                                        <>
+                                                          <div className="space-y-2 mt-3">
+                                                            {(() => {
+                                                              // Get options based on question type
+                                                              let options: string[] = [];
+                                                              const isMultipleCorrect = question.type === 'multiple-correct';
+                                                              const isTrueFalse = question.type === 'true-false';
+
+                                                              if (isTrueFalse) {
+                                                                // True/False questions always have these options
+                                                                options = ['True', 'False'];
+                                                              } else if (question.options && question.options.length > 0) {
+                                                                options = question.options;
+                                                              }
+
+                                                              // Determine if an option is correct
+                                                              const isOptionCorrect = (option: string, optIdx: number) => {
+                                                                if (isMultipleCorrect) {
+                                                                  // For multiple correct, correctAnswer is an array
+                                                                  return Array.isArray(question.correctAnswer)
+                                                                    ? question.correctAnswer.includes(option) || question.correctAnswer.includes(optIdx)
+                                                                    : false;
+                                                                } else if (isTrueFalse) {
+                                                                  // For True/False, correctAnswer might be boolean, string, or index
+                                                                  const correct = question.correctAnswer;
+                                                                  if (typeof correct === 'boolean') {
+                                                                    return (option === 'True' && correct) || (option === 'False' && !correct);
+                                                                  } else if (typeof correct === 'string') {
+                                                                    return option.toLowerCase() === correct.toLowerCase();
+                                                                  } else {
+                                                                    return optIdx === correct;
+                                                                  }
+                                                                } else {
+                                                                  // For single choice, compare directly
+                                                                  return option === question.correctAnswer || optIdx === question.correctAnswer;
+                                                                }
+                                                              };
+
+                                                              return options.length > 0 ? options.map((option, optIdx) => {
+                                                                const isCorrect = isOptionCorrect(option, optIdx);
+                                                                const inputType = isMultipleCorrect ? 'checkbox' : 'radio';
+                                                                const isChecked = isCorrect; // Pre-select correct answers
+
+                                                                return (
+                                                                  <div
+                                                                    key={optIdx}
+                                                                    className={`p-3 rounded-lg transition-all ${isCorrect
+                                                                        ? 'bg-green-50 border-2 border-green-500 shadow-sm'
+                                                                        : 'bg-gray-50 border border-gray-200'
+                                                                      }`}
+                                                                  >
+                                                                    <div className="flex items-center space-x-3">
+                                                                      <input
+                                                                        type={inputType}
+                                                                        name={`question-${questionKey}`}
+                                                                        checked={isChecked}
+                                                                        readOnly
+                                                                        className={isMultipleCorrect ? 'w-4 h-4 text-green-600' : 'w-4 h-4 text-green-600'}
+                                                                      />
+                                                                      <span className={`text-xs font-medium ${isCorrect ? 'text-green-800 font-semibold' : 'text-gray-700'
+                                                                        }`}>
+                                                                        {String.fromCharCode(65 + optIdx)}.
+                                                                      </span>
+                                                                      <span className={`text-xs flex-1 ${isCorrect ? 'text-green-900 font-medium' : 'text-gray-700'
+                                                                        }`}>
+                                                                        {option}
+                                                                      </span>
+                                                                      {isCorrect && (
+                                                                        <span className="flex-shrink-0 px-2 py-1 bg-green-500 text-white text-xs font-semibold rounded-full">
+                                                                          Correct
+                                                                        </span>
+                                                                      )}
+                                                                    </div>
+                                                                  </div>
+                                                                );
+                                                              }) : (
+                                                                <div className="text-xs text-gray-500 italic">
+                                                                  {isTrueFalse ? 'True/False question (options not defined)' : 'No options available'}
+                                                                </div>
+                                                              );
+                                                            })()}
                                                           </div>
+                                                          {question.explanation && (
+                                                            <div className="mt-3 p-2 bg-blue-50 rounded border border-blue-200">
+                                                              <p className="text-xs text-blue-900">
+                                                                <strong>Explanation:</strong> {question.explanation}
+                                                              </p>
+                                                            </div>
+                                                          )}
                                                         </>
                                                       )}
                                                     </div>
-                                                    {!isEditing && (
-                                                      <>
-                                                        <div className="space-y-2 mt-3">
-                                                          {(() => {
-                                                            // Get options based on question type
-                                                            let options: string[] = [];
-                                                            const isMultipleCorrect = question.type === 'multiple-correct';
-                                                            const isTrueFalse = question.type === 'true-false';
-                                                            
-                                                            if (isTrueFalse) {
-                                                              // True/False questions always have these options
-                                                              options = ['True', 'False'];
-                                                            } else if (question.options && question.options.length > 0) {
-                                                              options = question.options;
-                                                            }
-                                                            
-                                                            // Determine if an option is correct
-                                                            const isOptionCorrect = (option: string, optIdx: number) => {
-                                                              if (isMultipleCorrect) {
-                                                                // For multiple correct, correctAnswer is an array
-                                                                return Array.isArray(question.correctAnswer) 
-                                                                  ? question.correctAnswer.includes(option) || question.correctAnswer.includes(optIdx)
-                                                                  : false;
-                                                              } else if (isTrueFalse) {
-                                                                // For True/False, correctAnswer might be boolean, string, or index
-                                                                const correct = question.correctAnswer;
-                                                                if (typeof correct === 'boolean') {
-                                                                  return (option === 'True' && correct) || (option === 'False' && !correct);
-                                                                } else if (typeof correct === 'string') {
-                                                                  return option.toLowerCase() === correct.toLowerCase();
-                                                                } else {
-                                                                  return optIdx === correct;
-                                                                }
-                                                              } else {
-                                                                // For single choice, compare directly
-                                                                return option === question.correctAnswer || optIdx === question.correctAnswer;
-                                                              }
-                                                            };
-                                                            
-                                                            return options.length > 0 ? options.map((option, optIdx) => {
-                                                              const isCorrect = isOptionCorrect(option, optIdx);
-                                                              const inputType = isMultipleCorrect ? 'checkbox' : 'radio';
-                                                              const isChecked = isCorrect; // Pre-select correct answers
-                                                              
-                                                              return (
-                                                                <div
-                                                                  key={optIdx}
-                                                                  className={`p-3 rounded-lg transition-all ${
-                                                                    isCorrect
-                                                                      ? 'bg-green-50 border-2 border-green-500 shadow-sm'
-                                                                      : 'bg-gray-50 border border-gray-200'
-                                                                  }`}
-                                                                >
-                                                                  <div className="flex items-center space-x-3">
-                                                                    <input
-                                                                      type={inputType}
-                                                                      name={`question-${questionKey}`}
-                                                                      checked={isChecked}
-                                                                      readOnly
-                                                                      className={isMultipleCorrect ? 'w-4 h-4 text-green-600' : 'w-4 h-4 text-green-600'}
-                                                                    />
-                                                                    <span className={`text-xs font-medium ${
-                                                                      isCorrect ? 'text-green-800 font-semibold' : 'text-gray-700'
-                                                                    }`}>
-                                                                      {String.fromCharCode(65 + optIdx)}.
-                                                                    </span>
-                                                                    <span className={`text-xs flex-1 ${
-                                                                      isCorrect ? 'text-green-900 font-medium' : 'text-gray-700'
-                                                                    }`}>
-                                                                      {option}
-                                                                    </span>
-                                                                    {isCorrect && (
-                                                                      <span className="flex-shrink-0 px-2 py-1 bg-green-500 text-white text-xs font-semibold rounded-full">
-                                                                        Correct
-                                                                      </span>
-                                                                    )}
-                                                                  </div>
-                                                                </div>
-                                                              );
-                                                            }) : (
-                                                              <div className="text-xs text-gray-500 italic">
-                                                                {isTrueFalse ? 'True/False question (options not defined)' : 'No options available'}
-                                                              </div>
-                                                            );
-                                                          })()}
-                                                        </div>
-                                                        {question.explanation && (
-                                                          <div className="mt-3 p-2 bg-blue-50 rounded border border-blue-200">
-                                                            <p className="text-xs text-blue-900">
-                                                              <strong>Explanation:</strong> {question.explanation}
-                                                            </p>
-                                                          </div>
-                                                        )}
-                                                      </>
-                                                    )}
-                                                  </div>
-                                                );
-                                              })}
+                                                  );
+                                                })}
+                                              </div>
                                             </div>
-                                          </div>
-                                        )}
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              ) : (
-                                <div className="text-center py-4 text-gray-500 text-sm">
-                                  <FileQuestion className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-                                  <p>No quiz generated for this module</p>
-                                  <p className="text-xs mt-1">Click on "Generate Quiz" to create a quiz with AI</p>
-                                </div>
-                              )}
+                                          )}
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                ) : (
+                                  <div className="text-center py-4 text-gray-500 text-sm">
+                                    <FileQuestion className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                                    <p>No quiz generated for this module</p>
+                                    <p className="text-xs mt-1">Click on "Generate Quiz" to create a quiz with AI</p>
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        )}
-                      </div>
-                    );
+                          )}
+                        </div>
+                      );
                     })}
                   </div>
                 )}
@@ -1105,7 +1099,7 @@ export default function LaunchApproval({
               {/* Launch Settings */}
               <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Launch Settings</h3>
-                
+
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1175,7 +1169,7 @@ export default function LaunchApproval({
               {/* Actions */}
               <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Actions</h3>
-                
+
                 <div className="space-y-3">
                   <button
                     onClick={onBackToRehearsal}
@@ -1227,7 +1221,7 @@ export default function LaunchApproval({
             >
               Back to Curriculum
             </button>
-            
+
             <div className="text-center">
               <div className="text-sm text-gray-500 mb-2">
                 Rehearsal Rating: {rehearsalRating}/5 stars
@@ -1246,7 +1240,7 @@ export default function LaunchApproval({
                 )}
               </div>
             </div>
-            
+
             <div className="w-32"></div> {/* Spacer for alignment */}
           </div>
         </div>

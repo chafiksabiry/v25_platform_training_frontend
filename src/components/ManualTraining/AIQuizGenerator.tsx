@@ -9,7 +9,7 @@ const getApiBaseUrl = () => {
     return import.meta.env.VITE_API_BASE_URL;
   }
   const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-  return isLocal ? 'http://localhost:5010' : 'https://api-training.harx.ai';
+  return isLocal ? 'http://localhost:5010' : 'https://v25platformtrainingbackend-production.up.railway.app';
 };
 
 const API_BASE = getApiBaseUrl();
@@ -56,7 +56,7 @@ export const AIQuizGenerator: React.FC<AIQuizGeneratorProps> = ({
       // Step 1: Analyze module content
       setProgress(20);
       setStatus('analyzing');
-      
+
       // Collect module content
       const moduleContent = {
         title: module.title,
@@ -85,7 +85,7 @@ export const AIQuizGenerator: React.FC<AIQuizGeneratorProps> = ({
 
       if (response.data.success) {
         const generatedData = response.data.data;
-        
+
         // Create the quiz
         const quizData: Partial<ManualQuiz> = {
           title: `${module.title} - Quiz`,
@@ -112,7 +112,7 @@ export const AIQuizGenerator: React.FC<AIQuizGeneratorProps> = ({
         );
 
         setProgress(100);
-        
+
         if (createResponse.data.success) {
           setGeneratedQuiz(createResponse.data.data);
           setStatus('success');
@@ -272,7 +272,7 @@ export const AIQuizGenerator: React.FC<AIQuizGeneratorProps> = ({
               <div className="flex items-center justify-center">
                 <Loader2 className="w-16 h-16 text-purple-600 animate-spin" />
               </div>
-              
+
               <div>
                 <div className="flex justify-between text-sm text-gray-600 mb-2">
                   <span>

@@ -8,7 +8,7 @@ const getApiBaseUrl = () => {
     return import.meta.env.VITE_API_BASE_URL;
   }
   const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-  return isLocal ? 'http://localhost:5010' : 'https://api-training.harx.ai';
+  return isLocal ? 'http://localhost:5010' : 'https://v25platformtrainingbackend-production.up.railway.app';
 };
 
 const API_BASE = getApiBaseUrl();
@@ -143,7 +143,7 @@ export const AIGeneratedTrainingCreator: React.FC<AIGeneratedTrainingCreatorProp
       });
 
       setStep('result');
-      
+
       // Navigate to module editor after 2 seconds
       setTimeout(() => {
         onComplete(trainingId);
@@ -240,7 +240,7 @@ export const AIGeneratedTrainingCreator: React.FC<AIGeneratedTrainingCreatorProp
         {step === 'upload' && (
           <div className="bg-white rounded-2xl shadow-xl p-8">
             <h2 className="text-2xl font-bold text-gray-900 mb-6">Step 2: Upload Your Training Files</h2>
-            
+
             {/* Upload Zone */}
             <div className="border-2 border-dashed border-purple-300 rounded-xl p-8 text-center hover:border-purple-500 transition-colors bg-purple-50">
               <Upload className="w-12 h-12 text-purple-600 mx-auto mb-4" />

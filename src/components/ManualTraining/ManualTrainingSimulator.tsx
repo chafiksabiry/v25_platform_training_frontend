@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Play, 
-  Pause, 
-  CheckCircle, 
-  ArrowLeft, 
-  ArrowRight, 
-  BookOpen, 
-  FileText, 
-  Video, 
+import {
+  Play,
+  Pause,
+  CheckCircle,
+  ArrowLeft,
+  ArrowRight,
+  BookOpen,
+  FileText,
+  Video,
   Youtube,
   List,
   Award,
@@ -85,16 +85,16 @@ interface ManualTrainingSimulatorProps {
   onClose: () => void;
 }
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 
-                (() => {
-                  const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-                  return isLocal ? 'http://localhost:5010' : 'https://api-training.harx.ai';
-                })();
+const API_BASE = import.meta.env.VITE_API_BASE_URL ||
+  (() => {
+    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    return isLocal ? 'http://localhost:5010' : 'https://v25platformtrainingbackend-production.up.railway.app';
+  })();
 
-export default function ManualTrainingSimulator({ 
-  trainingId, 
+export default function ManualTrainingSimulator({
+  trainingId,
   trainingTitle,
-  onClose 
+  onClose
 }: ManualTrainingSimulatorProps) {
   const [modules, setModules] = useState<Module[]>([]);
   const [currentModuleIndex, setCurrentModuleIndex] = useState(0);
@@ -116,7 +116,7 @@ export default function ManualTrainingSimulator({
   const [iframeError, setIframeError] = useState(false);
   const [iframeKey, setIframeKey] = useState(0);
   const [useObjectTag, setUseObjectTag] = useState(false);
-  
+
   // Anti-Cheating System States
   const [violations, setViolations] = useState<Map<string, Set<number>>>(new Map()); // quizId -> Set of question indices with violations
   const [violationFlash, setViolationFlash] = useState(false); // Flash red border
@@ -131,7 +131,7 @@ export default function ManualTrainingSimulator({
   const [penaltyTimeLeft, setPenaltyTimeLeft] = useState(0); // Seconds left in penalty
   const [showCertification, setShowCertification] = useState(false);
   const [finalExamCompleted, setFinalExamCompleted] = useState(false);
-  
+
   // Track violation types per quiz
   const [violationTypes, setViolationTypes] = useState<Map<string, Set<string>>>(new Map()); // quizId -> Set of violation types
   const [violationsByQuestion, setViolationsByQuestion] = useState<Map<string, Map<number, string[]>>>(new Map()); // quizId -> Map<questionIdx, violation types>
@@ -181,7 +181,7 @@ export default function ManualTrainingSimulator({
       if (!questionSet.has(questionIndex)) {
         questionSet.add(questionIndex);
         newMap.set(quizId, questionSet);
-        
+
         // Track violation type globally for this quiz
         setViolationTypes(prev2 => {
           const newMap2 = new Map(prev2);
@@ -190,7 +190,7 @@ export default function ManualTrainingSimulator({
           newMap2.set(quizId, typeSet);
           return newMap2;
         });
-        
+
         // Track violation type for this specific question
         setViolationsByQuestion(prev3 => {
           const newMap3 = new Map(prev3);
@@ -203,19 +203,19 @@ export default function ManualTrainingSimulator({
           }
           return newMap3;
         });
-        
+
         console.log(`🚨 VIOLATION: ${violationType} on question ${questionIndex} in quiz ${quizId}`);
-        
+
         // Vibration for mobile/tablet devices
         if (navigator.vibrate) {
           // Pattern: vibrate 200ms, pause 100ms, vibrate 200ms (strong warning)
           navigator.vibrate([200, 100, 200]);
         }
-        
+
         // Flash red border
         setViolationFlash(true);
         setTimeout(() => setViolationFlash(false), 2000);
-        
+
         // Auto-advance to next question after 2 seconds
         setTimeout(() => {
           // Lock this question (one-way mode)
@@ -226,7 +226,7 @@ export default function ManualTrainingSimulator({
             newMap.set(quizId, answeredSet);
             return newMap;
           });
-          
+
           // Record response time as 0 (fraud)
           const key = `${quizId}-${questionIndex}`;
           setQuestionStartTime(prev => {
@@ -242,11 +242,11 @@ export default function ManualTrainingSimulator({
             }
             return prev;
           });
-          
+
           // Move to next question OR trigger auto-submit if last question
           const currentIdx = questionIndex;
           const quiz = currentSection?.quiz;
-          
+
           if (quiz) {
             if (currentIdx < quiz.questions.length - 1) {
               // Move to next question
@@ -258,19 +258,19 @@ export default function ManualTrainingSimulator({
               quiz.questions.forEach((q: any) => {
                 const key = `${quizId}-${q.id}`;
                 const answer = quizAnswers.get(key);
-                
+
                 if (q.type === 'multiple-choice' && answer === q.correctAnswer) {
                   correctAnswers++;
                 } else if (q.type === 'true-false' && answer === (q.correctAnswer === 'true' || q.correctAnswer === true)) {
                   correctAnswers++;
                 }
               });
-              
+
               const finalScore = Math.round((correctAnswers / quiz.questions.length) * 100);
               setQuizScores(prev => new Map(prev).set(quizId, finalScore));
               setQuizSubmitted(prev => new Map(prev).set(quizId, true));
               setCurrentQuestionIndex(prev => new Map(prev).set(quizId, 0));
-              
+
               // Mark quiz section as completed
               if (currentSection?.id) {
                 setCompletedSections(prev => new Set(prev).add(currentSection.id));
@@ -278,7 +278,7 @@ export default function ManualTrainingSimulator({
             }
           }
         }, 2000);
-        
+
         return newMap;
       }
       return prev; // No change if violation already recorded for this question
@@ -292,7 +292,7 @@ export default function ManualTrainingSimulator({
         const quizId = currentSection.quiz?.id;
         const questionIdx = currentQuestionIndex.get(quizId || '') || 0;
         const isSubmitted = quizSubmitted.get(quizId || '');
-        
+
         if (quizId && !isSubmitted) {
           addViolation(quizId, questionIdx, 'tab_switch');
         }
@@ -308,7 +308,7 @@ export default function ManualTrainingSimulator({
     const isQuiz = currentSection?.type === 'quiz';
     const quizId = currentSection?.quiz?.id;
     const isSubmitted = quizSubmitted.get(quizId || '');
-    
+
     if (isQuiz && !isSubmitted) {
       const handleContextMenu = (e: MouseEvent) => {
         e.preventDefault();
@@ -322,15 +322,15 @@ export default function ManualTrainingSimulator({
       const handleKeyDown = (e: KeyboardEvent) => {
         // Detect Fn key press - FRAUD
         // Fn key detection: check for Fn key code, key name, or special key combinations
-        const isFnKey = e.key === 'Fn' || 
-                       e.key === 'Function' || 
-                       e.code === 'Fn' ||
-                       e.code === 'Function' ||
-                       e.keyCode === 0 || // Fn key sometimes has keyCode 0
-                       (e.location === 3 && e.key.length === 0) || // Some Fn keys have location 3
-                       (e.key === 'Unidentified' && e.code === '') || // Some systems report Fn as Unidentified
-                       (e.which === 0 && !e.ctrlKey && !e.altKey && !e.shiftKey && !e.metaKey); // Fn key often has which=0 with no modifiers
-        
+        const isFnKey = e.key === 'Fn' ||
+          e.key === 'Function' ||
+          e.code === 'Fn' ||
+          e.code === 'Function' ||
+          e.keyCode === 0 || // Fn key sometimes has keyCode 0
+          (e.location === 3 && e.key.length === 0) || // Some Fn keys have location 3
+          (e.key === 'Unidentified' && e.code === '') || // Some systems report Fn as Unidentified
+          (e.which === 0 && !e.ctrlKey && !e.altKey && !e.shiftKey && !e.metaKey); // Fn key often has which=0 with no modifiers
+
         if (isFnKey) {
           e.preventDefault();
           e.stopPropagation();
@@ -341,15 +341,15 @@ export default function ManualTrainingSimulator({
           }
           return false;
         }
-        
+
         // Block ALL keyboard keys during quiz (except Tab for navigation)
         // Allow only: Tab (for accessibility), Enter/Space (for clicking buttons/options)
         const allowedKeys = ['Tab', 'Enter', ' ', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
-        
+
         if (!allowedKeys.includes(e.key)) {
           e.preventDefault();
           e.stopPropagation();
-          
+
           // Record violation for any blocked key press
           const questionIdx = currentQuestionIndex.get(quizId || '') || 0;
           if (quizId) {
@@ -357,7 +357,7 @@ export default function ManualTrainingSimulator({
           }
           return false;
         }
-        
+
         // Also block any Ctrl/Alt/Meta combinations even with allowed keys
         if (e.ctrlKey || e.metaKey || e.altKey) {
           e.preventDefault();
@@ -396,7 +396,7 @@ export default function ManualTrainingSimulator({
       const quizId = currentSection.quiz?.id;
       const questionIdx = currentQuestionIndex.get(quizId || '') || 0;
       const key = `${quizId}-${questionIdx}`;
-      
+
       if (quizId && !quizSubmitted.get(quizId)) {
         // Start timer for this question
         setQuestionStartTime(prev => new Map(prev).set(key, Date.now()));
@@ -412,7 +412,7 @@ export default function ManualTrainingSimulator({
       const key = `${quizId}-${questionIdx}`;
       const startTime = questionStartTime.get(key);
       const isSubmitted = quizSubmitted.get(quizId || '');
-      
+
       if (startTime && !isSubmitted) {
         const interval = setInterval(() => {
           setQuestionTimer(Math.floor((Date.now() - startTime) / 1000));
@@ -430,11 +430,11 @@ export default function ManualTrainingSimulator({
       const quizId = currentSection.quiz?.id;
       const questionIdx = currentQuestionIndex.get(quizId || '') || 0;
       const isSubmitted = quizSubmitted.get(quizId || '');
-      
+
       if (!isSubmitted && quizId) {
         // Reset timer to 45 seconds when question changes
         setQuestionTimeLeft(45);
-        
+
         const interval = setInterval(() => {
           setQuestionTimeLeft(prev => {
             if (prev <= 1) {
@@ -473,7 +473,7 @@ export default function ManualTrainingSimulator({
             return prev - 1;
           });
         }, 1000);
-        
+
         return () => clearInterval(interval);
       } else {
         setQuestionTimeLeft(45);
@@ -490,12 +490,12 @@ export default function ManualTrainingSimulator({
       const questionIdx = currentQuestionIndex.get(quizId || '') || 0;
       const key = `${quizId}-${questionIdx}`;
       const endTime = penaltyEndTime.get(key);
-      
+
       if (endTime) {
         const interval = setInterval(() => {
           const timeLeft = Math.max(0, Math.ceil((endTime - Date.now()) / 1000));
           setPenaltyTimeLeft(timeLeft);
-          
+
           if (timeLeft === 0) {
             // Penalty ended, remove it
             setPenaltyEndTime(prev => {
@@ -518,7 +518,7 @@ export default function ManualTrainingSimulator({
       alert('❌ You must pass previous modules before accessing this one.');
       return;
     }
-    
+
     setCurrentModuleIndex(moduleIndex);
     setCurrentSectionIndex(sectionIndex);
     setDocumentViewed(false);
@@ -531,26 +531,26 @@ export default function ManualTrainingSimulator({
   const canAccessModule = (moduleIndex: number): boolean => {
     // Always allow access to first module
     if (moduleIndex === 0) return true;
-    
+
     // Check all previous modules
     for (let i = 0; i < moduleIndex; i++) {
       const module = modules[i];
       if (!module) continue;
-      
+
       // Find quiz for this module
       const quiz = quizzes.get(module.id);
       if (!quiz) {
         // No quiz = can't proceed
         return false;
       }
-      
+
       // Check if quiz is submitted
       const isSubmitted = quizSubmitted.get(quiz.id);
       if (!isSubmitted) {
         // Quiz not taken yet
         return false;
       }
-      
+
       // Check if quiz passed
       const score = quizScores.get(quiz.id) || 0;
       const passingScore = quiz.passingScore || 70;
@@ -559,7 +559,7 @@ export default function ManualTrainingSimulator({
         return false;
       }
     }
-    
+
     return true;
   };
 
@@ -570,7 +570,7 @@ export default function ManualTrainingSimulator({
     setIframeError(false);
     setUseObjectTag(false);
     setIframeKey(prev => prev + 1); // Force iframe reload with new key
-    
+
     // Auto-mark as viewed for non-document sections after 3 seconds
     if (currentSection?.type !== 'document') {
       const timer = setTimeout(() => {
@@ -592,12 +592,12 @@ export default function ManualTrainingSimulator({
   // Check if user can complete the section
   const canComplete = () => {
     if (!currentSection) return false;
-    
+
     // For documents, require viewing
     if (currentSection.type === 'document') {
       return documentViewed || completedSections.has(currentSection.id);
     }
-    
+
     // For other types, auto-enable after 3 seconds
     return documentViewed || completedSections.has(currentSection.id);
   };
@@ -625,7 +625,7 @@ export default function ManualTrainingSimulator({
       const response = await axios.get(`${API_BASE}/manual-trainings/${trainingId}/modules`);
       if (response.data.success) {
         const sortedModules = response.data.data.sort((a: Module, b: Module) => a.orderIndex - b.orderIndex);
-        
+
         // Load quizzes and add them as sections
         for (const module of sortedModules) {
           // Sort sections
@@ -634,13 +634,13 @@ export default function ManualTrainingSimulator({
           } else {
             module.sections = [];
           }
-          
+
           // Load quiz for this module
           try {
             const quizResponse = await axios.get(`${API_BASE}/manual-trainings/modules/${module.id}/quizzes`);
             if (quizResponse.data.success && quizResponse.data.data.length > 0) {
               const quiz = quizResponse.data.data[0];
-              
+
               // Add quiz as a section at the end
               const quizSection: Section = {
                 id: `quiz-${module.id}`,
@@ -650,7 +650,7 @@ export default function ManualTrainingSimulator({
                 estimatedDuration: quiz.timeLimit || 15,
                 quiz: quiz
               };
-              
+
               module.sections.push(quizSection);
               setQuizzes(prev => new Map(prev).set(module.id, quiz));
             }
@@ -658,7 +658,7 @@ export default function ManualTrainingSimulator({
             console.log(`No quiz found for module ${module.id}`);
           }
         }
-        
+
         // Load Final Exam
         try {
           const finalExamResponse = await axios.get(`${API_BASE}/manual-trainings/${trainingId}/quizzes`);
@@ -686,7 +686,7 @@ export default function ManualTrainingSimulator({
                   }
                 ]
               };
-              
+
               sortedModules.push(finalExamModule);
               setQuizzes(prev => new Map(prev).set('final-exam', finalExam));
             }
@@ -694,7 +694,7 @@ export default function ManualTrainingSimulator({
         } catch (error) {
           console.log('No final exam found');
         }
-        
+
         setModules(sortedModules);
       }
     } catch (error) {
@@ -723,7 +723,7 @@ export default function ManualTrainingSimulator({
     if (!currentModule) return;
 
     const totalSections = currentModule.sections?.length || 0;
-    
+
     // Check if there's a next section in the current module
     if (currentSectionIndex < totalSections - 1) {
       // Check if the next section is a quiz
@@ -765,7 +765,7 @@ export default function ManualTrainingSimulator({
           }
         }
       }
-      
+
       // No quiz found, move to next module
       handleModuleComplete();
     }
@@ -775,13 +775,13 @@ export default function ManualTrainingSimulator({
     // Check if all modules (except final exam) are completed
     const regularModules = modules.filter(m => m.id !== 'final-exam');
     const allModulesCompleted = regularModules.every(module => completedModules.has(module.id));
-    
+
     // Check if final exam is completed and passed
     const finalExamModule = modules.find(m => m.id === 'final-exam');
     const finalExamQuiz = finalExamModule ? quizzes.get('final-exam') : null;
-    const finalExamPassed = finalExamQuiz && finalExamCompleted && 
+    const finalExamPassed = finalExamQuiz && finalExamCompleted &&
       (quizScores.get(finalExamQuiz.id) || 0) >= (finalExamQuiz.passingScore || 80);
-    
+
     if (allModulesCompleted && finalExamPassed) {
       setShowCertification(true);
     }
@@ -801,7 +801,7 @@ export default function ManualTrainingSimulator({
       checkAndShowCertification();
       if (!showCertification) {
         // If no certification yet, just show completion message
-      alert('🎉 Congratulations! You have completed all modules!');
+        alert('🎉 Congratulations! You have completed all modules!');
       }
     }
   };
@@ -809,16 +809,16 @@ export default function ManualTrainingSimulator({
   // Check if user can proceed to next module
   const canProceedToNextModule = (): boolean => {
     if (!currentModule || currentModule.id === 'final-exam') return true;
-    
+
     const quiz = quizzes.get(currentModule.id);
     if (!quiz) return false;
-    
+
     const isSubmitted = quizSubmitted.get(quiz.id);
     if (!isSubmitted) return false;
-    
+
     const score = quizScores.get(quiz.id) || 0;
     const passingScore = quiz.passingScore || 70;
-    
+
     return score >= passingScore;
   };
 
@@ -1074,7 +1074,7 @@ export default function ManualTrainingSimulator({
       // Check if question is locked (one-way mode)
       const answeredSet = answeredQuestions.get(quizId) || new Set<number>();
       const targetIdx = questionIdx - 1;
-      
+
       // Don't allow going back to locked questions (no alert, just block)
       if (answeredSet.has(targetIdx)) {
         return;
@@ -1097,7 +1097,7 @@ export default function ManualTrainingSimulator({
       // Prepare security metadata
       const violationTypeSet = violationTypes.get(quizId) || new Set<string>();
       const violationsByQuestionMap = violationsByQuestion.get(quizId) || new Map<number, string[]>();
-      
+
       // Convert Map to plain object for JSON serialization
       const violationsByQuestionObj: Record<string, string[]> = {};
       violationsByQuestionMap.forEach((violationList, questionIndex) => {
@@ -1148,8 +1148,8 @@ export default function ManualTrainingSimulator({
         console.log('✅ Quiz submission response:', response.data);
 
         // Use server-calculated score if available
-        const finalScore = response.data.data?.score || 
-                          Math.round((Object.values(answersObj).filter((a, i) => a === quiz.questions[i]?.correctAnswer).length / quiz.questions.length) * 100);
+        const finalScore = response.data.data?.score ||
+          Math.round((Object.values(answersObj).filter((a, i) => a === quiz.questions[i]?.correctAnswer).length / quiz.questions.length) * 100);
 
         // Check for security violations
         if (response.data.data?.securityViolation) {
@@ -1166,7 +1166,7 @@ export default function ManualTrainingSimulator({
         setQuizScores(prev => new Map(prev).set(quizId, finalScore));
         setQuizSubmitted(prev => new Map(prev).set(quizId, true));
         setCurrentQuestionIndex(prev => new Map(prev).set(quizId, 0)); // Reset to first question for review
-        
+
         // Mark quiz section as completed
         if (currentSection?.id) {
           setCompletedSections(prev => new Set(prev).add(currentSection.id));
@@ -1189,7 +1189,7 @@ export default function ManualTrainingSimulator({
 
     const currentKey = `${quizId}-${currentQuestion?.id}`;
     const currentAnswer = quizAnswers.get(currentKey);
-    
+
     // Count answered questions (always recalculate with current state)
     const answeredCount = quiz.questions.filter((q: any) => {
       const key = `${quizId}-${q.id}`;
@@ -1225,10 +1225,9 @@ export default function ManualTrainingSimulator({
     const isTimerWarning = questionTimer > 180;
 
     return (
-      <div 
-        className={`bg-white rounded-lg shadow-sm h-full flex flex-col transition-all select-none ${
-          violationFlash ? 'ring-4 ring-red-500 animate-pulse' : ''
-        }`}
+      <div
+        className={`bg-white rounded-lg shadow-sm h-full flex flex-col transition-all select-none ${violationFlash ? 'ring-4 ring-red-500 animate-pulse' : ''
+          }`}
         style={{ userSelect: 'none', WebkitUserSelect: 'none', MozUserSelect: 'none', msUserSelect: 'none' }}
         onCopy={(e) => {
           e.preventDefault();
@@ -1296,23 +1295,21 @@ export default function ManualTrainingSimulator({
               {!isSubmitted && (
                 <>
                   {/* 45-second countdown timer per question */}
-                  <div className={`flex items-center space-x-1 px-2 py-1 rounded font-mono font-bold ${
-                    questionTimeLeft <= 10 
-                      ? 'bg-red-500 text-white animate-pulse' 
+                  <div className={`flex items-center space-x-1 px-2 py-1 rounded font-mono font-bold ${questionTimeLeft <= 10
+                      ? 'bg-red-500 text-white animate-pulse'
                       : questionTimeLeft <= 20
                         ? 'bg-orange-500 text-white'
                         : 'bg-blue-500 text-white'
-                  }`}>
+                    }`}>
                     <Clock className="w-3 h-3" />
                     <span>{questionTimeLeft}s</span>
                   </div>
                   {/* Elapsed time timer */}
-                <div className={`flex items-center space-x-1 px-2 py-1 rounded font-mono font-bold ${
-                  isTimerWarning ? 'bg-orange-500 text-white animate-pulse' : 'bg-gray-100 text-gray-800'
-                }`}>
-                  <Clock className="w-3 h-3" />
-                  <span>{formatQuestionTimer(questionTimer)}</span>
-                </div>
+                  <div className={`flex items-center space-x-1 px-2 py-1 rounded font-mono font-bold ${isTimerWarning ? 'bg-orange-500 text-white animate-pulse' : 'bg-gray-100 text-gray-800'
+                    }`}>
+                    <Clock className="w-3 h-3" />
+                    <span>{formatQuestionTimer(questionTimer)}</span>
+                  </div>
                 </>
               )}
             </div>
@@ -1360,17 +1357,15 @@ export default function ManualTrainingSimulator({
               )}
 
               {/* Current Question */}
-              <div className={`rounded-lg p-4 border-2 flex-1 flex flex-col transition-all ${
-                hasViolationOnCurrentQuestion 
-                  ? 'bg-red-50 border-red-300' 
+              <div className={`rounded-lg p-4 border-2 flex-1 flex flex-col transition-all ${hasViolationOnCurrentQuestion
+                  ? 'bg-red-50 border-red-300'
                   : 'bg-gray-50 border-gray-200'
-              }`}>
+                }`}>
                 <div className="flex items-start space-x-3 mb-3 flex-shrink-0">
-                  <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center font-bold text-base ${
-                    hasViolationOnCurrentQuestion
+                  <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center font-bold text-base ${hasViolationOnCurrentQuestion
                       ? 'bg-red-600 text-white'
                       : 'bg-indigo-600 text-white'
-                  }`}>
+                    }`}>
                     {questionIdx + 1}
                   </div>
                   <div className="flex-1">
@@ -1390,13 +1385,12 @@ export default function ManualTrainingSimulator({
                   {currentQuestion.type === 'multiple-choice' && currentQuestion.options?.map((option: string, optIndex: number) => (
                     <label
                       key={optIndex}
-                      className={`flex items-center space-x-3 p-3 rounded-lg border-2 transition-all ${
-                        hasViolationOnCurrentQuestion
+                      className={`flex items-center space-x-3 p-3 rounded-lg border-2 transition-all ${hasViolationOnCurrentQuestion
                           ? 'cursor-not-allowed opacity-50 bg-gray-100 border-gray-300'
                           : currentAnswer === optIndex
                             ? 'cursor-pointer border-indigo-600 bg-indigo-50 shadow-md'
                             : 'cursor-pointer border-gray-300 hover:border-indigo-400 hover:bg-gray-100'
-                      }`}
+                        }`}
                     >
                       <input
                         type="radio"
@@ -1415,13 +1409,12 @@ export default function ManualTrainingSimulator({
                       {['True', 'False'].map((option) => (
                         <label
                           key={option}
-                          className={`flex items-center space-x-3 p-3 rounded-lg border-2 transition-all ${
-                            hasViolationOnCurrentQuestion
+                          className={`flex items-center space-x-3 p-3 rounded-lg border-2 transition-all ${hasViolationOnCurrentQuestion
                               ? 'cursor-not-allowed opacity-50 bg-gray-100 border-gray-300'
                               : currentAnswer === (option === 'True')
                                 ? 'cursor-pointer border-indigo-600 bg-indigo-50 shadow-md'
                                 : 'cursor-pointer border-gray-300 hover:border-indigo-400 hover:bg-gray-100'
-                          }`}
+                            }`}
                         >
                           <input
                             type="radio"
@@ -1442,11 +1435,10 @@ export default function ManualTrainingSimulator({
           ) : (
             <div className="space-y-3 h-full flex flex-col">
               {/* Quiz Result */}
-              <div className={`p-3 rounded-lg text-center flex-shrink-0 ${
-                score >= (quiz.passingScore || 80)
+              <div className={`p-3 rounded-lg text-center flex-shrink-0 ${score >= (quiz.passingScore || 80)
                   ? 'bg-emerald-50 border-2 border-emerald-500'
                   : 'bg-red-50 border-2 border-red-500'
-              }`}>
+                }`}>
                 <div className="flex items-center justify-center mb-2">
                   {score >= (quiz.passingScore || 80) ? (
                     <Trophy className="w-10 h-10 text-emerald-600" />
@@ -1454,18 +1446,16 @@ export default function ManualTrainingSimulator({
                     <Target className="w-10 h-10 text-red-600" />
                   )}
                 </div>
-                <h3 className={`text-base font-bold mb-1 ${
-                  score >= (quiz.passingScore || 80) ? 'text-emerald-800' : 'text-red-800'
-                }`}>
+                <h3 className={`text-base font-bold mb-1 ${score >= (quiz.passingScore || 80) ? 'text-emerald-800' : 'text-red-800'
+                  }`}>
                   {score >= (quiz.passingScore || 80) ? 'Congratulations! 🎉' : 'Keep Learning! 💪'}
                 </h3>
-                <p className={`text-xl font-semibold mb-1 ${
-                  score >= (quiz.passingScore || 80) ? 'text-emerald-700' : 'text-red-700'
-                }`}>
+                <p className={`text-xl font-semibold mb-1 ${score >= (quiz.passingScore || 80) ? 'text-emerald-700' : 'text-red-700'
+                  }`}>
                   {score}%
                 </p>
                 <p className="text-xs text-gray-600">
-                  {score >= (quiz.passingScore || 80) 
+                  {score >= (quiz.passingScore || 80)
                     ? `You passed! Required: ${quiz.passingScore}%`
                     : `Required: ${quiz.passingScore}% to pass`
                   }
@@ -1501,7 +1491,7 @@ export default function ManualTrainingSimulator({
                   onClick={() => {
                     // Go back to the first section of the current module
                     setCurrentSectionIndex(0);
-                    
+
                     // Reset quiz state
                     setQuizSubmitted(prev => {
                       const newMap = new Map(prev);
@@ -1522,14 +1512,14 @@ export default function ManualTrainingSimulator({
                       return newMap;
                     });
                     setCurrentQuestionIndex(prev => new Map(prev).set(quizId, 0));
-                    
+
                     // Clear violations for this quiz
                     setViolations(prev => {
                       const newMap = new Map(prev);
                       newMap.delete(quizId);
                       return newMap;
                     });
-                    
+
                     // Clear completed sections for this module (so user can review)
                     if (currentModule) {
                       setCompletedSections(prev => {
@@ -1550,11 +1540,10 @@ export default function ManualTrainingSimulator({
               <button
                 onClick={handleSectionComplete}
                 disabled={!canProceedToNextModule()}
-                className={`flex items-center space-x-2 px-6 py-3 rounded-lg text-sm font-medium shadow-lg transition-all ${
-                  canProceedToNextModule()
+                className={`flex items-center space-x-2 px-6 py-3 rounded-lg text-sm font-medium shadow-lg transition-all ${canProceedToNextModule()
                     ? 'bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white cursor-pointer'
                     : 'bg-gray-300 text-gray-500 cursor-not-allowed opacity-50'
-                }`}
+                  }`}
               >
                 <span className="font-semibold">
                   {canProceedToNextModule() ? 'Continue to next module' : `❌ Minimum score required: ${quiz.passingScore || 70}%`}
@@ -1570,11 +1559,10 @@ export default function ManualTrainingSimulator({
               <button
                 onClick={handlePreviousQuestion}
                 disabled={questionIdx === 0 || (answeredSet.has(questionIdx - 1))}
-                className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                  questionIdx === 0 || (answeredSet.has(questionIdx - 1))
+                className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${questionIdx === 0 || (answeredSet.has(questionIdx - 1))
                     ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
                     : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
-                }`}
+                  }`}
               >
                 <ArrowLeft className="w-3 h-3" />
                 <span>Previous</span>
@@ -1621,10 +1609,10 @@ export default function ManualTrainingSimulator({
     const finalExamModule = modules.find(m => m.id === 'final-exam');
     const finalExamQuiz = finalExamModule ? quizzes.get('final-exam') : null;
     const finalExamScore = finalExamQuiz ? (quizScores.get(finalExamQuiz.id) || 0) : 0;
-    const completionDate = new Date().toLocaleDateString('en-US', { 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
+    const completionDate = new Date().toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
     });
     const regularModules = modules.filter(m => m.id !== 'final-exam');
     const totalCompletedSections = regularModules.reduce((total, module) => {
@@ -1652,7 +1640,7 @@ export default function ManualTrainingSimulator({
           <h3 className="text-2xl font-bold text-indigo-700 mb-6">
             {trainingTitle}
           </h3>
-          
+
           {/* Stats */}
           <div className="grid grid-cols-3 gap-4 my-6">
             <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-lg border-2 border-blue-200">
@@ -1731,25 +1719,25 @@ export default function ManualTrainingSimulator({
   }
 
   return (
-        <div className="flex h-screen bg-gradient-to-br from-slate-50 to-gray-100 overflow-hidden">
-          {/* Sidebar - Curriculum */}
-          <div className={`${sidebarOpen ? 'w-80' : 'w-0'} bg-white border-r border-gray-200 flex flex-col transition-all duration-300 overflow-hidden shadow-xl`}>
-            {/* Sidebar Header */}
-            <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600">
-              <div className="flex items-center justify-between text-white mb-2">
-                <h2 className="font-bold text-lg">Course Content</h2>
-                <button
-                  onClick={() => setSidebarOpen(false)}
-                  className="p-1 hover:bg-white hover:bg-opacity-20 rounded transition-colors"
-                >
-                  <ChevronLeft className="w-5 h-5" />
-                </button>
-              </div>
-              <div className="flex items-center justify-between text-sm text-indigo-100">
-                <span>{modules.length} modules</span>
-                <span>{totalSections} sections</span>
-              </div>
-            </div>
+    <div className="flex h-screen bg-gradient-to-br from-slate-50 to-gray-100 overflow-hidden">
+      {/* Sidebar - Curriculum */}
+      <div className={`${sidebarOpen ? 'w-80' : 'w-0'} bg-white border-r border-gray-200 flex flex-col transition-all duration-300 overflow-hidden shadow-xl`}>
+        {/* Sidebar Header */}
+        <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600">
+          <div className="flex items-center justify-between text-white mb-2">
+            <h2 className="font-bold text-lg">Course Content</h2>
+            <button
+              onClick={() => setSidebarOpen(false)}
+              className="p-1 hover:bg-white hover:bg-opacity-20 rounded transition-colors"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+          </div>
+          <div className="flex items-center justify-between text-sm text-indigo-100">
+            <span>{modules.length} modules</span>
+            <span>{totalSections} sections</span>
+          </div>
+        </div>
 
         {/* Modules List */}
         <div className="flex-1 overflow-y-auto">
@@ -1762,56 +1750,52 @@ export default function ManualTrainingSimulator({
             return (
               <div key={module.id} className="border-b border-gray-200">
                 {/* Module Header */}
-                    <button
-                      onClick={() => toggleModule(module.id)}
-                      disabled={isLocked}
-                      className={`w-full p-4 flex items-center justify-between transition-all ${
-                        isLocked 
-                          ? 'opacity-50 cursor-not-allowed bg-gray-100' 
-                          : 'hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50'
-                      } ${
-                        isCurrentModule ? 'bg-gradient-to-r from-indigo-50 to-purple-50 border-l-4 border-indigo-600' : ''
-                      }`}
-                    >
-                      <div className="flex items-center space-x-3 flex-1 text-left">
-                        {isLocked ? (
-                          <Lock className="w-5 h-5 text-gray-400 flex-shrink-0" />
-                        ) : module.id === 'final-exam' ? (
-                          <Award className={`w-5 h-5 flex-shrink-0 ${isCurrentModule ? 'text-orange-600' : 'text-orange-500'}`} />
-                        ) : isExpanded ? (
-                          <ChevronDown className="w-5 h-5 text-indigo-600 flex-shrink-0" />
-                        ) : (
-                          <ChevronRight className="w-5 h-5 text-gray-600 flex-shrink-0" />
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <p className={`text-xs mb-1 ${
-                            isLocked 
-                              ? 'text-gray-400' 
-                              : module.id === 'final-exam' 
-                                ? 'text-orange-600 font-semibold' 
-                                : 'text-gray-500'
-                          }`}>
-                            {isLocked && '🔒 '}
-                            {module.id === 'final-exam' ? '🏆 Final Exam' : `Module ${moduleIndex + 1}`}
-                          </p>
-                          <p className={`font-semibold text-sm ${
-                            isLocked
-                              ? 'text-gray-400'
-                              : isCurrentModule 
-                                ? (module.id === 'final-exam' ? 'text-orange-700' : 'text-indigo-700') 
-                                : 'text-gray-900'
-                          } truncate`}>
-                            {module.title}
-                          </p>
-                        </div>
-                        {moduleCompleted && !isLocked && (
-                          <CheckCircle className="w-5 h-5 text-emerald-600 flex-shrink-0" />
-                        )}
-                        {isLocked && (
-                          <span className="text-xs text-gray-400 font-medium">Locked</span>
-                        )}
-                      </div>
-                    </button>
+                <button
+                  onClick={() => toggleModule(module.id)}
+                  disabled={isLocked}
+                  className={`w-full p-4 flex items-center justify-between transition-all ${isLocked
+                      ? 'opacity-50 cursor-not-allowed bg-gray-100'
+                      : 'hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50'
+                    } ${isCurrentModule ? 'bg-gradient-to-r from-indigo-50 to-purple-50 border-l-4 border-indigo-600' : ''
+                    }`}
+                >
+                  <div className="flex items-center space-x-3 flex-1 text-left">
+                    {isLocked ? (
+                      <Lock className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                    ) : module.id === 'final-exam' ? (
+                      <Award className={`w-5 h-5 flex-shrink-0 ${isCurrentModule ? 'text-orange-600' : 'text-orange-500'}`} />
+                    ) : isExpanded ? (
+                      <ChevronDown className="w-5 h-5 text-indigo-600 flex-shrink-0" />
+                    ) : (
+                      <ChevronRight className="w-5 h-5 text-gray-600 flex-shrink-0" />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-xs mb-1 ${isLocked
+                          ? 'text-gray-400'
+                          : module.id === 'final-exam'
+                            ? 'text-orange-600 font-semibold'
+                            : 'text-gray-500'
+                        }`}>
+                        {isLocked && '🔒 '}
+                        {module.id === 'final-exam' ? '🏆 Final Exam' : `Module ${moduleIndex + 1}`}
+                      </p>
+                      <p className={`font-semibold text-sm ${isLocked
+                          ? 'text-gray-400'
+                          : isCurrentModule
+                            ? (module.id === 'final-exam' ? 'text-orange-700' : 'text-indigo-700')
+                            : 'text-gray-900'
+                        } truncate`}>
+                        {module.title}
+                      </p>
+                    </div>
+                    {moduleCompleted && !isLocked && (
+                      <CheckCircle className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+                    )}
+                    {isLocked && (
+                      <span className="text-xs text-gray-400 font-medium">Locked</span>
+                    )}
+                  </div>
+                </button>
 
                 {/* Sections List */}
                 {isExpanded && module.sections && (
@@ -1821,46 +1805,44 @@ export default function ManualTrainingSimulator({
                       const sectionCompleted = completedSections.has(section.id);
 
                       return (
-                          <button
-                            key={section.id}
-                            onClick={() => {
-                              // Don't allow navigation to completed sections
-                              if (!sectionCompleted) {
-                                goToSection(moduleIndex, sectionIndex);
-                              }
-                            }}
-                            disabled={sectionCompleted}
-                            className={`w-full p-3 pl-12 flex items-center space-x-3 transition-all border-l-4 ${
-                              sectionCompleted
-                                ? 'opacity-50 cursor-not-allowed bg-gray-100 border-transparent'
-                                : isCurrentSection
-                                  ? 'border-indigo-600 bg-gradient-to-r from-indigo-50 to-purple-50 hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50'
-                                  : 'border-transparent hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50'
+                        <button
+                          key={section.id}
+                          onClick={() => {
+                            // Don't allow navigation to completed sections
+                            if (!sectionCompleted) {
+                              goToSection(moduleIndex, sectionIndex);
+                            }
+                          }}
+                          disabled={sectionCompleted}
+                          className={`w-full p-3 pl-12 flex items-center space-x-3 transition-all border-l-4 ${sectionCompleted
+                              ? 'opacity-50 cursor-not-allowed bg-gray-100 border-transparent'
+                              : isCurrentSection
+                                ? 'border-indigo-600 bg-gradient-to-r from-indigo-50 to-purple-50 hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50'
+                                : 'border-transparent hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50'
                             }`}
-                          >
-                            <div className={`${sectionCompleted ? 'text-gray-400' : isCurrentSection ? 'text-indigo-600' : 'text-gray-500'}`}>
-                              {getSectionIcon(section.type)}
-                            </div>
-                            <div className="flex-1 text-left min-w-0">
-                              <p className={`text-sm ${
-                                sectionCompleted 
-                                  ? 'text-gray-400' 
-                                  : isCurrentSection 
-                                    ? 'text-indigo-900 font-medium' 
-                                    : 'text-gray-700'
+                        >
+                          <div className={`${sectionCompleted ? 'text-gray-400' : isCurrentSection ? 'text-indigo-600' : 'text-gray-500'}`}>
+                            {getSectionIcon(section.type)}
+                          </div>
+                          <div className="flex-1 text-left min-w-0">
+                            <p className={`text-sm ${sectionCompleted
+                                ? 'text-gray-400'
+                                : isCurrentSection
+                                  ? 'text-indigo-900 font-medium'
+                                  : 'text-gray-700'
                               } truncate`}>
-                                {section.title}
+                              {section.title}
+                            </p>
+                            {section.estimatedDuration && (
+                              <p className={`text-xs ${sectionCompleted ? 'text-gray-400' : 'text-gray-500'}`}>
+                                {section.estimatedDuration} min
                               </p>
-                              {section.estimatedDuration && (
-                                <p className={`text-xs ${sectionCompleted ? 'text-gray-400' : 'text-gray-500'}`}>
-                                  {section.estimatedDuration} min
-                                </p>
-                              )}
-                            </div>
-                            {sectionCompleted && (
-                              <CheckCircle className="w-4 h-4 text-emerald-600 flex-shrink-0" />
                             )}
-                          </button>
+                          </div>
+                          {sectionCompleted && (
+                            <CheckCircle className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                          )}
+                        </button>
                       );
                     })}
                   </div>
@@ -1903,15 +1885,15 @@ export default function ManualTrainingSimulator({
                 <Clock className="w-5 h-5" />
                 <span className="font-mono text-sm">{formatTime(elapsedTime)}</span>
               </div>
-                  <div className="flex items-center space-x-2">
-                    <div className="w-32 bg-gray-200 rounded-full h-2 shadow-inner">
-                      <div
-                        className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 h-2 rounded-full transition-all duration-300 shadow-sm"
-                        style={{ width: `${progress}%` }}
-                      />
-                    </div>
-                    <span className="text-sm font-medium text-gray-700">{Math.round(progress)}%</span>
-                  </div>
+              <div className="flex items-center space-x-2">
+                <div className="w-32 bg-gray-200 rounded-full h-2 shadow-inner">
+                  <div
+                    className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 h-2 rounded-full transition-all duration-300 shadow-sm"
+                    style={{ width: `${progress}%` }}
+                  />
+                </div>
+                <span className="text-sm font-medium text-gray-700">{Math.round(progress)}%</span>
+              </div>
             </div>
           </div>
         </div>
@@ -1945,18 +1927,17 @@ export default function ManualTrainingSimulator({
                     <span>Previous</span>
                   </button>
 
-                      <button
-                        onClick={handleSectionComplete}
-                        disabled={!canComplete()}
-                        className={`flex items-center space-x-2 px-6 py-2 rounded-lg font-medium shadow-lg transition-all text-sm transform hover:scale-105 ${
-                          canComplete()
-                            ? 'bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-700 hover:via-purple-700 hover:to-pink-700 text-white cursor-pointer'
-                            : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                        }`}
-                      >
-                        <span>{completedSections.has(currentSection?.id || '') ? 'Next' : 'Complete & Continue'}</span>
-                        <ArrowRight className="w-4 h-4" />
-                      </button>
+                  <button
+                    onClick={handleSectionComplete}
+                    disabled={!canComplete()}
+                    className={`flex items-center space-x-2 px-6 py-2 rounded-lg font-medium shadow-lg transition-all text-sm transform hover:scale-105 ${canComplete()
+                        ? 'bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-700 hover:via-purple-700 hover:to-pink-700 text-white cursor-pointer'
+                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      }`}
+                  >
+                    <span>{completedSections.has(currentSection?.id || '') ? 'Next' : 'Complete & Continue'}</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
             )}

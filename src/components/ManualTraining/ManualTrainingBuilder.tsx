@@ -12,7 +12,7 @@ const getApiBaseUrl = () => {
     return import.meta.env.VITE_API_BASE_URL;
   }
   const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-  return isLocal ? 'http://localhost:5010' : 'https://api-training.harx.ai';
+  return isLocal ? 'http://localhost:5010' : 'https://v25platformtrainingbackend-production.up.railway.app';
 };
 
 const API_BASE = getApiBaseUrl();
@@ -103,7 +103,7 @@ export const ManualTrainingBuilder: React.FC<ManualTrainingBuilderProps> = ({
           await loadTrainings();
           const newTraining = response.data.data;
           setSelectedTraining(newTraining);
-          
+
           if (goToModules) {
             setCurrentView('ai-organize'); // ✨ Go to AI organize first
           } else {
@@ -210,7 +210,7 @@ export const ManualTrainingBuilder: React.FC<ManualTrainingBuilderProps> = ({
 
   const handleTagInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
-    
+
     // Si l'utilisateur tape une virgule, ajouter le tag
     if (value.includes(',')) {
       const tagToAdd = value.replace(',', '').trim();
@@ -277,7 +277,7 @@ export const ManualTrainingBuilder: React.FC<ManualTrainingBuilderProps> = ({
             )}
             <h1 className="text-3xl font-bold">Manual Trainings</h1>
           </div>
-          
+
           <button
             onClick={handleCreateNew}
             className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center"
@@ -315,11 +315,10 @@ export const ManualTrainingBuilder: React.FC<ManualTrainingBuilderProps> = ({
                 <div className="p-6">
                   <div className="flex items-start justify-between mb-3">
                     <h3 className="text-xl font-bold text-gray-900 flex-1">{training.title}</h3>
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      training.status === 'published' ? 'bg-green-100 text-green-800' :
-                      training.status === 'archived' ? 'bg-gray-100 text-gray-800' :
-                      'bg-yellow-100 text-yellow-800'
-                    }`}>
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${training.status === 'published' ? 'bg-green-100 text-green-800' :
+                        training.status === 'archived' ? 'bg-gray-100 text-gray-800' :
+                          'bg-yellow-100 text-yellow-800'
+                      }`}>
                       {training.status}
                     </span>
                   </div>
@@ -341,7 +340,7 @@ export const ManualTrainingBuilder: React.FC<ManualTrainingBuilderProps> = ({
                       <Settings className="w-4 h-4 mr-2" />
                       Modules
                     </button>
-                    
+
                     <button
                       onClick={() => handleEdit(training)}
                       className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm"
@@ -396,120 +395,120 @@ export const ManualTrainingBuilder: React.FC<ManualTrainingBuilderProps> = ({
         {/* Content with padding-top to account for fixed header */}
         <div className="pt-32 px-6 pb-6 max-w-4xl mx-auto">
           <div className="bg-white rounded-lg shadow-md p-8 space-y-6">
-          {/* Basic Information */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Training Title *
-            </label>
-            <input
-              type="text"
-              value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="Enter training title"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Description *
-            </label>
-            <textarea
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              rows={4}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="Enter training description"
-            />
-          </div>
-
-          {/* Metadata */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Estimated Duration (minutes)
-            </label>
-            <input
-              type="number"
-              value={formData.metadata?.estimatedDuration || 0}
-              onChange={(e) => setFormData({
-                ...formData,
-                metadata: { ...formData.metadata!, estimatedDuration: parseInt(e.target.value) || 0 }
-              })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="e.g., 60"
-            />
-          </div>
-
-          {/* Tags - YouTube Style */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Tags
-            </label>
-            
-            {/* Tags Display */}
-            {formData.metadata?.tags && formData.metadata.tags.length > 0 && (
-              <div className="flex flex-wrap gap-2 mb-3">
-                {formData.metadata.tags.map((tag, index) => (
-                  <div
-                    key={index}
-                    className="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium"
-                  >
-                    <span>{tag}</span>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveTag(tag)}
-                      className="ml-2 hover:bg-blue-200 rounded-full p-0.5 transition-colors"
-                    >
-                      <XIcon className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-            
-            {/* Tag Input */}
-            <input
-              type="text"
-              value={tagInput}
-              onChange={handleTagInputChange}
-              onKeyDown={handleTagKeyDown}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="Type a tag and press Enter or comma (,)"
-            />
-            <p className="mt-1 text-xs text-gray-500">
-              Press Enter or type comma (,) to add a tag
-            </p>
-          </div>
-
-          {/* Actions */}
-          <div className="flex items-center justify-between pt-6 border-t">
-            <button
-              onClick={() => setCurrentView('list')}
-              className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              Cancel
-            </button>
-            
-            <div className="flex items-center space-x-3">
-              <button
-                onClick={() => handleSave(false)}
-                disabled={loading || !formData.title || !formData.description}
-                className="px-6 py-2 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Save className="w-4 h-4 mr-2" />
-                {loading ? 'Saving...' : 'Save'}
-              </button>
-              
-              <button
-                onClick={() => handleSave(true)}
-                disabled={loading || !formData.title || !formData.description}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? 'Saving...' : 'Save & Create Modules'}
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </button>
+            {/* Basic Information */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Training Title *
+              </label>
+              <input
+                type="text"
+                value={formData.title}
+                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Enter training title"
+              />
             </div>
-          </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Description *
+              </label>
+              <textarea
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                rows={4}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Enter training description"
+              />
+            </div>
+
+            {/* Metadata */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Estimated Duration (minutes)
+              </label>
+              <input
+                type="number"
+                value={formData.metadata?.estimatedDuration || 0}
+                onChange={(e) => setFormData({
+                  ...formData,
+                  metadata: { ...formData.metadata!, estimatedDuration: parseInt(e.target.value) || 0 }
+                })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="e.g., 60"
+              />
+            </div>
+
+            {/* Tags - YouTube Style */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Tags
+              </label>
+
+              {/* Tags Display */}
+              {formData.metadata?.tags && formData.metadata.tags.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {formData.metadata.tags.map((tag, index) => (
+                    <div
+                      key={index}
+                      className="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium"
+                    >
+                      <span>{tag}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveTag(tag)}
+                        className="ml-2 hover:bg-blue-200 rounded-full p-0.5 transition-colors"
+                      >
+                        <XIcon className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Tag Input */}
+              <input
+                type="text"
+                value={tagInput}
+                onChange={handleTagInputChange}
+                onKeyDown={handleTagKeyDown}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Type a tag and press Enter or comma (,)"
+              />
+              <p className="mt-1 text-xs text-gray-500">
+                Press Enter or type comma (,) to add a tag
+              </p>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center justify-between pt-6 border-t">
+              <button
+                onClick={() => setCurrentView('list')}
+                className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+
+              <div className="flex items-center space-x-3">
+                <button
+                  onClick={() => handleSave(false)}
+                  disabled={loading || !formData.title || !formData.description}
+                  className="px-6 py-2 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Save className="w-4 h-4 mr-2" />
+                  {loading ? 'Saving...' : 'Save'}
+                </button>
+
+                <button
+                  onClick={() => handleSave(true)}
+                  disabled={loading || !formData.title || !formData.description}
+                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loading ? 'Saving...' : 'Save & Create Modules'}
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>

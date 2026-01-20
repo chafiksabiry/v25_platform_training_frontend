@@ -9,7 +9,7 @@ const getApiBaseUrl = () => {
     return import.meta.env.VITE_API_BASE_URL;
   }
   const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-  return isLocal ? 'http://localhost:5010' : 'https://api-training.harx.ai';
+  return isLocal ? 'http://localhost:5010' : 'https://v25platformtrainingbackend-production.up.railway.app';
 };
 
 const API_BASE = getApiBaseUrl();
@@ -48,7 +48,7 @@ export const FinalExamGenerator: React.FC<FinalExamGeneratorProps> = ({
       // Step 1: Analyze all modules
       setProgress(20);
       setStatus('analyzing');
-      
+
       setProgress(40);
       setStatus('generating');
 
@@ -62,7 +62,7 @@ export const FinalExamGenerator: React.FC<FinalExamGeneratorProps> = ({
 
       if (response.data.success) {
         const generatedData = response.data.data;
-        
+
         // Create the final exam quiz
         const examData: Partial<ManualQuiz> = {
           title: `Examen Final - ${training.title}`,
@@ -93,7 +93,7 @@ export const FinalExamGenerator: React.FC<FinalExamGeneratorProps> = ({
         );
 
         setProgress(100);
-        
+
         if (createResponse.data.success) {
           setGeneratedExam(createResponse.data.data);
           setStatus('success');
@@ -219,7 +219,7 @@ export const FinalExamGenerator: React.FC<FinalExamGeneratorProps> = ({
               <div className="flex items-center justify-center">
                 <Loader2 className="w-16 h-16 text-amber-600 animate-spin" />
               </div>
-              
+
               <div>
                 <div className="flex justify-between text-sm text-gray-600 mb-2">
                   <span>
