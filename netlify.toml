@@ -4,6 +4,8 @@
 
 [build.environment]
   NETLIFY_NEXTJS_SKIP_AUTO_INSTALL = "true"
+  NETLIFY_NEXT_PLUGIN_SKIP = "true"
+  NETLIFY_SKIP_NEXTJS_PLUGIN = "true"
 
 [[redirects]]
   from = "/*"
