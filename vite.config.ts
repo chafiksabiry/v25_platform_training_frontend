@@ -43,12 +43,12 @@ export default defineConfig(({ mode }) => {
     },
     build: {
       target: 'esnext',
+      outDir: 'dist',
       cssCodeSplit: false,
       rollupOptions: {
         output: {
           format: 'es',
           name: 'training',
-          outDir: 'dist',
           entryFileNames: 'index.js',
           chunkFileNames: 'chunk-[name].js',
           assetFileNames: (assetInfo) => {

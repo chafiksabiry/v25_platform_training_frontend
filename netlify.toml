@@ -2,6 +2,9 @@
   command = "npm run build"
   publish = "dist"
 
+[build.environment]
+  NETLIFY_NEXTJS_SKIP_AUTO_INSTALL = "true"
+
 [[redirects]]
   from = "/*"
   to = "/index.html"
