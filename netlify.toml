@@ -1,3 +1,18 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NETLIFY_NEXTJS_SKIP_AUTO_INSTALL = "true"
+  NETLIFY_NEXT_PLUGIN_SKIP = "true"
+  NETLIFY_SKIP_NEXTJS_PLUGIN = "true"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+
 [[headers]]
   for = "/*"
   [headers.values]
