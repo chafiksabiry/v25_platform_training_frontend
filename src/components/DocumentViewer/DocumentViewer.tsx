@@ -57,8 +57,8 @@ export default function DocumentViewer({ fileUrl, fileName, mimeType }: Document
       setType("word");
     } else if (url.endsWith(".mp4") || url.endsWith(".webm") || url.endsWith(".ogg") || name.endsWith(".mp4") || name.endsWith(".webm") || name.endsWith(".ogg")) {
       setType("video");
-    } else if (url.endsWith(".jpg") || url.endsWith(".jpeg") || url.endsWith(".png") || url.endsWith(".gif") || url.endsWith(".webp") || 
-               name.endsWith(".jpg") || name.endsWith(".jpeg") || name.endsWith(".png") || name.endsWith(".gif") || name.endsWith(".webp")) {
+    } else if (url.endsWith(".jpg") || url.endsWith(".jpeg") || url.endsWith(".png") || url.endsWith(".gif") || url.endsWith(".webp") ||
+      name.endsWith(".jpg") || name.endsWith(".jpeg") || name.endsWith(".png") || name.endsWith(".gif") || name.endsWith(".webp")) {
       setType("image");
     } else if (url.includes("youtube.com") || url.includes("youtu.be")) {
       setType("youtube");
@@ -90,12 +90,29 @@ export default function DocumentViewer({ fileUrl, fileName, mimeType }: Document
               style={{ height: '100%', width: '100%', flex: '1 1 auto', border: 'none' }}
             />
           ) : (
-            <iframe
-              src={`https://mozilla.github.io/pdf.js/web/viewer.html?file=${encodeURIComponent(fileUrl)}`}
-              className="w-full h-full border-0"
-              title="PDF Viewer"
-              style={{ height: '100%', width: '100%', flex: '1 1 auto', minHeight: 0, border: 'none' }}
-            />
+            <>
+              {/* Validate URL before loading */}
+              {fileUrl && fileUrl.startsWith('http') ? (
+                <iframe
+                  src={`https://mozilla.github.io/pdf.js/web/viewer.html?file=${encodeURIComponent(fileUrl)}`}
+                  className="w-full h-full border-0"
+                  title="PDF Viewer"
+                  style={{ height: '100%', width: '100%', flex: '1 1 auto', minHeight: 0, border: 'none' }}
+                />
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full p-8 bg-gray-50 rounded-lg border border-gray-200">
+                  <FileText className="w-16 h-16 text-yellow-500 mb-4" />
+                  <h4 className="text-lg font-semibold text-gray-900 mb-2">Invalid PDF URL</h4>
+                  <p className="text-gray-600 mb-4 text-center">The PDF URL is not valid or accessible</p>
+                  <details className="mt-4 text-left max-w-md mx-auto">
+                    <summary className="cursor-pointer text-sm text-gray-400 hover:text-gray-600">Debug Info</summary>
+                    <pre className="mt-2 p-2 bg-gray-100 rounded text-xs overflow-auto">
+                      {JSON.stringify({ fileUrl, fileName, mimeType }, null, 2)}
+                    </pre>
+                  </details>
+                </div>
+              )}
+            </>
           )}
         </>
       )}

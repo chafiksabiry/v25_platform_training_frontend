@@ -1013,24 +1013,24 @@ function AppContent() {
                           <div className="flex items-start justify-between mb-4">
                             <div className="flex items-center space-x-3">
                               <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${isCompleted
-                                  ? 'bg-green-100'
-                                  : isActive
-                                    ? 'bg-blue-100'
-                                    : 'bg-gray-100'
+                                ? 'bg-green-100'
+                                : isActive
+                                  ? 'bg-blue-100'
+                                  : 'bg-gray-100'
                                 }`}>
                                 <BookOpen className={`h-6 w-6 ${isCompleted
-                                    ? 'text-green-600'
-                                    : isActive
-                                      ? 'text-blue-600'
-                                      : 'text-gray-600'
+                                  ? 'text-green-600'
+                                  : isActive
+                                    ? 'text-blue-600'
+                                    : 'text-gray-600'
                                   }`} />
                               </div>
                               <div>
                                 <div className={`text-xs font-semibold px-2 py-1 rounded-full ${isCompleted
-                                    ? 'bg-green-100 text-green-700'
-                                    : isActive
-                                      ? 'bg-blue-100 text-blue-700'
-                                      : 'bg-gray-100 text-gray-700'
+                                  ? 'bg-green-100 text-green-700'
+                                  : isActive
+                                    ? 'bg-blue-100 text-blue-700'
+                                    : 'bg-gray-100 text-gray-700'
                                   }`}>
                                   {isCompleted ? 'Terminé' : isActive ? 'En cours' : 'Disponible'}
                                 </div>
@@ -1087,10 +1087,10 @@ function AppContent() {
                           {/* Action Button */}
                           <button
                             className={`w-full flex items-center justify-center space-x-2 py-3 px-4 rounded-lg font-semibold transition-all ${isCompleted
-                                ? 'bg-green-50 text-green-700 hover:bg-green-100 border border-green-200'
-                                : overallProgress > 0
-                                  ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800'
-                                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
+                              ? 'bg-green-50 text-green-700 hover:bg-green-100 border border-green-200'
+                              : overallProgress > 0
+                                ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800'
+                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
                               }`}
                             onClick={(e) => {
                               e.stopPropagation();
@@ -2072,7 +2072,7 @@ function AppContent() {
       )}
 
       {/* Main content - Always has margin on md+ screens */}
-      <div className="flex flex-col ml-0 md:ml-64 transition-all duration-300 min-h-screen overflow-hidden">
+      <div className="flex flex-col ml-0 md:ml-64 transition-all duration-300 min-h-screen">
         {/* Fixed Top Bar */}
         <div className="bg-white border-b border-gray-200 flex-shrink-0 z-10">
           <div className="flex items-center justify-between px-6 py-2">
@@ -2084,8 +2084,8 @@ function AppContent() {
                     key={role}
                     onClick={() => handleRoleSwitch(role)}
                     className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${userRole === role
-                        ? 'bg-blue-100 text-blue-700'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      ? 'bg-blue-100 text-blue-700'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                       }`}
                   >
                     {role ? role.charAt(0).toUpperCase() + role.slice(1) : ''}
