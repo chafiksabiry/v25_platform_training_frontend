@@ -74,7 +74,7 @@ export default function JourneyLauncher({ journey, modules, onLaunch, onBack }: 
       id: '6',
       name: 'James Brown',
       email: 'james@company.com',
-      role: 'Team Lead',
+      role: 'Agent',
       department: 'Customer Success',
       enrolledJourneys: [],
       progress: []

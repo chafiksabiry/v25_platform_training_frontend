@@ -265,7 +265,7 @@ export const mockOnboardingSteps: OnboardingStep[] = [
   },
   {
     id: '4',
-    title: 'Live Q&A with Team Lead',
+    title: 'Live Q&A with Agent Senior',
     description: 'Interactive session with your team lead to address questions.',
     type: 'live-session',
     status: 'pending',

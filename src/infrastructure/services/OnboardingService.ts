@@ -2,7 +2,8 @@ import axios from 'axios';
 import Cookies from 'js-cookie';
 import { IndustryApiResponse, GigApiResponse, GigFromApi } from '../../types';
 
-const INDUSTRIES_API_URL = '/api/industries';
+const REPS_WIZARD_API_URL = 'https://v25repscreationwizardbackend-production.up.railway.app';
+const INDUSTRIES_API_URL = `${REPS_WIZARD_API_URL}/api/industries`;
 const GIGS_API_URL = 'https://v25gigsmanualcreationbackend-production.up.railway.app/api/gigs/company';
 const COMPANY_API_URL = 'https://v25searchcompanywizardbackend-production.up.railway.app/api/companies';
 
@@ -105,6 +106,10 @@ export const OnboardingService = {
 
       if (filteredGigs.length > 0) {
         console.log('[OnboardingService] Filtered gig titles:', filteredGigs.map(g => g.title));
+        return {
+          ...response,
+          data: filteredGigs
+        };
       } else {
         console.log('[OnboardingService] No matching gigs found. Debug info:');
         console.log('[OnboardingService] - Looking for:', industryIdentifier);
@@ -118,12 +123,16 @@ export const OnboardingService = {
               }))
             });
           });
+
+          // Fallback: Return all gigs if no matches were found but gigs exist
+          console.warn('[OnboardingService] No matches found for industry, returning all available gigs as fallback');
+          return response;
         }
       }
 
       return {
         ...response,
-        data: filteredGigs
+        data: []
       };
     } catch (error) {
       console.error(`Error fetching gigs for industry ${industryIdentifier}:`, error);

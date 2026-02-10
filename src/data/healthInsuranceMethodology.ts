@@ -1032,7 +1032,7 @@ export const healthInsuranceMethodology: TrainingMethodology = {
       {
         trigger: 'Customer requests supervisor',
         level: 1,
-        escalationTo: 'Team Lead or Supervisor',
+        escalationTo: 'Agent Senior',
         timeframe: 'Immediate transfer or callback within 30 minutes',
         documentation: ['Reason for escalation', 'Customer concern summary', 'Actions attempted'],
         followUp: ['Supervisor resolution confirmation', 'Customer satisfaction check']

@@ -5,7 +5,7 @@ import Cookies from 'js-cookie';
 import { extractObjectId, normalizeObjectIds, toExtendedJson } from '../../lib/mongoUtils';
 
 const DRAFT_STORAGE_KEY = 'training_journey_draft';
-const DRAFT_SAVE_INTERVAL = 30000; // Sauvegarder toutes les 30 secondes
+const DRAFT_SAVE_INTERVAL = 300000; // Sauvegarder toutes les 30 secondes
 
 export interface JourneyDraft {
   company: Company | null;
