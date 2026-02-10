@@ -10,7 +10,7 @@ interface TrainingModulesProps {
 export default function TrainingModules({ modules, onModuleSelect }: TrainingModulesProps) {
   const completedCount = modules.filter(m => m.completed).length;
   const totalCount = modules.length;
-  
+
   console.log('[TrainingModules] Received', modules.length, 'modules');
   console.log('[TrainingModules] Modules sample:', modules.slice(0, 2));
 
@@ -29,7 +29,7 @@ export default function TrainingModules({ modules, onModuleSelect }: TrainingMod
         {modules.map((module) => {
           const isCompleted = module.completed;
           const hasProgress = module.progress > 0;
-          
+
           return (
             <div
               key={module.id}
@@ -39,28 +39,25 @@ export default function TrainingModules({ modules, onModuleSelect }: TrainingMod
                 {/* Header with Icon and Status */}
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center space-x-3">
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                      isCompleted 
-                        ? 'bg-green-100' 
-                        : hasProgress 
-                        ? 'bg-blue-100' 
-                        : 'bg-gray-100'
-                    }`}>
-                      <BookOpen className={`h-5 w-5 ${
-                        isCompleted 
-                          ? 'text-green-600' 
-                          : hasProgress 
-                          ? 'text-blue-600' 
-                          : 'text-gray-500'
-                      }`} />
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isCompleted
+                        ? 'bg-green-100'
+                        : hasProgress
+                          ? 'bg-blue-100'
+                          : 'bg-gray-100'
+                      }`}>
+                      <BookOpen className={`h-5 w-5 ${isCompleted
+                          ? 'text-green-600'
+                          : hasProgress
+                            ? 'text-blue-600'
+                            : 'text-gray-500'
+                        }`} />
                     </div>
-                    <span className={`text-xs font-semibold px-2 py-1 rounded ${
-                      isCompleted 
-                        ? 'bg-green-50 text-green-700' 
-                        : hasProgress 
-                        ? 'bg-blue-50 text-blue-700' 
-                        : 'bg-gray-50 text-gray-600'
-                    }`}>
+                    <span className={`text-xs font-semibold px-2 py-1 rounded ${isCompleted
+                        ? 'bg-green-50 text-green-700'
+                        : hasProgress
+                          ? 'bg-blue-50 text-blue-700'
+                          : 'bg-gray-50 text-gray-600'
+                      }`}>
                       Training
                     </span>
                   </div>
@@ -75,7 +72,7 @@ export default function TrainingModules({ modules, onModuleSelect }: TrainingMod
                 <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2">
                   {module.title}
                 </h3>
-                
+
                 {/* Module Description */}
                 <p className="text-gray-600 text-sm mb-4 line-clamp-2 min-h-[2.5rem]">
                   {module.description || 'No description available'}
@@ -85,8 +82,8 @@ export default function TrainingModules({ modules, onModuleSelect }: TrainingMod
                 <div className="flex items-center space-x-2 mb-4">
                   <Clock className="h-4 w-4 text-gray-400" />
                   <span className="text-sm text-gray-600">
-                    {typeof module.duration === 'number' 
-                      ? `${module.duration} ${module.duration === 1 ? 'hour' : 'hours'}` 
+                    {typeof module.duration === 'number'
+                      ? `${module.duration} ${module.duration === 1 ? 'hour' : 'hours'}`
                       : module.duration || 'Duration not specified'}
                   </span>
                 </div>
@@ -95,19 +92,17 @@ export default function TrainingModules({ modules, onModuleSelect }: TrainingMod
                 <div className="mb-4">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs font-medium text-gray-600">Progress</span>
-                    <span className={`text-xs font-semibold ${
-                      isCompleted ? 'text-green-600' : 'text-blue-600'
-                    }`}>
+                    <span className={`text-xs font-semibold ${isCompleted ? 'text-green-600' : 'text-blue-600'
+                      }`}>
                       {module.progress || 0}%
                     </span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
                     <div
-                      className={`h-full rounded-full transition-all duration-500 ${
-                        isCompleted 
-                          ? 'bg-gradient-to-r from-green-500 to-green-600' 
+                      className={`h-full rounded-full transition-all duration-500 ${isCompleted
+                          ? 'bg-gradient-to-r from-green-500 to-green-600'
                           : 'bg-gradient-to-r from-blue-500 to-blue-600'
-                      }`}
+                        }`}
                       style={{ width: `${module.progress || 0}%` }}
                     />
                   </div>
@@ -137,13 +132,12 @@ export default function TrainingModules({ modules, onModuleSelect }: TrainingMod
 
                 {/* Action Button */}
                 <button
-                  className={`w-full flex items-center justify-center space-x-2 py-3 px-4 rounded-lg font-semibold transition-all duration-200 ${
-                    isCompleted
+                  className={`w-full flex items-center justify-center space-x-2 py-3 px-4 rounded-lg font-semibold transition-all duration-200 ${isCompleted
                       ? 'bg-green-50 text-green-700 hover:bg-green-100 border border-green-200'
                       : hasProgress
-                      ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800 shadow-md hover:shadow-lg'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
-                  }`}
+                        ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800 shadow-md hover:shadow-lg'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
+                    }`}
                   onClick={() => {
                     onModuleSelect?.(module.id);
                     // Scroll to top when selecting a module
@@ -153,10 +147,10 @@ export default function TrainingModules({ modules, onModuleSelect }: TrainingMod
                   <Play className={`h-4 w-4 ${isCompleted ? '' : hasProgress ? '' : ''}`} />
                   <span>
                     {isCompleted
-                      ? '▷ Review'
+                      ? 'Review'
                       : hasProgress
-                      ? '▷ Continue'
-                      : '▷ Start Training'
+                        ? 'Continue'
+                        : 'Start Training'
                     }
                   </span>
                 </button>

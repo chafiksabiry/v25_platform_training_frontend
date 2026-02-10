@@ -11,14 +11,14 @@ export default function JourneyTraining({ journeys, onJourneySelect }: JourneyTr
   const completedJourneys = journeys.filter(j => j.status === 'completed');
   const completedCount = completedJourneys.length;
   const totalCount = journeys.length;
-  
+
   console.log('[JourneyTraining] Received', journeys.length, 'journeys');
 
   const calculateJourneyDuration = (journey: any): number => {
     // Check if using new structure (moduleIds) or old structure (modules array)
     const moduleIds = journey.moduleIds || [];
     const modules = journey.modules || [];
-    
+
     if (moduleIds.length > 0 || modules.length > 0) {
       // For new structure, we can't calculate duration without loading modules
       // For old structure, calculate from embedded modules
@@ -44,14 +44,14 @@ export default function JourneyTraining({ journeys, onJourneySelect }: JourneyTr
   const getJourneyTopics = (journey: any): string[] => {
     // Check if using new structure (moduleIds) or old structure (modules array)
     const modules = journey.modules || [];
-    
+
     if (modules.length > 0) {
       const allTopics: string[] = [];
       modules.forEach((module: any) => {
         if (Array.isArray(module.topics)) {
           allTopics.push(...module.topics);
         } else if (Array.isArray(module.learningObjectives)) {
-          allTopics.push(...module.learningObjectives.slice(0, 3).map((obj: any) => 
+          allTopics.push(...module.learningObjectives.slice(0, 3).map((obj: any) =>
             typeof obj === 'string' ? obj : obj.text || obj.title || ''
           ));
         }
@@ -83,7 +83,7 @@ export default function JourneyTraining({ journeys, onJourneySelect }: JourneyTr
           const duration = calculateJourneyDuration(journey);
           const topics = getJourneyTopics(journey);
           const enrolledCount = Array.isArray(journey.enrolledRepIds) ? journey.enrolledRepIds.length : 0;
-          
+
           return (
             <div
               key={journey.id || journey._id}
@@ -93,28 +93,25 @@ export default function JourneyTraining({ journeys, onJourneySelect }: JourneyTr
                 {/* Header with Icon and Status */}
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center space-x-3">
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                      isCompleted 
-                        ? 'bg-green-100' 
-                        : isActive 
-                        ? 'bg-blue-100' 
-                        : 'bg-gray-100'
-                    }`}>
-                      <BookOpen className={`h-5 w-5 ${
-                        isCompleted 
-                          ? 'text-green-600' 
-                          : isActive 
-                          ? 'text-blue-600' 
-                          : 'text-gray-500'
-                      }`} />
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isCompleted
+                        ? 'bg-green-100'
+                        : isActive
+                          ? 'bg-blue-100'
+                          : 'bg-gray-100'
+                      }`}>
+                      <BookOpen className={`h-5 w-5 ${isCompleted
+                          ? 'text-green-600'
+                          : isActive
+                            ? 'text-blue-600'
+                            : 'text-gray-500'
+                        }`} />
                     </div>
-                    <span className={`text-xs font-semibold px-2 py-1 rounded ${
-                      isCompleted 
-                        ? 'bg-green-50 text-green-700' 
-                        : isActive 
-                        ? 'bg-blue-50 text-blue-700' 
-                        : 'bg-gray-50 text-gray-600'
-                    }`}>
+                    <span className={`text-xs font-semibold px-2 py-1 rounded ${isCompleted
+                        ? 'bg-green-50 text-green-700'
+                        : isActive
+                          ? 'bg-blue-50 text-blue-700'
+                          : 'bg-gray-50 text-gray-600'
+                      }`}>
                       {journey.status || 'draft'}
                     </span>
                   </div>
@@ -129,7 +126,7 @@ export default function JourneyTraining({ journeys, onJourneySelect }: JourneyTr
                 <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2">
                   {journey.title || journey.name || 'Untitled Journey'}
                 </h3>
-                
+
                 {/* Journey Description */}
                 <p className="text-gray-600 text-sm mb-4 line-clamp-2 min-h-[2.5rem]">
                   {journey.description || 'No description available'}
@@ -191,22 +188,21 @@ export default function JourneyTraining({ journeys, onJourneySelect }: JourneyTr
 
                 {/* Action Button */}
                 <button
-                  className={`w-full flex items-center justify-center space-x-2 py-3 px-4 rounded-lg font-semibold transition-all duration-200 ${
-                    isCompleted
+                  className={`w-full flex items-center justify-center space-x-2 py-3 px-4 rounded-lg font-semibold transition-all duration-200 ${isCompleted
                       ? 'bg-green-50 text-green-700 hover:bg-green-100 border border-green-200'
                       : isActive
-                      ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800 shadow-md hover:shadow-lg'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
-                  }`}
+                        ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800 shadow-md hover:shadow-lg'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
+                    }`}
                   onClick={() => onJourneySelect?.(journey.id || journey._id)}
                 >
                   <Play className="h-4 w-4" />
                   <span>
                     {isCompleted
-                      ? '▷ Review'
+                      ? 'Review'
                       : isActive
-                      ? '▷ Continue'
-                      : '▷ Start Training'
+                        ? 'Continue'
+                        : 'Start Training'
                     }
                   </span>
                 </button>
