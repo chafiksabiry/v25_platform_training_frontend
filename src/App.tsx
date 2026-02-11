@@ -292,11 +292,13 @@ function AppContent() {
           console.log('[App] Sample journey modules:', journeys[0]?.modules?.length || 0, 'modules');
         }
 
-        // Filter active and completed journeys
-        const filteredJourneys = journeys.filter((journey: any) => {
-          const status = journey.status || journey.journeyStatus;
-          return !status || status === 'active' || status === 'completed';
-        });
+        // Filter out null journeys and filter by active/completed status
+        const filteredJourneys = journeys
+          .filter((journey: any) => journey != null)
+          .filter((journey: any) => {
+            const status = journey.status || journey.journeyStatus;
+            return !status || status === 'active' || status === 'completed';
+          });
 
         // Store journeys directly instead of transforming to modules
         setRealJourneys(filteredJourneys);
@@ -365,10 +367,12 @@ function AppContent() {
               console.log('[App] Loaded trainee journeys:', journeys.length);
 
               // Filter active journeys
-              const activeJourneys = journeys.filter((journey: any) => {
-                const status = journey.status || journey.journeyStatus;
-                return !status || status === 'active' || status === 'completed';
-              });
+              const activeJourneys = journeys
+                .filter((journey: any) => journey != null)
+                .filter((journey: any) => {
+                  const status = journey.status || journey.journeyStatus;
+                  return !status || status === 'active' || status === 'completed';
+                });
 
               setTraineeJourneys(activeJourneys);
 

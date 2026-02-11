@@ -1051,7 +1051,7 @@ export default function ManualTrainingSimulator({
         // Behavior Analysis: Flag suspicious timing
         if (responseTime < 2000) { // Less than 2 seconds = too fast (suspicious)
           console.warn(`⚠️ Suspicious: Question ${questionIdx + 1} answered in ${responseTime}ms`);
-        } else if (responseTime > 300000) { // More than 5 minutes = too slow (suspicious)
+        } else if (responseTime > 30000) { // More than 5 minutes = too slow (suspicious)
           console.warn(`⚠️ Suspicious: Question ${questionIdx + 1} took ${responseTime}ms`);
         }
       }
@@ -1296,10 +1296,10 @@ export default function ManualTrainingSimulator({
                 <>
                   {/* 45-second countdown timer per question */}
                   <div className={`flex items-center space-x-1 px-2 py-1 rounded font-mono font-bold ${questionTimeLeft <= 10
-                      ? 'bg-red-500 text-white animate-pulse'
-                      : questionTimeLeft <= 20
-                        ? 'bg-orange-500 text-white'
-                        : 'bg-blue-500 text-white'
+                    ? 'bg-red-500 text-white animate-pulse'
+                    : questionTimeLeft <= 20
+                      ? 'bg-orange-500 text-white'
+                      : 'bg-blue-500 text-white'
                     }`}>
                     <Clock className="w-3 h-3" />
                     <span>{questionTimeLeft}s</span>
@@ -1358,13 +1358,13 @@ export default function ManualTrainingSimulator({
 
               {/* Current Question */}
               <div className={`rounded-lg p-4 border-2 flex-1 flex flex-col transition-all ${hasViolationOnCurrentQuestion
-                  ? 'bg-red-50 border-red-300'
-                  : 'bg-gray-50 border-gray-200'
+                ? 'bg-red-50 border-red-300'
+                : 'bg-gray-50 border-gray-200'
                 }`}>
                 <div className="flex items-start space-x-3 mb-3 flex-shrink-0">
                   <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center font-bold text-base ${hasViolationOnCurrentQuestion
-                      ? 'bg-red-600 text-white'
-                      : 'bg-indigo-600 text-white'
+                    ? 'bg-red-600 text-white'
+                    : 'bg-indigo-600 text-white'
                     }`}>
                     {questionIdx + 1}
                   </div>
@@ -1386,10 +1386,10 @@ export default function ManualTrainingSimulator({
                     <label
                       key={optIndex}
                       className={`flex items-center space-x-3 p-3 rounded-lg border-2 transition-all ${hasViolationOnCurrentQuestion
-                          ? 'cursor-not-allowed opacity-50 bg-gray-100 border-gray-300'
-                          : currentAnswer === optIndex
-                            ? 'cursor-pointer border-indigo-600 bg-indigo-50 shadow-md'
-                            : 'cursor-pointer border-gray-300 hover:border-indigo-400 hover:bg-gray-100'
+                        ? 'cursor-not-allowed opacity-50 bg-gray-100 border-gray-300'
+                        : currentAnswer === optIndex
+                          ? 'cursor-pointer border-indigo-600 bg-indigo-50 shadow-md'
+                          : 'cursor-pointer border-gray-300 hover:border-indigo-400 hover:bg-gray-100'
                         }`}
                     >
                       <input
@@ -1410,10 +1410,10 @@ export default function ManualTrainingSimulator({
                         <label
                           key={option}
                           className={`flex items-center space-x-3 p-3 rounded-lg border-2 transition-all ${hasViolationOnCurrentQuestion
-                              ? 'cursor-not-allowed opacity-50 bg-gray-100 border-gray-300'
-                              : currentAnswer === (option === 'True')
-                                ? 'cursor-pointer border-indigo-600 bg-indigo-50 shadow-md'
-                                : 'cursor-pointer border-gray-300 hover:border-indigo-400 hover:bg-gray-100'
+                            ? 'cursor-not-allowed opacity-50 bg-gray-100 border-gray-300'
+                            : currentAnswer === (option === 'True')
+                              ? 'cursor-pointer border-indigo-600 bg-indigo-50 shadow-md'
+                              : 'cursor-pointer border-gray-300 hover:border-indigo-400 hover:bg-gray-100'
                             }`}
                         >
                           <input
@@ -1436,8 +1436,8 @@ export default function ManualTrainingSimulator({
             <div className="space-y-3 h-full flex flex-col">
               {/* Quiz Result */}
               <div className={`p-3 rounded-lg text-center flex-shrink-0 ${score >= (quiz.passingScore || 80)
-                  ? 'bg-emerald-50 border-2 border-emerald-500'
-                  : 'bg-red-50 border-2 border-red-500'
+                ? 'bg-emerald-50 border-2 border-emerald-500'
+                : 'bg-red-50 border-2 border-red-500'
                 }`}>
                 <div className="flex items-center justify-center mb-2">
                   {score >= (quiz.passingScore || 80) ? (
@@ -1541,8 +1541,8 @@ export default function ManualTrainingSimulator({
                 onClick={handleSectionComplete}
                 disabled={!canProceedToNextModule()}
                 className={`flex items-center space-x-2 px-6 py-3 rounded-lg text-sm font-medium shadow-lg transition-all ${canProceedToNextModule()
-                    ? 'bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white cursor-pointer'
-                    : 'bg-gray-300 text-gray-500 cursor-not-allowed opacity-50'
+                  ? 'bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white cursor-pointer'
+                  : 'bg-gray-300 text-gray-500 cursor-not-allowed opacity-50'
                   }`}
               >
                 <span className="font-semibold">
@@ -1560,8 +1560,8 @@ export default function ManualTrainingSimulator({
                 onClick={handlePreviousQuestion}
                 disabled={questionIdx === 0 || (answeredSet.has(questionIdx - 1))}
                 className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${questionIdx === 0 || (answeredSet.has(questionIdx - 1))
-                    ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                    : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                  : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
                   }`}
               >
                 <ArrowLeft className="w-3 h-3" />
@@ -1754,8 +1754,8 @@ export default function ManualTrainingSimulator({
                   onClick={() => toggleModule(module.id)}
                   disabled={isLocked}
                   className={`w-full p-4 flex items-center justify-between transition-all ${isLocked
-                      ? 'opacity-50 cursor-not-allowed bg-gray-100'
-                      : 'hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50'
+                    ? 'opacity-50 cursor-not-allowed bg-gray-100'
+                    : 'hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50'
                     } ${isCurrentModule ? 'bg-gradient-to-r from-indigo-50 to-purple-50 border-l-4 border-indigo-600' : ''
                     }`}
                 >
@@ -1771,19 +1771,19 @@ export default function ManualTrainingSimulator({
                     )}
                     <div className="flex-1 min-w-0">
                       <p className={`text-xs mb-1 ${isLocked
-                          ? 'text-gray-400'
-                          : module.id === 'final-exam'
-                            ? 'text-orange-600 font-semibold'
-                            : 'text-gray-500'
+                        ? 'text-gray-400'
+                        : module.id === 'final-exam'
+                          ? 'text-orange-600 font-semibold'
+                          : 'text-gray-500'
                         }`}>
                         {isLocked && '🔒 '}
                         {module.id === 'final-exam' ? '🏆 Final Exam' : `Module ${moduleIndex + 1}`}
                       </p>
                       <p className={`font-semibold text-sm ${isLocked
-                          ? 'text-gray-400'
-                          : isCurrentModule
-                            ? (module.id === 'final-exam' ? 'text-orange-700' : 'text-indigo-700')
-                            : 'text-gray-900'
+                        ? 'text-gray-400'
+                        : isCurrentModule
+                          ? (module.id === 'final-exam' ? 'text-orange-700' : 'text-indigo-700')
+                          : 'text-gray-900'
                         } truncate`}>
                         {module.title}
                       </p>
@@ -1815,10 +1815,10 @@ export default function ManualTrainingSimulator({
                           }}
                           disabled={sectionCompleted}
                           className={`w-full p-3 pl-12 flex items-center space-x-3 transition-all border-l-4 ${sectionCompleted
-                              ? 'opacity-50 cursor-not-allowed bg-gray-100 border-transparent'
-                              : isCurrentSection
-                                ? 'border-indigo-600 bg-gradient-to-r from-indigo-50 to-purple-50 hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50'
-                                : 'border-transparent hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50'
+                            ? 'opacity-50 cursor-not-allowed bg-gray-100 border-transparent'
+                            : isCurrentSection
+                              ? 'border-indigo-600 bg-gradient-to-r from-indigo-50 to-purple-50 hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50'
+                              : 'border-transparent hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50'
                             }`}
                         >
                           <div className={`${sectionCompleted ? 'text-gray-400' : isCurrentSection ? 'text-indigo-600' : 'text-gray-500'}`}>
@@ -1826,10 +1826,10 @@ export default function ManualTrainingSimulator({
                           </div>
                           <div className="flex-1 text-left min-w-0">
                             <p className={`text-sm ${sectionCompleted
-                                ? 'text-gray-400'
-                                : isCurrentSection
-                                  ? 'text-indigo-900 font-medium'
-                                  : 'text-gray-700'
+                              ? 'text-gray-400'
+                              : isCurrentSection
+                                ? 'text-indigo-900 font-medium'
+                                : 'text-gray-700'
                               } truncate`}>
                               {section.title}
                             </p>
@@ -1931,8 +1931,8 @@ export default function ManualTrainingSimulator({
                     onClick={handleSectionComplete}
                     disabled={!canComplete()}
                     className={`flex items-center space-x-2 px-6 py-2 rounded-lg font-medium shadow-lg transition-all text-sm transform hover:scale-105 ${canComplete()
-                        ? 'bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-700 hover:via-purple-700 hover:to-pink-700 text-white cursor-pointer'
-                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      ? 'bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-700 hover:via-purple-700 hover:to-pink-700 text-white cursor-pointer'
+                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                       }`}
                   >
                     <span>{completedSections.has(currentSection?.id || '') ? 'Next' : 'Complete & Continue'}</span>
