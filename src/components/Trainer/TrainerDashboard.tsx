@@ -111,14 +111,14 @@ export default function TrainerDashboard({ dashboard: propDashboard, onTraineeSe
                 enrolledJourneys: [],
                 progress: []
               })),
-            aiInsights: (dashboardData.aiInsights || []).map((insight: any) => ({
+            aiInsights: (dashboardData.aiInsights || []).filter((i: any) => i != null).map((insight: any) => ({
               id: insight.id,
               title: insight.title,
               description: insight.description,
               priority: insight.priority as 'high' | 'medium' | 'low',
               suggestedActions: insight.suggestedActions || []
             })),
-            upcomingDeadlines: (dashboardData.upcomingDeadlines || []).map((deadline: any) => ({
+            upcomingDeadlines: (dashboardData.upcomingDeadlines || []).filter((d: any) => d != null).map((deadline: any) => ({
               traineeId: deadline.traineeId,
               traineeName: deadline.traineeName,
               task: deadline.task,
@@ -267,8 +267,8 @@ export default function TrainerDashboard({ dashboard: propDashboard, onTraineeSe
                   key={tab.id}
                   onClick={() => setSelectedTab(tab.id)}
                   className={`flex items-center space-x-2 py-4 border-b-2 font-medium text-sm transition-colors ${selectedTab === tab.id
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
                     }`}
                 >
                   <Icon className="h-4 w-4" />
@@ -429,9 +429,9 @@ export default function TrainerDashboard({ dashboard: propDashboard, onTraineeSe
                           </p>
                         </div>
                         <span className={`ml-2 px-2 py-1 rounded-full text-xs font-medium ${journey.status === 'active' ? 'bg-green-100 text-green-700' :
-                            journey.status === 'completed' ? 'bg-blue-100 text-blue-700' :
-                              journey.status === 'draft' ? 'bg-gray-100 text-gray-700' :
-                                'bg-amber-100 text-amber-700'
+                          journey.status === 'completed' ? 'bg-blue-100 text-blue-700' :
+                            journey.status === 'draft' ? 'bg-gray-100 text-gray-700' :
+                              'bg-amber-100 text-amber-700'
                           }`}>
                           {journey.status || 'unknown'}
                         </span>
@@ -491,8 +491,8 @@ export default function TrainerDashboard({ dashboard: propDashboard, onTraineeSe
                     <div className="flex items-start justify-between mb-2">
                       <h4 className="font-medium text-gray-900">{insight.title}</h4>
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${insight.priority === 'high' ? 'bg-red-100 text-red-700' :
-                          insight.priority === 'medium' ? 'bg-amber-100 text-amber-700' :
-                            'bg-blue-100 text-blue-700'
+                        insight.priority === 'medium' ? 'bg-amber-100 text-amber-700' :
+                          'bg-blue-100 text-blue-700'
                         }`}>
                         {insight.priority}
                       </span>

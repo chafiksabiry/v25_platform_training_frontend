@@ -74,6 +74,7 @@ export default function JourneyTraining({ journeys, onJourneySelect }: JourneyTr
       {/* Journeys Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {journeys.map((journey) => {
+          if (!journey) return null;
           const isCompleted = journey.status === 'completed';
           const isActive = journey.status === 'active';
           // Support both new structure (moduleIds) and old structure (modules)
@@ -94,23 +95,23 @@ export default function JourneyTraining({ journeys, onJourneySelect }: JourneyTr
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center space-x-3">
                     <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isCompleted
-                        ? 'bg-green-100'
-                        : isActive
-                          ? 'bg-blue-100'
-                          : 'bg-gray-100'
+                      ? 'bg-green-100'
+                      : isActive
+                        ? 'bg-blue-100'
+                        : 'bg-gray-100'
                       }`}>
                       <BookOpen className={`h-5 w-5 ${isCompleted
-                          ? 'text-green-600'
-                          : isActive
-                            ? 'text-blue-600'
-                            : 'text-gray-500'
+                        ? 'text-green-600'
+                        : isActive
+                          ? 'text-blue-600'
+                          : 'text-gray-500'
                         }`} />
                     </div>
                     <span className={`text-xs font-semibold px-2 py-1 rounded ${isCompleted
-                        ? 'bg-green-50 text-green-700'
-                        : isActive
-                          ? 'bg-blue-50 text-blue-700'
-                          : 'bg-gray-50 text-gray-600'
+                      ? 'bg-green-50 text-green-700'
+                      : isActive
+                        ? 'bg-blue-50 text-blue-700'
+                        : 'bg-gray-50 text-gray-600'
                       }`}>
                       {journey.status || 'draft'}
                     </span>
@@ -189,10 +190,10 @@ export default function JourneyTraining({ journeys, onJourneySelect }: JourneyTr
                 {/* Action Button */}
                 <button
                   className={`w-full flex items-center justify-center space-x-2 py-3 px-4 rounded-lg font-semibold transition-all duration-200 ${isCompleted
-                      ? 'bg-green-50 text-green-700 hover:bg-green-100 border border-green-200'
-                      : isActive
-                        ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800 shadow-md hover:shadow-lg'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
+                    ? 'bg-green-50 text-green-700 hover:bg-green-100 border border-green-200'
+                    : isActive
+                      ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800 shadow-md hover:shadow-lg'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
                     }`}
                   onClick={() => onJourneySelect?.(journey.id || journey._id)}
                 >
