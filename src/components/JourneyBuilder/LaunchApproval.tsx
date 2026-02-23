@@ -436,7 +436,7 @@ export default function LaunchApproval({
       if (companyId) {
         try {
           const onboardingApiUrl = 'https://v25searchcompanywizardbackend-production.up.railway.app/api';
-          const onboardingEndpoint = `${onboardingApiUrl}/onboarding/companies/${companyId}/onboarding/phases/3/steps/11`;
+          const onboardingEndpoint = `${onboardingApiUrl}/onboarding/companies/${companyId}/onboarding/phases/3/steps/9`;
           console.log('[LaunchApproval] Updating onboarding progress:', onboardingEndpoint);
 
           await axios.put(onboardingEndpoint, { status: "completed" });
