@@ -431,6 +431,22 @@ export default function LaunchApproval({
       }, undefined, existingJourneyId); // Pass existingJourneyId as third parameter
 
       console.log('✅ Journey saved to MongoDB:', launchResponse);
+
+      // Update onboarding progress for Step 11 (REP Onboarding)
+      if (companyId) {
+        try {
+          const onboardingApiUrl = 'https://v25searchcompanywizardbackend-production.up.railway.app/api';
+          const onboardingEndpoint = `${onboardingApiUrl}/onboarding/companies/${companyId}/onboarding/phases/3/steps/11`;
+          console.log('[LaunchApproval] Updating onboarding progress:', onboardingEndpoint);
+
+          await axios.put(onboardingEndpoint, { status: "completed" });
+          console.log('[LaunchApproval] Onboarding Step 11 marked as completed');
+        } catch (onboardingError) {
+          console.error('[LaunchApproval] Failed to update onboarding progress:', onboardingError);
+          // Don't alert the user here, the journey launch itself was successful
+        }
+      }
+
       console.log('📊 Launching with:', {
         journey: updatedJourney.name,
         modules: modulesToLaunch.length,
@@ -526,8 +542,8 @@ export default function LaunchApproval({
 
                 {/* Launch Readiness */}
                 <div className={`p-6 rounded-xl border-2 ${isReadyForLaunch
-                    ? 'bg-green-50 border-green-200'
-                    : 'bg-yellow-50 border-yellow-200'
+                  ? 'bg-green-50 border-green-200'
+                  : 'bg-yellow-50 border-yellow-200'
                   }`}>
                   <div className="flex items-center space-x-3 mb-4">
                     {isReadyForLaunch ? (
@@ -966,8 +982,8 @@ export default function LaunchApproval({
                                                                   <div
                                                                     key={optIdx}
                                                                     className={`p-3 rounded-lg transition-all ${isCorrect
-                                                                        ? 'bg-green-50 border-2 border-green-500 shadow-sm'
-                                                                        : 'bg-gray-50 border border-gray-200'
+                                                                      ? 'bg-green-50 border-2 border-green-500 shadow-sm'
+                                                                      : 'bg-gray-50 border border-gray-200'
                                                                       }`}
                                                                   >
                                                                     <div className="flex items-center space-x-3">
