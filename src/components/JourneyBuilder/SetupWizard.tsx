@@ -21,7 +21,7 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
   const [selectedMethodology, setSelectedMethodology] = useState<TrainingMethodology | null>(null);
   const [showMethodologySelector, setShowMethodologySelector] = useState(false);
   const [showMethodologyBuilder, setShowMethodologyBuilder] = useState(false);
-  
+
   // Industries and Gigs state
   const [industries, setIndustries] = useState<Industry[]>([]);
   const [loadingIndustries, setLoadingIndustries] = useState(true);
@@ -29,6 +29,7 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
   const [selectedGig, setSelectedGig] = useState<GigFromApi | null>(null);
   const [showGigSelector, setShowGigSelector] = useState(false);
   const [trainingDetails, setTrainingDetails] = useState<{ trainingName: string; trainingDescription: string; estimatedDuration: string } | null>(null);
+  const [showAllComponents, setShowAllComponents] = useState(false);
 
   // Fetch company data on mount
   useEffect(() => {
@@ -39,10 +40,10 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
         if (response.success && response.data) {
           setCompanyData(response.data);
           // Set company name and industry from API
-          setCompany(prev => ({ 
-            ...prev, 
+          setCompany(prev => ({
+            ...prev,
             name: response.data.name,
-            industry: response.data.industry 
+            industry: response.data.industry
           }));
         }
       } catch (error) {
@@ -74,24 +75,24 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
   }, []);
 
   const steps = [
-    { 
-      id: 1, 
-      title: 'Company Setup', 
-      icon: Building2, 
+    {
+      id: 1,
+      title: 'Company Setup',
+      icon: Building2,
       description: 'Tell us about your organization',
       features: ['Industry-specific templates', 'Smart defaults', 'Compliance settings']
     },
-    { 
-      id: 2, 
-      title: 'Training Vision', 
-      icon: Target, 
+    {
+      id: 2,
+      title: 'Training Vision',
+      icon: Target,
       description: 'Define your learning objectives',
       features: ['AI-suggested goals', 'Success metrics', 'Timeline planning']
     },
-    { 
-      id: 3, 
-      title: 'Team & Roles', 
-      icon: Users, 
+    {
+      id: 3,
+      title: 'Team & Roles',
+      icon: Users,
       description: 'Identify your learners',
       features: ['Role-based paths', 'Skill assessments', 'Personalization']
     },
@@ -284,8 +285,8 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
                 <div className="bg-gradient-to-r from-blue-50 to-purple-50 border-2 border-blue-200 rounded-xl p-6">
                   <div className="flex items-start gap-4">
                     {companyData.logo && (
-                      <img 
-                        src={companyData.logo} 
+                      <img
+                        src={companyData.logo}
                         alt={companyData.name}
                         className="w-16 h-16 rounded-lg object-cover"
                       />
@@ -348,11 +349,10 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
                     <button
                       key={size.value}
                       onClick={() => setCompany({ ...company, size: size.value as Company['size'] })}
-                      className={`p-4 border-2 rounded-lg text-left transition-all hover:shadow-md ${
-                        company.size === size.value
+                      className={`p-4 border-2 rounded-lg text-left transition-all hover:shadow-md ${company.size === size.value
                           ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-md'
                           : 'border-gray-300 hover:border-gray-400'
-                      }`}
+                        }`}
                     >
                       <div className="font-semibold">{size.label}</div>
                       <div className="text-sm text-gray-600">{size.desc}</div>
@@ -499,13 +499,13 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
                 </h5>
                 <ul className="space-y-2 text-sm text-gray-700">
                   <li>• {trainingDetails?.trainingName || selectedGig?.title || 'N/A'}</li>
-                  <li>• {trainingDetails?.estimatedDuration 
+                  <li>• {trainingDetails?.estimatedDuration
                     ? (() => {
-                        const minutes = parseInt(trainingDetails.estimatedDuration);
-                        if (minutes >= 1440) return `${Math.round(minutes / 1440)} day(s)`;
-                        if (minutes >= 60) return `${Math.round(minutes / 60)} hour(s)`;
-                        return `${minutes} minute(s)`;
-                      })()
+                      const minutes = parseInt(trainingDetails.estimatedDuration);
+                      if (minutes >= 1440) return `${Math.round(minutes / 1440)} day(s)`;
+                      if (minutes >= 60) return `${Math.round(minutes / 60)} hour(s)`;
+                      return `${minutes} minute(s)`;
+                    })()
                     : journey.estimatedDuration || 'N/A'}</li>
                   <li>• {journey.targetRoles?.length || 0} target roles</li>
                 </ul>
@@ -520,7 +520,7 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
                   360° Methodology Components:
                 </h5>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  {selectedMethodology.components?.slice(0, 6).map((component: any, idx: number) => (
+                  {selectedMethodology.components?.slice(0, showAllComponents ? undefined : 6).map((component: any, idx: number) => (
                     <div key={idx} className="text-sm text-gray-700 flex items-center">
                       <CheckCircle className="h-4 w-4 text-green-500 mr-2 flex-shrink-0" />
                       <span>{component.title} ({component.estimatedDuration || 0}h)</span>
@@ -528,9 +528,16 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
                   ))}
                 </div>
                 {selectedMethodology.components && selectedMethodology.components.length > 6 && (
-                  <div className="text-sm text-gray-600 font-medium mt-2">
-                    +{selectedMethodology.components.length - 6} more components
-                  </div>
+                  <button
+                    onClick={() => setShowAllComponents(!showAllComponents)}
+                    className="text-sm text-blue-600 hover:text-blue-700 font-medium mt-3 flex items-center transition-colors"
+                  >
+                    {showAllComponents ? (
+                      <>Show less</>
+                    ) : (
+                      <>+{selectedMethodology.components.length - 6} more components</>
+                    )}
+                  </button>
                 )}
               </div>
             )}
@@ -590,17 +597,16 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
                 const Icon = step.icon;
                 const isActive = currentStep === step.id;
                 const isCompleted = currentStep > step.id;
-                
+
                 return (
                   <div key={step.id} className="flex items-center">
                     <div className="flex flex-col items-center">
-                      <div className={`flex items-center justify-center w-16 h-16 rounded-full border-4 transition-all duration-300 ${
-                        isCompleted 
+                      <div className={`flex items-center justify-center w-16 h-16 rounded-full border-4 transition-all duration-300 ${isCompleted
                           ? 'bg-green-500 border-green-500 text-white shadow-lg'
                           : isActive
-                          ? 'bg-blue-500 border-blue-500 text-white shadow-lg scale-110'
-                          : 'bg-white border-gray-300 text-gray-400'
-                      }`}>
+                            ? 'bg-blue-500 border-blue-500 text-white shadow-lg scale-110'
+                            : 'bg-white border-gray-300 text-gray-400'
+                        }`}>
                         {isCompleted ? (
                           <CheckCircle className="h-8 w-8" />
                         ) : (
@@ -608,9 +614,8 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
                         )}
                       </div>
                       <div className="mt-3 text-center">
-                        <div className={`text-sm font-semibold ${
-                          isActive ? 'text-blue-600' : isCompleted ? 'text-green-600' : 'text-gray-400'
-                        }`}>
+                        <div className={`text-sm font-semibold ${isActive ? 'text-blue-600' : isCompleted ? 'text-green-600' : 'text-gray-400'
+                          }`}>
                           {step.title}
                         </div>
                         <div className="text-xs text-gray-500 max-w-24">
@@ -619,9 +624,8 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
                       </div>
                     </div>
                     {index < steps.length - 1 && (
-                      <div className={`w-16 h-1 mx-4 rounded-full transition-all duration-300 ${
-                        isCompleted ? 'bg-green-500' : 'bg-gray-200'
-                      }`} />
+                      <div className={`w-16 h-1 mx-4 rounded-full transition-all duration-300 ${isCompleted ? 'bg-green-500' : 'bg-gray-200'
+                        }`} />
                     )}
                   </div>
                 );
@@ -654,47 +658,46 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
 
           {/* Navigation Buttons - Hide for step 2 and 4 (TrainingDetailsForm and MethodologySelector handle their own navigation) */}
           {currentStep !== 2 && currentStep !== 4 && (
-          <div className="flex justify-between items-center">
-            <button
-              onClick={() => {
-                if (currentStep === 5) {
-                  setCurrentStep(4);
-                } else if (currentStep > 1) {
-                  setCurrentStep(currentStep - 1);
-                }
-              }}
-              className={`px-6 py-3 rounded-xl transition-all font-medium flex items-center space-x-2 ${
-                currentStep === 1
-                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-              }`}
-              disabled={currentStep === 1}
-            >
-              <span>Back</span>
-            </button>
+            <div className="flex justify-between items-center">
+              <button
+                onClick={() => {
+                  if (currentStep === 5) {
+                    setCurrentStep(4);
+                  } else if (currentStep > 1) {
+                    setCurrentStep(currentStep - 1);
+                  }
+                }}
+                className={`px-6 py-3 rounded-xl transition-all font-medium flex items-center space-x-2 ${currentStep === 1
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                disabled={currentStep === 1}
+              >
+                <span>Back</span>
+              </button>
 
-            <div className="flex items-center space-x-4">
-              <div className="text-sm text-gray-600">
-                Step {currentStep === 5 ? steps.length : currentStep} of {steps.length}
+              <div className="flex items-center space-x-4">
+                <div className="text-sm text-gray-600">
+                  Step {currentStep === 5 ? steps.length : currentStep} of {steps.length}
+                </div>
+
+                <div className="w-64 bg-gray-200 rounded-full h-2 overflow-hidden">
+                  <div
+                    className="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full transition-all duration-500"
+                    style={{ width: `${(currentStep === 5 ? steps.length : currentStep) / steps.length * 100}%` }}
+                  />
+                </div>
               </div>
 
-              <div className="w-64 bg-gray-200 rounded-full h-2 overflow-hidden">
-                <div
-                  className="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full transition-all duration-500"
-                  style={{ width: `${(currentStep === 5 ? steps.length : currentStep) / steps.length * 100}%` }}
-                />
-              </div>
+              <button
+                onClick={handleNext}
+                disabled={!isStepValid()}
+                className="px-8 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium shadow-lg flex items-center space-x-2"
+              >
+                <span>{currentStep === 5 ? 'Start Building' : 'Continue'}</span>
+                <ArrowRight className="h-5 w-5" />
+              </button>
             </div>
-
-            <button
-              onClick={handleNext}
-              disabled={!isStepValid()}
-              className="px-8 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium shadow-lg flex items-center space-x-2"
-            >
-              <span>{currentStep === 5 ? 'Start Building' : 'Continue'}</span>
-              <ArrowRight className="h-5 w-5" />
-            </button>
-          </div>
           )}
         </div>
       </div>
