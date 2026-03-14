@@ -104,25 +104,26 @@ export default function CurriculumDesigner({ uploads, methodology, onComplete, o
         }
         
         console.log('📚 Curriculum API Response:', {
-          modulesCount: curriculum.modules.length,
+          modulesCount: curriculum?.modules?.length || 0,
           suggestedCount: combinedAnalysis.suggestedModules.length,
-          modules: curriculum.modules
+          modules: curriculum?.modules
         });
         
         setEnhancementProgress({ 'transforming': 60 });
         
         // ✅ CORRECTION : MAXIMUM 6 modules (pas plus !)
         // Si l'API retourne plus de 6 modules, on garde seulement les 6 premiers
-        let modulesToUse = curriculum.modules.slice(0, 6);
+        const rawModules = curriculum?.modules || [];
+        let modulesToUse = rawModules.slice(0, 6);
         const targetModuleCount = 6; // TOUJOURS 6 modules
         
-        if (modulesToUse.length > 6) {
-          console.warn(`⚠️ API returned ${curriculum.modules.length} modules. Limiting to 6.`);
+        if (rawModules.length > 6) {
+          console.warn(`⚠️ API returned ${rawModules.length} modules. Limiting to 6.`);
           modulesToUse = modulesToUse.slice(0, 6);
         }
         
-        if (curriculum.modules.length < targetModuleCount) {
-          console.warn(`⚠️ API returned ${curriculum.modules.length} modules, but ${targetModuleCount} were expected. Generating missing modules...`);
+        if (rawModules.length < targetModuleCount) {
+          console.warn(`⚠️ API returned ${rawModules.length} modules, but ${targetModuleCount} were expected. Generating missing modules...`);
           
           // Si on a des suggestions, les utiliser
           const availableSuggestions = combinedAnalysis.suggestedModules;
@@ -130,7 +131,7 @@ export default function CurriculumDesigner({ uploads, methodology, onComplete, o
           
           const missingModules = [];
           for (let i = 0; i < missingCount; i++) {
-            const moduleIndex = curriculum.modules.length + i;
+            const moduleIndex = rawModules.length + i;
             const suggestedTitle = availableSuggestions[moduleIndex] || `Advanced Module ${moduleIndex + 1}`;
             
             missingModules.push({
@@ -147,7 +148,7 @@ export default function CurriculumDesigner({ uploads, methodology, onComplete, o
             });
           }
           
-          modulesToUse = [...curriculum.modules, ...missingModules];
+          modulesToUse = [...rawModules, ...missingModules];
           console.log('✅ Generated missing modules:', missingModules.length, 'Total modules:', modulesToUse.length);
         }
         
@@ -244,7 +245,7 @@ export default function CurriculumDesigner({ uploads, methodology, onComplete, o
           });
           
           // Créer les modules avec leurs documents assignés
-          fullModules = modulesToUse.map((aiModule, moduleIndex) => {
+          fullModules = await Promise.all(modulesToUse.map(async (aiModule, moduleIndex) => {
             console.log(`📚 Module ${moduleIndex + 1}/${modulesToUse.length}: "${aiModule.title}"`);
             
             // Récupérer les documents assignés à ce module
@@ -260,7 +261,7 @@ export default function CurriculumDesigner({ uploads, methodology, onComplete, o
             // Générer les QCM
             let assessments = [];
             try {
-              assessments = generateEnhancedAssessments(
+              assessments = await generateEnhancedAssessments(
                 aiModule.title,
                 aiModule.description,
                 aiModule.learningObjectives
@@ -292,7 +293,7 @@ export default function CurriculumDesigner({ uploads, methodology, onComplete, o
                 timeRequirement: totalDuration || aiModule.duration
               }
             };
-          });
+          }));
         }
         
         // Fonction helper pour créer une section à partir d'un upload
@@ -378,8 +379,8 @@ export default function CurriculumDesigner({ uploads, methodology, onComplete, o
           );
           
           setFinalExam(examData);
-          console.log(`✅ Examen final généré : ${examData.questionCount} questions (${examData.totalPoints} points)`);
-          console.log(`⏱️ Temps: ${examData.duration} minutes | Score passage: ${examData.passingScore}%`);
+          console.log(`✅ Examen final généré : ${examData?.questionCount || 0} questions (${examData?.totalPoints || 0} points)`);
+          console.log(`⏱️ Temps: ${examData?.duration || 0} minutes | Score passage: ${examData?.passingScore || 0}%`);
         } catch (error) {
           console.warn('⚠️ Using fallback final exam');
           // Fallback simple si l'API échoue
@@ -1476,25 +1477,25 @@ export default function CurriculumDesigner({ uploads, methodology, onComplete, o
                     <CheckSquare className="h-8 w-8 mr-3 text-green-600" />
                     📝 Examen Final de Certification
                   </h3>
-                  <p className="text-green-700 mt-2">{finalExam.formationTitle}</p>
+                  <p className="text-green-700 mt-2">{finalExam?.formationTitle || 'Certification Training'}</p>
                 </div>
                 <div className="text-right">
-                  <div className="text-3xl font-bold text-green-600">{finalExam.questionCount}</div>
+                  <div className="text-3xl font-bold text-green-600">{finalExam?.questionCount || 0}</div>
                   <div className="text-sm text-green-700">Questions</div>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                 <div className="bg-white rounded-lg p-4 text-center">
-                  <div className="text-2xl font-bold text-gray-900">{finalExam.totalPoints}</div>
+                  <div className="text-2xl font-bold text-gray-900">{finalExam?.totalPoints || 0}</div>
                   <div className="text-sm text-gray-600">Points Total</div>
                 </div>
                 <div className="bg-white rounded-lg p-4 text-center">
-                  <div className="text-2xl font-bold text-green-600">{finalExam.passingScore}</div>
+                  <div className="text-2xl font-bold text-green-600">{finalExam?.passingScore || 0}</div>
                   <div className="text-sm text-gray-600">Score Passage (70%)</div>
                 </div>
                 <div className="bg-white rounded-lg p-4 text-center">
-                  <div className="text-2xl font-bold text-blue-600">{finalExam.duration}</div>
+                  <div className="text-2xl font-bold text-blue-600">{finalExam?.duration || 0}</div>
                   <div className="text-sm text-gray-600">Minutes</div>
                 </div>
                 <div className="bg-white rounded-lg p-4 text-center">
@@ -1505,13 +1506,13 @@ export default function CurriculumDesigner({ uploads, methodology, onComplete, o
 
               <div className="bg-white rounded-lg p-6 border border-green-200">
                 <h4 className="font-semibold text-gray-900 mb-4">Exemples de Questions :</h4>
-                {finalExam.questions.slice(0, 3).map((q: any, idx: number) => (
+                {finalExam?.questions?.slice(0, 3).map((q: any, idx: number) => (
                   <div key={idx} className="mb-4 pb-4 border-b border-gray-200 last:border-0">
                     <p className="font-medium text-gray-900 mb-2">
                       <span className="text-green-600 font-bold">Q{idx + 1}.</span> {q.text}
                     </p>
                     <div className="text-sm text-gray-600 space-y-1">
-                      {q.options.map((opt: string, i: number) => (
+                      {q.options?.map((opt: string, i: number) => (
                         <div key={i} className={i === q.correctAnswer ? 'text-green-700 font-medium' : ''}>
                           {String.fromCharCode(65 + i)}. {opt} {i === q.correctAnswer && '✓'}
                         </div>
@@ -1522,9 +1523,11 @@ export default function CurriculumDesigner({ uploads, methodology, onComplete, o
                     </div>
                   </div>
                 ))}
-                <p className="text-sm text-gray-600 mt-4 text-center">
-                  ... and {finalExam.questionCount - 3} more questions
-                </p>
+                {(finalExam?.questionCount || 0) > 3 && (
+                  <p className="text-sm text-gray-600 mt-4 text-center">
+                    ... and {(finalExam?.questionCount || 0) - 3} more questions
+                  </p>
+                )}
               </div>
             </div>
           )}

@@ -66,14 +66,15 @@ export class AIService {
 
       const response = await ApiClient.upload('/api/ai/analyze-document', formData);
 
-      if (!response.data.success) {
-        const errorMsg = response.data.error || response.data.message || 'Analysis failed';
+      const data = response.data as any;
+      if (!data.success) {
+        const errorMsg = data.error || data.message || 'Analysis failed';
         console.error('❌ Analysis failed:', errorMsg);
         throw new Error(errorMsg);
       }
 
       console.log('✅ Document analyzed successfully');
-      return response.data.analysis || response.data.data?.analysis;
+      return data.analysis || data.data?.analysis;
     } catch (error: any) {
       console.error('❌ Error in analyzeDocument:', error);
 
@@ -109,11 +110,12 @@ export class AIService {
   static async analyzeUrl(url: string): Promise<DocumentAnalysis> {
     const response = await ApiClient.post('/api/ai/analyze-url', { url });
 
-    if (!response.data.success) {
-      throw new Error(response.data.error || 'URL analysis failed');
+    const data = response.data as any;
+    if (!data.success) {
+      throw new Error(data.error || 'URL analysis failed');
     }
 
-    return response.data.analysis;
+    return data.analysis;
   }
 
   /**
@@ -122,11 +124,12 @@ export class AIService {
   static async enhanceContent(content: string): Promise<string> {
     const response = await ApiClient.post('/api/ai/enhance-content', { content });
 
-    if (!response.data.success) {
-      throw new Error(response.data.error || 'Enhancement failed');
+    const data = response.data as any;
+    if (!data.success) {
+      throw new Error(data.error || 'Enhancement failed');
     }
 
-    return response.data.enhancedContent;
+    return data.enhancedContent;
   }
 
   /**
@@ -181,26 +184,22 @@ export class AIService {
 
     const response = await ApiClient.post('/api/ai/generate-quiz', requestBody);
 
-    // Log the response to verify number of questions returned
-    const questions = response.data.data?.questions || response.data.questions || [];
+    const data = response.data as any;
+    const questions = data.data?.questions || data.questions || [];
 
     // Always log mismatch as error for debugging
     if (questions.length !== count) {
       console.error(`[AIService] ⚠️ Mismatch: Requested ${count} questions but received ${questions.length}`);
-      console.error(`[AIService] Request body:`, {
-        numberOfQuestions: count,
-        questionDistribution: requestBody.questionDistribution
-      });
     } else if (count >= 20) {
       // Log success for large quizzes (like final exams)
       console.log(`[AIService] ✅ Successfully received ${questions.length} questions`);
     }
 
-    if (!response.data.success) {
-      throw new Error(response.data.error || response.data.message || 'Quiz generation failed');
+    if (!data.success) {
+      throw new Error(data.error || data.message || 'Quiz generation failed');
     }
 
-    return response.data.data?.questions || response.data.questions || [];
+    return questions;
   }
 
   /**
@@ -208,13 +207,13 @@ export class AIService {
    */
   static async generateAudio(text: string): Promise<Blob> {
     const token = ApiClient.getToken();
-    const apiUrl = import.meta.env.VITE_API_URL || process.env.NEXT_PUBLIC_API_URL || 'https://v25platformtrainingbackend-production.up.railway.app';
+    const apiUrl = import.meta.env.VITE_API_URL || 'https://v25platformtrainingbackend-production.up.railway.app';
 
     const response = await fetch(`${apiUrl}/api/ai/generate-audio`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        ...(token && { 'Authorization': `Bearer ${token}` })
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
       },
       body: JSON.stringify({ text })
     });
@@ -232,11 +231,12 @@ export class AIService {
   static async chat(message: string, context: string = ''): Promise<string> {
     const response = await ApiClient.post('/api/ai/chat', { message, context });
 
-    if (!response.data.success) {
-      throw new Error(response.data.error || 'Chat failed');
+    const data = response.data as any;
+    if (!data.success) {
+      throw new Error(data.error || 'Chat failed');
     }
 
-    return response.data.response;
+    return data.response;
   }
 
   /**
@@ -251,18 +251,25 @@ export class AIService {
       industry
     });
 
+    const data = response.data as any;
     // Check if response indicates failure
-    if (response.data.success === false) {
-      throw new Error(response.data.error || 'Curriculum generation failed');
+    if (data.success === false) {
+      throw new Error(data.error || 'Curriculum generation failed');
     }
 
     // Show a console message if using fallback mode
-    if (response.data.fallbackMode) {
+    if (data.fallbackMode) {
       console.warn('⚠️ Using fallback curriculum generation (OpenAI quota exceeded or unavailable)');
-      console.info('✅ Fallback curriculum created with', response.data.modules?.length || 0, 'modules');
     }
 
-    return response.data as Curriculum;
+    // Extraction robuste des données
+    const curriculumData = data.curriculum || data.data?.curriculum || data.data || data;
+    
+    if (curriculumData && curriculumData.modules) {
+      return curriculumData as Curriculum;
+    }
+    
+    return data as Curriculum;
   }
 
   /**
@@ -279,11 +286,12 @@ export class AIService {
       learningObjectives
     });
 
-    if (!response.data.success) {
-      throw new Error(response.data.error || 'Video script generation failed');
+    const data = response.data as any;
+    if (!data.success) {
+      throw new Error(data.error || 'Video script generation failed');
     }
 
-    return response.data as VideoScript;
+    return data as VideoScript;
   }
 
   /**
@@ -303,11 +311,12 @@ export class AIService {
       learningObjectives
     });
 
-    if (!response.data.success) {
-      throw new Error(response.data.error || 'Module content generation failed');
+    const data = response.data as any;
+    if (!data.success) {
+      throw new Error(data.error || 'Module content generation failed');
     }
 
-    return response.data.sections || response.data.content;
+    return data.sections || data.content;
   }
 
   /**
@@ -320,11 +329,13 @@ export class AIService {
       formationTitle
     });
 
-    if (!response.data.success) {
-      throw new Error(response.data.error || 'Final exam generation failed');
+    const data = response.data as any;
+    if (!data.success) {
+      throw new Error(data.error || 'Final exam generation failed');
     }
 
-    return response.data;
+    // Extraction robuste des données (supporte {data: {exam: ...}} ou {exam: ...} ou direct payload)
+    return data.exam || data.data?.exam || data.data || data;
   }
 
   /**
@@ -333,13 +344,13 @@ export class AIService {
    */
   static async exportToPowerPoint(curriculum: Curriculum): Promise<Blob> {
     const token = ApiClient.getToken();
-    const apiUrl = import.meta.env.VITE_API_URL || process.env.NEXT_PUBLIC_API_URL || 'https://v25platformtrainingbackend-production.up.railway.app';
+    const apiUrl = import.meta.env.VITE_API_URL || 'https://v25platformtrainingbackend-production.up.railway.app';
 
     const response = await fetch(`${apiUrl}/ai/export-powerpoint`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        ...(token && { 'Authorization': `Bearer ${token}` })
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
       },
       body: JSON.stringify({ curriculum })
     });
