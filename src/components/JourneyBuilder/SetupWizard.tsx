@@ -268,7 +268,7 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
               {steps[0].features.map((feature, index) => (
                 <div key={index} className="text-center p-4 bg-blue-50 rounded-lg">
-                  <Sparkles className="h-6 w-6 text-blue-500 mx-auto mb-2" />
+                  <Sparkles className="h-6 w-6 text-yellow-500 mx-auto mb-2" />
                   <p className="text-sm text-blue-700 font-medium">{feature}</p>
                 </div>
               ))}
@@ -350,8 +350,8 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
                       key={size.value}
                       onClick={() => setCompany({ ...company, size: size.value as Company['size'] })}
                       className={`p-4 border-2 rounded-lg text-left transition-all hover:shadow-md ${company.size === size.value
-                          ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-md'
-                          : 'border-gray-300 hover:border-gray-400'
+                        ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-md'
+                        : 'border-gray-300 hover:border-gray-400'
                         }`}
                     >
                       <div className="font-semibold">{size.label}</div>
@@ -364,7 +364,7 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
               {/* Gig Selection */}
               <div className="pt-6 border-t border-gray-200">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                  <Briefcase className="h-5 w-5 mr-2 text-blue-600" />
+                  <Briefcase className="h-5 w-5 mr-2 text-blue-500" />
                   Select Your Gig *
                 </h3>
                 <GigSelector
@@ -573,133 +573,136 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-      <div className="container mx-auto px-4 pt-4 pb-8">
-        <div className="max-w-4xl mx-auto">
-          {/* Header */}
-          <div className="text-center mb-8">
-            <div className="inline-flex items-center space-x-2 bg-white px-6 py-3 rounded-full shadow-sm border border-gray-200 mb-6">
-              <Sparkles className="h-5 w-5 text-blue-500" />
-              <span className="text-sm font-medium text-gray-700">AI-Powered Training Journey Builder</span>
-            </div>
-            <h1 className="text-4xl font-bold text-gray-900 mb-4">
-              Create Amazing Training in Minutes
-            </h1>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Transform your existing content into engaging, interactive training programs with the power of AI
-            </p>
+    <div className="w-full h-full flex flex-col bg-gradient-to-br from-blue-50 via-white to-purple-50">
+      <div className="w-full flex-1 flex flex-col p-4 md:p-8 opacity-100 transition-opacity duration-500 relative">
+        {/* Header */}
+        <div className="text-center mb-4">
+          <div className="inline-flex items-center space-x-2 bg-white px-6 py-3 rounded-full shadow-sm border border-gray-200 mb-6">
+            <Sparkles className="h-5 w-5 text-blue-500" />
+            <span className="text-sm font-medium text-gray-700">AI-Powered Training Journey Builder</span>
           </div>
+          <h1 className="text-4xl font-bold text-gray-900 mb-4">
+            Create Amazing Training in Minutes
+          </h1>
+          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+            Transform your existing content into engaging, interactive training programs with the power of AI
+          </p>
+        </div>
 
-          {/* Progress Steps */}
-          <div className="flex items-center justify-center mb-8">
-            <div className="flex items-center space-x-4">
-              {steps.map((step, index) => {
-                const Icon = step.icon;
-                const isActive = currentStep === step.id;
-                const isCompleted = currentStep > step.id;
+        {/* Progress Steps */}
+        <div className="flex items-center justify-center mb-4">
+          <div className="flex items-center space-x-4">
+            {steps.map((step, index) => {
+              const Icon = step.icon;
+              const isActive = currentStep === step.id;
+              const isCompleted = currentStep > step.id;
 
-                return (
-                  <div key={step.id} className="flex items-center">
-                    <div className="flex flex-col items-center">
-                      <div className={`flex items-center justify-center w-16 h-16 rounded-full border-4 transition-all duration-300 ${isCompleted
-                          ? 'bg-green-500 border-green-500 text-white shadow-lg'
-                          : isActive
-                            ? 'bg-blue-500 border-blue-500 text-white shadow-lg scale-110'
-                            : 'bg-white border-gray-300 text-gray-400'
-                        }`}>
-                        {isCompleted ? (
-                          <CheckCircle className="h-8 w-8" />
-                        ) : (
-                          <Icon className="h-8 w-8" />
-                        )}
-                      </div>
-                      <div className="mt-3 text-center">
-                        <div className={`text-sm font-semibold ${isActive ? 'text-blue-600' : isCompleted ? 'text-green-600' : 'text-gray-400'
-                          }`}>
-                          {step.title}
-                        </div>
-                        <div className="text-xs text-gray-500 max-w-24">
-                          {step.description}
-                        </div>
-                      </div>
-                    </div>
-                    {index < steps.length - 1 && (
-                      <div className={`w-16 h-1 mx-4 rounded-full transition-all duration-300 ${isCompleted ? 'bg-green-500' : 'bg-gray-200'
-                        }`} />
-                    )}
-                  </div>
-                );
-              })}
-              {/* Setup Complete Step */}
-              {currentStep === 5 && (
-                <>
-                  <div className={`w-16 h-1 mx-4 rounded-full bg-green-500 transition-all duration-300`} />
+              return (
+                <div key={step.id} className="flex items-center">
                   <div className="flex flex-col items-center">
-                    <div className="flex items-center justify-center w-16 h-16 rounded-full border-4 bg-green-500 border-green-500 text-white shadow-lg">
-                      <CheckCircle className="h-8 w-8" />
+                    <div className={`flex items-center justify-center w-16 h-16 rounded-full border-4 transition-all duration-300 ${isCompleted
+                      ? 'bg-green-500 border-green-500 text-white shadow-lg'
+                      : isActive
+                        ? 'bg-blue-500 border-blue-500 text-white shadow-lg scale-110'
+                        : 'bg-white border-gray-300 text-gray-400'
+                      }`}>
+                      {isCompleted ? (
+                        <CheckCircle className="h-8 w-8" />
+                      ) : (
+                        <Icon className="h-8 w-8" />
+                      )}
                     </div>
                     <div className="mt-3 text-center">
-                      <div className="text-sm font-semibold text-green-600">
-                        Setup Complete!
+                      <div className={`text-sm font-semibold ${isActive ? 'text-blue-600' : isCompleted ? 'text-green-600' : 'text-gray-400'
+                        }`}>
+                        {step.title}
+                      </div>
+                      <div className="text-xs text-gray-500 max-w-24">
+                        {step.description}
                       </div>
                     </div>
                   </div>
-                </>
-              )}
+                  {index < steps.length - 1 && (
+                    <div className={`w-16 h-1 mx-4 rounded-full transition-all duration-300 ${isCompleted ? 'bg-green-500' : 'bg-gray-200'
+                      }`} />
+                  )}
+                </div>
+              );
+            })}
+            {/* Setup Complete Step */}
+            {currentStep === 5 && (
+              <>
+                <div className={`w-16 h-1 mx-4 rounded-full bg-green-500 transition-all duration-300`} />
+                <div className="flex flex-col items-center">
+                  <div className="flex items-center justify-center w-16 h-16 rounded-full border-4 bg-green-500 border-green-500 text-white shadow-lg">
+                    <CheckCircle className="h-8 w-8" />
+                  </div>
+                  <div className="mt-3 text-center">
+                    <div className="text-sm font-semibold text-green-600">
+                      Setup Complete!
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Step Content */}
+        {currentStep !== 4 && (
+          <div className="flex-1 bg-white rounded-2xl shadow-xl border border-gray-200 p-8 mb-4 overflow-hidden relative">
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 to-purple-50/50 pointer-events-none" />
+            <div className="h-full overflow-y-auto relative z-10 custom-scrollbar pr-4">
+              <div className="max-w-4xl mx-auto pb-4">
+                {renderStepContent()}
+              </div>
             </div>
           </div>
+        )}
 
-          {/* Step Content */}
-          {currentStep !== 4 && (
-            <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-8 mb-8">
-              {renderStepContent()}
-            </div>
-          )}
+        {/* Navigation Buttons - Hide for step 2 and 4 (TrainingDetailsForm and MethodologySelector handle their own navigation) */}
+        {currentStep !== 2 && currentStep !== 4 && (
+          <div className="flex justify-between items-center">
+            <button
+              onClick={() => {
+                if (currentStep === 5) {
+                  setCurrentStep(4);
+                } else if (currentStep > 1) {
+                  setCurrentStep(currentStep - 1);
+                }
+              }}
+              className={`px-6 py-3 rounded-xl transition-all font-medium flex items-center space-x-2 ${currentStep === 1
+                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              disabled={currentStep === 1}
+            >
+              <span>Back</span>
+            </button>
 
-          {/* Navigation Buttons - Hide for step 2 and 4 (TrainingDetailsForm and MethodologySelector handle their own navigation) */}
-          {currentStep !== 2 && currentStep !== 4 && (
-            <div className="flex justify-between items-center">
-              <button
-                onClick={() => {
-                  if (currentStep === 5) {
-                    setCurrentStep(4);
-                  } else if (currentStep > 1) {
-                    setCurrentStep(currentStep - 1);
-                  }
-                }}
-                className={`px-6 py-3 rounded-xl transition-all font-medium flex items-center space-x-2 ${currentStep === 1
-                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                  }`}
-                disabled={currentStep === 1}
-              >
-                <span>Back</span>
-              </button>
-
-              <div className="flex items-center space-x-4">
-                <div className="text-sm text-gray-600">
-                  Step {currentStep === 5 ? steps.length : currentStep} of {steps.length}
-                </div>
-
-                <div className="w-64 bg-gray-200 rounded-full h-2 overflow-hidden">
-                  <div
-                    className="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full transition-all duration-500"
-                    style={{ width: `${(currentStep === 5 ? steps.length : currentStep) / steps.length * 100}%` }}
-                  />
-                </div>
+            <div className="flex items-center space-x-4">
+              <div className="text-sm text-gray-600">
+                Step {currentStep === 5 ? steps.length : currentStep} of {steps.length}
               </div>
 
-              <button
-                onClick={handleNext}
-                disabled={!isStepValid()}
-                className="px-8 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium shadow-lg flex items-center space-x-2"
-              >
-                <span>{currentStep === 5 ? 'Start Building' : 'Continue'}</span>
-                <ArrowRight className="h-5 w-5" />
-              </button>
+              <div className="w-64 bg-gray-200 rounded-full h-2 overflow-hidden">
+                <div
+                  className="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full transition-all duration-500"
+                  style={{ width: `${(currentStep === 5 ? steps.length : currentStep) / steps.length * 100}%` }}
+                />
+              </div>
             </div>
-          )}
-        </div>
+
+            <button
+              onClick={handleNext}
+              disabled={!isStepValid()}
+              className="px-8 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium shadow-lg flex items-center space-x-2"
+            >
+              <span>{currentStep === 5 ? 'Start Building' : 'Continue'}</span>
+              <ArrowRight className="h-5 w-5" />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

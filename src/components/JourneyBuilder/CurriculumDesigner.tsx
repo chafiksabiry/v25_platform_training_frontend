@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Brain, BookOpen, CheckSquare, Play, Edit, Trash2, Plus, ArrowRight, Sparkles, Video, Music, BarChart3, Zap, Eye, Wand2, FileDown, ChevronRight, FileText, Rocket, RotateCcw } from 'lucide-react';
+import { Brain, BookOpen, CheckSquare, Play, Edit2, Trash2, Plus, ArrowRight, Sparkles, Video, Music, BarChart3, Zap, Eye, Wand2, FileDown, ChevronRight, FileText, Rocket, RotateCcw } from 'lucide-react';
 import { ContentUpload, TrainingModule, ModuleContent, Assessment, Question } from '../../types/core';
 import { TrainingMethodology } from '../../types/methodology';
 import { TrainingSection } from '../../types/manualTraining';
@@ -1433,7 +1433,7 @@ export default function CurriculumDesigner({ uploads, methodology, onComplete, o
                               </>
                             ) : (
                               <>
-                                <Edit className="h-4 w-4 inline mr-1" />
+                                <Edit2 className="h-4 w-4 inline mr-1" />
                                 Edit
                               </>
                             )}
