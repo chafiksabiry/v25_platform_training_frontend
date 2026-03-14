@@ -199,7 +199,13 @@ export class AIService {
       throw new Error(data.error || data.message || 'Quiz generation failed');
     }
 
-    return questions;
+    const normalizedQuestions = questions.map((q: any) => ({
+      ...q,
+      correctAnswer: q.correctAnswer !== undefined ? q.correctAnswer : q.correct_answer,
+      moduleTitle: q.moduleTitle !== undefined ? q.moduleTitle : q.module_title
+    }));
+
+    return normalizedQuestions;
   }
 
   /**
@@ -335,7 +341,23 @@ export class AIService {
     }
 
     // Extraction robuste des données (supporte {data: {exam: ...}} ou {exam: ...} ou direct payload)
-    return data.exam || data.data?.exam || data.data || data;
+    const examData = data.exam || data.data?.exam || data.data || data;
+
+    // Normalisation proactive des clés (snake_case -> camelCase)
+    if (examData && typeof examData === 'object') {
+      if (examData.question_count !== undefined && examData.questionCount === undefined) {
+        examData.questionCount = examData.question_count;
+      }
+      if (examData.total_points !== undefined && examData.totalPoints === undefined) {
+        examData.totalPoints = examData.total_points;
+      }
+      if (examData.passing_score !== undefined && examData.passingScore === undefined) {
+        examData.passingScore = examData.passing_score;
+      }
+    }
+
+    console.log('[AIService] Extracted exam data:', examData);
+    return examData;
   }
 
   /**

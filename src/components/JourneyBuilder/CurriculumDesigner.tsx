@@ -379,6 +379,7 @@ export default function CurriculumDesigner({ uploads, methodology, onComplete, o
           );
           
           setFinalExam(examData);
+          console.log('📦 FULL EXAM DATA RECEIVED:', examData);
           console.log(`✅ Examen final généré : ${examData?.questionCount || 0} questions (${examData?.totalPoints || 0} points)`);
           console.log(`⏱️ Temps: ${examData?.duration || 0} minutes | Score passage: ${examData?.passingScore || 0}%`);
         } catch (error) {
